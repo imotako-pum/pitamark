@@ -44,7 +44,6 @@
 
 ## Open Questions
 
-- [ ] Canvas SDK 決定: Konva自前 vs tldraw → Phase 0 技術スパイクで48h以内に判断
 - [ ] パスワード保護の実装位置: ルーム作成時オプション or 全ルーム必須
 - [ ] ルームTTL: 24時間 / 7日 / オーナー指定の妥当値
 - [ ] PNG エクスポート時の元画像解像度保持の方針
@@ -144,7 +143,7 @@
 |---|---|---|
 | Frontend | Vite + React + TanStack Router + TypeScript | 確定 |
 | 状態同期 | Yjs (CRDT) | 確定 |
-| Canvasレンダリング | **未決（Phase 0で決定）** | Konva 自前 vs tldraw SDK |
+| Canvasレンダリング | Konva（自前UI） | オーナー経験あり、~80KB gz、軽量UX重視で確定 |
 | API | Hono on Cloudflare Workers | 確定 |
 | WebSocket同期 | Cloudflare Durable Objects + Hibernation API | [`y-durableobjects`](https://github.com/napolab/y-durableobjects) ベース |
 | 画像ストレージ | Cloudflare R2 | 10GB無料 + エグレス無料 |
@@ -165,7 +164,7 @@
 
 | Risk | Likelihood | Mitigation |
 |------|------------|------------|
-| Canvas SDK決定遅延でMVP遅延 | M | Phase 0で48h以内タイムボックス、未決ならKonva自前にデフォルト |
+| Konva自前UIの実装工数膨張 | M | 注釈4種に絞る、Should以下は v1.x へ繰り延べ |
 | Yjs ドキュメント肥大化でDO Storage超過 | M | 1ルーム上限サイズ + スナップショット圧縮 + TTL自動破棄 |
 | 公開URLのスパム/悪用 | M | Turnstile + IPレート制限 + 画像SHAブラックリスト + 通報機能 |
 | 個人開発の工数オーバーラン | H | MVP厳守、Should以下は v1.x へ繰り延べ |
@@ -185,10 +184,10 @@
 
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
-| 0 | 技術スパイク | Canvas SDK選定（Konva vs tldraw）+ shadcn採用判断 + Yjs+DO最小疎通PoC | pending | - | - | - |
+| 0 | 技術スパイク | shadcn採用判断 + Yjs+DO最小疎通PoC + Konva最小描画確認 | pending | - | - | - |
 | 1 | モノレポ初期化 | turborepo + Vite/Hono workspace + Biome + Vitest + CI | pending | - | 0 | - |
 | 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | pending | with 3 | 1 | - |
-| 3 | キャンバス & 注釈ツール | Konva/tldraw実装 + 4種注釈 + Undo/Redo | pending | with 2 | 1 | - |
+| 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | pending | with 2 | 1 | - |
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | pending | - | 2, 3 | - |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + Argon2 + DO TTL | pending | with 6 | 4 | - |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | pending | with 5 | 4 | - |
@@ -197,13 +196,13 @@
 
 ### Phase Details
 
-**Phase 0: 技術スパイク（〜3日）**
-- Goal: Must要件を満たす最小コード一式の動作確認 + 技術選定の確定
+**Phase 0: 技術スパイク（〜2日）**
+- Goal: Must要件を満たす最小コード一式の動作確認 + 残る技術選定の確定
 - Scope:
-  - Konva最小実装（画像表示+矩形描画） vs tldraw最小実装の比較ベンチ
+  - Konva最小実装（画像表示 + 矩形描画 + ドラッグ移動）
   - y-durableobjects 公式サンプルの localhost 動作確認
-  - shadcn/ui の Vite 統合の摩擦確認
-- Success signal: Canvas/SDK選定文書が `.claude/decisions/` に1つ追加され、Phase 1以降の依存が確定する
+  - shadcn/ui の Vite 統合の摩擦確認（採用 or Tailwindのみで進めるか判断）
+- Success signal: 上記3つが `apps/web` プロトタイプ内で動作し、shadcn採用可否が確定する
 
 **Phase 1: モノレポ初期化（〜5日）**
 - Goal: 開発基盤の確定、CI green
@@ -262,7 +261,7 @@
 | 同期方式 | Yjs + Durable Objects (Hibernation) | y-webrtc / Liveblocks / Hocuspocus | 個人開発で課金がidle時ゼロ、技術アピール狙い、CFスタック整合 |
 | 画像ストレージ | Cloudflare R2 | S3 / Workers KV | エグレス無料、10GB無料、CFスタック整合 |
 | 言語ファースト | 日本語 | 英語ファースト | プライマリユーザー要件、競合との差別化 |
-| Canvas SDK | **未決（Phase 0で確定）** | Konva自前 / tldraw / Excalidraw / Fabric | スパイクして「軽量感」と工数のバランスで決定 |
+| Canvas SDK | Konva（自前UI） | tldraw / Excalidraw / Fabric | オーナー経験あり、~80KB gz、Shottr級「軽量感」を実現するためUIを完全自前制御 |
 | ライセンス | 未決（OSS方針） | MIT / Apache 2.0 / BUSL | 公開時に決定、デフォルトMIT想定 |
 
 ---
@@ -282,7 +281,7 @@
 - **CF Workers + Yjs**: [`y-durableobjects`](https://github.com/napolab/y-durableobjects) と [`yjs-cf-ws-provider`](https://github.com/TimoWilhelm/yjs-cf-ws-provider) の2実装が公開済み、WebSocket Hibernation 対応
 - **CF Durable Objects 2026 アップデート**: `web_socket_auto_reply_to_close` フラグがデフォルト有効化（compat date 2026-04-07以降）、CLOSING状態が高速化
 - **R2 コスト**: 無料枠 10GB + エグレス完全無料 → 個人開発の理想形
-- **Canvas SDK選定**: [tldraw](https://tldraw.dev/) は SDK 設計だが ~300KB+ gz、UIカスタム工数あり / Konva は ~80KB gz だが描画レイヤーのみ・UI自前
+- **Canvas SDK選定**: Konvaに確定（~80KB gz、オーナー経験あり、UIを完全自前で制御することで「軽量感」を担保）。tldraw（~300KB+ gz）は機能リッチだが本プロダクトのMVPには過剰
 - **コスト試算**: MVP想定（〜100 active users）で月額 **$0**、$30予算で数千ユーザーまで余裕
 
 ---
