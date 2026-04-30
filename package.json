@@ -2,16 +2,23 @@
   "name": "snap-share",
   "private": true,
   "version": "0.0.0",
-  "description": "Phase 0 tech spike workspace for snap-share. See docs/spikes/REPORT.md after running spikes.",
+  "description": "snap-share monorepo (turborepo).",
   "packageManager": "pnpm@10.32.1",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
-    "typecheck": "pnpm -r --parallel exec tsc --noEmit --pretty false",
-    "test": "pnpm -r --parallel test"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome ci .",
+    "format": "biome format --write .",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e"
   },
   "devDependencies": {
-    "typescript": "5.6.3"
+    "@biomejs/biome": "^2.2",
+    "turbo": "^2.3",
+    "typescript": "catalog:"
   }
 }

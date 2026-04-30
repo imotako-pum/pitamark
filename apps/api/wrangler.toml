@@ -1,0 +1,6 @@
+name = "snap-share-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-07"
+compatibility_flags = ["nodejs_compat"]
+
+# Phase 2 で R2 バインディング、Phase 4 で Durable Object を追加する

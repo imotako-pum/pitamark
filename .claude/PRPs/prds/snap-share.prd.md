@@ -185,7 +185,7 @@
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
 | 0 | 技術スパイク | shadcn採用判断 + Yjs+DO最小疎通PoC + Konva最小描画確認 | complete | - | - | [phase-0-tech-spike.plan.md](../plans/completed/phase-0-tech-spike.plan.md) / [report](../reports/phase-0-tech-spike-report.md) / [spike-report](../../../docs/spikes/REPORT.md) |
-| 1 | モノレポ初期化 | turborepo + Vite/Hono workspace + Biome + Vitest + CI | pending | - | 0 | - |
+| 1 | モノレポ初期化 | turborepo + Vite/Hono workspace + Biome + Vitest + CI + pnpm catalog + Zod v4 SSOT | complete | - | 0 | [phase-1-monorepo-init.plan.md](../plans/completed/phase-1-monorepo-init.plan.md) / [report](../reports/phase-1-monorepo-init-report.md) |
 | 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | pending | with 3 | 1 | - |
 | 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | pending | with 2 | 1 | - |
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | pending | - | 2, 3 | - |
@@ -266,6 +266,13 @@
 | UIコンポーネント | **shadcn/ui 採用**（Tailwind v4 + 自前所有モデル） | 自前UIコンポーネント / Material UI / Chakra | Phase 0 スパイクで Vite + Tailwind v4 + Radix の組合せが動作確認済、コードを所有できる shadcn モデルが「最小限を最小限に」に整合 |
 | React バージョン | **React 19 + react-konva 19** | React 18 LTS | Phase 0 で react-konva 18 が npm 上に LTS 提供されておらず、19 系が事実上の最新唯一の選択肢 |
 | Konva バンドル | gz 152.7 KB（Phase 0 実測） | — | PRD 当初想定 ~80KB は Konva 単体の話。React + react-konva + use-image 含めて 150KB 前後。Phase 6 で `dynamic import` によるコード分割を必須タスク化 |
+| `packages/shared` のビルド | **`main: src/index.ts` 直参照（ビルド省略）** | tsup / esbuild で d.ts + js 出力 | Vite/Vitest はソース直参照で動作、ビルドステップ不要で KISS。型は `tsc --noEmit` でチェック |
+| `apps/web` の TypeScript 構成 | **単一 `tsconfig.json` + `tsc --noEmit`** | composite + project references で `tsc -b` | composite が `.d.ts`/`.js` を src/ に emit しビルド成果物が散乱したため Phase 1 で単一 tsconfig 化。Phase 6 で shadcn 拡張時に再分割を検討 |
+| Biome バージョン / ルール | **2.4.13、`useConst` のみ（noVar 削除済）、`noConsole: warn`** | ESLint + Prettier | biome 2.x で `noVar` は廃止（`useConst` が同等以上）。`organizeImports` は `assist` 経由 |
+| Playwright ブラウザ | **chromium のみ（Phase 1）** | webkit / firefox 同時 | Phase 1 の E2E は smoke 1 件のみ。Phase 6 UI 仕上げ後に拡張 |
+| 共有依存のバージョン管理 | **pnpm catalog 採用**（`pnpm-workspace.yaml` の `catalog:` セクション） | 各 workspace で個別記述 / npm overrides | `typescript` は 4 workspace 共有 / `vitest` は 3 workspace / `zod` は Phase 2/4/5 で広がる予定。1 行更新で全 workspace に伝播 |
+| バリデーションライブラリ | **Zod v4（`^4.4`）** | Zod v3 / Yup / Valibot | Phase 1 時点 latest 4.4.1。parse 7-14× 高速化、bundle ~50% 削減。`RoomSchema` レベルの API は v3/v4 共通のため移行コスト無し |
+| SSOT 戦略 | **`packages/shared` は Zod スキーマ駆動**。型は `z.infer<typeof RoomSchema>` で導出、API 境界では `RoomSchema.parse` で runtime 検証 | 素の TypeScript type のみ / 型と検証を二重定義 | `.claude/rules/typescript/coding-style.md` 推奨、Phase 2 の `POST /rooms` body validation・Phase 5 のパスワード validation・Phase 4 の Yjs ペイロード境界検証を見越して Phase 1 で確立。Hono との統合は `@hono/zod-validator` 経由（Phase 2 で導入予定） |
 
 ---
 
