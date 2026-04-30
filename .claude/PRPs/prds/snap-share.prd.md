@@ -186,8 +186,9 @@
 |---|-------|-------------|--------|----------|---------|----------|
 | 0 | 技術スパイク | shadcn採用判断 + Yjs+DO最小疎通PoC + Konva最小描画確認 | complete | - | - | [phase-0-tech-spike.plan.md](../plans/completed/phase-0-tech-spike.plan.md) / [report](../reports/phase-0-tech-spike-report.md) / [spike-report](../../../docs/spikes/REPORT.md) |
 | 1 | モノレポ初期化 | turborepo + Vite/Hono workspace + Biome + Vitest + CI + pnpm catalog + Zod v4 SSOT | complete | - | 0 | [phase-1-monorepo-init.plan.md](../plans/completed/phase-1-monorepo-init.plan.md) / [report](../reports/phase-1-monorepo-init-report.md) |
-| 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | in-progress | with 3 | 1 | [phase-2-image-upload.plan.md](../plans/completed/phase-2-image-upload.plan.md) / [report](../reports/phase-2-image-upload-report.md) |
-| 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | pending | with 2 | 1 | - |
+| 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | complete | with 3 | 1 | [phase-2-image-upload.plan.md](../plans/completed/phase-2-image-upload.plan.md) / [report](../reports/phase-2-image-upload-report.md) |
+| 2.5 | API モダン化 | `@hono/zod-openapi` 移行 + `hc` 型安全クライアント配線 + Scalar `/api/docs` ([ADR-0002](../../../docs/adr/ADR-0002-hono-zod-openapi-tanstack-stack.md)) | in-progress | with 3 | 2 | [phase-2.5-api-modernization.plan.md](../plans/phase-2.5-api-modernization.plan.md) |
+| 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | pending | with 2.5 | 1 | - |
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | pending | - | 2, 3 | - |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + Argon2 + DO TTL | pending | with 6 | 4 | - |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | pending | with 5 | 4 | - |
@@ -213,6 +214,19 @@
 - Goal: 画像をR2に保存し、ルームを発行できる
 - Scope: R2バインディング、Workers `/upload` & `/rooms`、NanoIDルームID、サイズ制限（10MB）、形式バリデーション
 - Success signal: 画像をPOSTしてR2 URL + roomId が返り、`/rooms/:id` で画像メタが取れる
+
+**Phase 2.5: API モダン化（〜2日、Phase 3と並行可だが先行推奨）**
+- Goal: クライアント↔サーバ間の型安全契約を確立し、Phase 3 以降の Web 実装で `hc` を使えるようにする
+- Scope:
+  - `@hono/zod-openapi` への移行（既存3ルート: `POST /rooms` / `GET /rooms/:id` / `GET /rooms/:id/image`）
+  - `@scalar/hono-api-reference` で `/api/docs` を mount（dev/staging のみ）
+  - `apps/api/src/index.ts` から `AppType` を export
+  - `apps/web` 側に `hc<AppType>` ベースの API クライアント配線（`packages/shared` か `apps/web/src/lib`）
+- Success signal:
+  - 既存 `apps/api/src/__tests__/` が無改変で緑
+  - `/api/docs` で 3ルートの仕様が表示される
+  - `apps/web` から `api.rooms[':id'].$get()` 呼び出しで `Room` 型が完全に推論される
+- 参照: [ADR-0002](../../../docs/adr/ADR-0002-hono-zod-openapi-tanstack-stack.md)
 
 **Phase 3: キャンバス & 注釈ツール（〜10日、Phase 2と並行）**
 - Goal: ローカルで4種の注釈を編集できる
@@ -247,6 +261,7 @@
 ### Parallelism Notes
 
 - **Phase 2 と 3 は並行可**: 画像アップロード（API側）と キャンバス（フロント側）は独立
+- **Phase 2.5 は Phase 3 着手前の先行推奨**: Phase 2.5 が ~2日で済む上、Phase 3 のフロント実装が `hc` 型推論を最初から使える方が手戻りがない
 - **Phase 5 と 6 は並行可**: バックエンド（パスワード/TTL）とUI仕上げは独立
 - 個人開発・週15h想定だが、並行可能枠を活用すれば実質ピッチを上げられる
 
