@@ -1,0 +1,12 @@
+name = "snap-share-spike-yjs"
+main = "server/index.ts"
+compatibility_date = "2026-04-07"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "Y_ROOM"
+class_name = "YDurableObjects"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["YDurableObjects"]
