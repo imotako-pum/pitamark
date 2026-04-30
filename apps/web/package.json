@@ -12,13 +12,16 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@snap-share/api": "workspace:*",
     "@snap-share/shared": "workspace:*",
     "clsx": "^2.1",
+    "hono": "^4.12",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwind-merge": "^3.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260430",
     "@playwright/test": "^1.50",
     "@tailwindcss/vite": "^4.2",
     "@types/node": "catalog:",
