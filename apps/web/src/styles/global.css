@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: var(--color-surface);
+  color: var(--color-text);
+}

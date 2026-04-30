@@ -11,3 +11,7 @@ coverage/
 .vite/
 .cache/
 .turbo/
+playwright-report/
+test-results/
+.tsbuildinfo/
+*.tsbuildinfo

@@ -1,0 +1,10 @@
+:root {
+  --color-surface: oklch(98% 0 0);
+  --color-text: oklch(18% 0 0);
+  --color-accent: oklch(68% 0.21 250);
+
+  --space-section: clamp(1.5rem, 1rem + 2vw, 3rem);
+
+  --duration-normal: 200ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
