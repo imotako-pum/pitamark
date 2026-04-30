@@ -47,13 +47,13 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
       <div
         className={[
           'flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-12 py-16',
-          'transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out-expo)]',
+          'transition-colors duration-(--duration-normal) ease-(--ease-out-expo)',
           isOver
-            ? 'border-[color:var(--color-accent)] bg-[color:oklch(96%_0.05_250)]'
-            : 'border-[color:var(--color-toolbar-border)] bg-[color:var(--color-surface)]',
+            ? 'border-(--color-accent) bg-[oklch(96%_0.05_250)]'
+            : 'border-(--color-toolbar-border) bg-(--color-surface)',
         ].join(' ')}
       >
-        <ImagePlus size={48} strokeWidth={1.25} className="text-[color:var(--color-accent)]" />
+        <ImagePlus size={48} strokeWidth={1.25} className="text-(--color-accent)" />
         <h2 id="dropzone-heading" className="text-lg font-medium">
           画像をドロップしてください
         </h2>
@@ -65,7 +65,7 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
         {error && (
           <p
             role="alert"
-            className="mt-2 rounded-md bg-[color:oklch(96%_0.05_27)] px-3 py-1.5 text-sm text-[color:oklch(40%_0.22_27)]"
+            className="mt-2 rounded-md bg-[oklch(96%_0.05_27)] px-3 py-1.5 text-sm text-[oklch(40%_0.22_27)]"
           >
             {error}
           </p>

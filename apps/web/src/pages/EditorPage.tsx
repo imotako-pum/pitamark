@@ -99,7 +99,7 @@ export const EditorPage = () => {
   const stageHeight = Math.max(stageSize.height - TOOLBAR_HEIGHT, MIN_STAGE_HEIGHT);
 
   return (
-    <main className="relative h-dvh w-dvw overflow-hidden bg-[color:var(--color-surface)] text-[color:var(--color-text)]">
+    <main className="relative h-dvh w-dvw overflow-hidden bg-(--color-surface) text-(--color-text)">
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between px-4 pt-3">
         <h1 className="pointer-events-auto select-none text-sm font-semibold tracking-wide opacity-70">
           snap-share
@@ -116,7 +116,7 @@ export const EditorPage = () => {
           onDelete={handleDelete}
           onClearImage={handleClearImage}
         />
-        <div className="w-[120px]" aria-hidden="true" />
+        <div className="w-30" aria-hidden="true" />
       </header>
       <div
         ref={stageContainerRef}

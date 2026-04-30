@@ -56,8 +56,8 @@ export const Toolbar = ({
     role="toolbar"
     aria-label="編集ツール"
     className={[
-      'pointer-events-auto flex items-center gap-3 rounded-xl border bg-[color:var(--color-toolbar-bg)]',
-      'border-[color:var(--color-toolbar-border)] px-3 py-2 shadow-sm backdrop-blur',
+      'pointer-events-auto flex items-center gap-3 rounded-xl border bg-(--color-toolbar-bg)',
+      'border-(--color-toolbar-border) px-3 py-2 shadow-sm backdrop-blur',
     ].join(' ')}
   >
     <div className="flex items-center gap-1">
@@ -73,7 +73,7 @@ export const Toolbar = ({
         />
       ))}
     </div>
-    <div aria-hidden="true" className="h-6 w-px bg-[color:var(--color-toolbar-border)]" />
+    <div aria-hidden="true" className="h-6 w-px bg-(--color-toolbar-border)" />
     <div className="flex items-center gap-1">
       <ToolButton
         icon={Undo2}
@@ -98,7 +98,7 @@ export const Toolbar = ({
         onClick={onDelete}
       />
     </div>
-    <div aria-hidden="true" className="h-6 w-px bg-[color:var(--color-toolbar-border)]" />
+    <div aria-hidden="true" className="h-6 w-px bg-(--color-toolbar-border)" />
     <ToolButton
       icon={ImageMinus}
       label="画像をクリア"

@@ -38,8 +38,8 @@ export const ToolButton = ({
       onClick={onClick}
       className={[
         'inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent',
-        'transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-expo)]',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--color-accent)] focus-visible:outline-offset-2',
+        'transition-colors duration-(--duration-fast) ease-(--ease-out-expo)',
+        'focus-visible:outline focus-visible:outline-(--color-accent) focus-visible:outline-offset-2',
         'disabled:cursor-not-allowed disabled:opacity-40',
         TONE_CLASS[tone],
       ].join(' ')}
