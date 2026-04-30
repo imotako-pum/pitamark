@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@snap-share/shared": "workspace:*",
-    "hono": "^4.12"
+    "@hono/zod-validator": "catalog:",
+    "hono": "^4.12",
+    "nanoid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260430",
