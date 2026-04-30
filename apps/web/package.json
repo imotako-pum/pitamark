@@ -16,9 +16,13 @@
     "@snap-share/shared": "workspace:*",
     "clsx": "^2.1",
     "hono": "^4.12",
+    "konva": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tailwind-merge": "^3.0"
+    "react-konva": "catalog:",
+    "tailwind-merge": "^3.0",
+    "use-image": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260430",
