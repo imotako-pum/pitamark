@@ -187,7 +187,7 @@
 | 0 | 技術スパイク | shadcn採用判断 + Yjs+DO最小疎通PoC + Konva最小描画確認 | complete | - | - | [phase-0-tech-spike.plan.md](../plans/completed/phase-0-tech-spike.plan.md) / [report](../reports/phase-0-tech-spike-report.md) / [spike-report](../../../docs/spikes/REPORT.md) |
 | 1 | モノレポ初期化 | turborepo + Vite/Hono workspace + Biome + Vitest + CI + pnpm catalog + Zod v4 SSOT | complete | - | 0 | [phase-1-monorepo-init.plan.md](../plans/completed/phase-1-monorepo-init.plan.md) / [report](../reports/phase-1-monorepo-init-report.md) |
 | 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | complete | with 3 | 1 | [phase-2-image-upload.plan.md](../plans/completed/phase-2-image-upload.plan.md) / [report](../reports/phase-2-image-upload-report.md) |
-| 2.5 | API モダン化 | `@hono/zod-openapi` 移行 + `hc` 型安全クライアント配線 + Scalar `/api/docs` ([ADR-0002](../../../docs/adr/ADR-0002-hono-zod-openapi-tanstack-stack.md)) | in-progress | with 3 | 2 | [phase-2.5-api-modernization.plan.md](../plans/phase-2.5-api-modernization.plan.md) |
+| 2.5 | API モダン化 | `@hono/zod-openapi` 移行 + `hc` 型安全クライアント配線 + Scalar `/api/docs` ([ADR-0002](../../../docs/adr/ADR-0002-hono-zod-openapi-tanstack-stack.md)) | complete | with 3 | 2 | [phase-2.5-api-modernization.plan.md](../plans/completed/phase-2.5-api-modernization.plan.md) / [report](../reports/phase-2.5-api-modernization-report.md) |
 | 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | pending | with 2.5 | 1 | - |
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | pending | - | 2, 3 | - |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + Argon2 + DO TTL | pending | with 6 | 4 | - |
