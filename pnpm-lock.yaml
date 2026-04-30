@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@hono/zod-validator':
+      specifier: ^0.7
+      version: 0.7.6
     '@types/node':
       specifier: ^22
       version: 22.19.17
@@ -15,6 +18,9 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2
       version: 19.2.3
+    nanoid:
+      specifier: ^5.0
+      version: 5.1.9
     react:
       specifier: ^19.2
       version: 19.2.5
@@ -47,12 +53,21 @@ importers:
 
   apps/api:
     dependencies:
+      '@hono/zod-validator':
+        specifier: 'catalog:'
+        version: 0.7.6(hono@4.12.15)(zod@4.4.1)
       '@snap-share/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       hono:
         specifier: ^4.12
         version: 4.12.15
+      nanoid:
+        specifier: 'catalog:'
+        version: 5.1.9
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.1
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260430
@@ -408,6 +423,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@hono/zod-validator@0.7.6':
+    resolution: {integrity: sha512-Io1B6d011Gj1KknV4rXYz4le5+5EubcWEU/speUjuw9XMMIaP3n78yXLhjd2A3PXaXaUwEAluOiAyLqhBEJgsw==}
+    peerDependencies:
+      hono: '>=3.9.0'
+      zod: ^3.25.0 || ^4.0.0
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -1090,6 +1111,11 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  nanoid@5.1.9:
+    resolution: {integrity: sha512-ZUvP7KeBLe3OZ1ypw6dI/TzYJuvHP77IM4Ry73waSQTLn8/g8rpdjfyVAh7t1/+FjBtG4lCP42MEbDxOsRpBMw==}
+    engines: {node: ^18 || >=20}
+    hasBin: true
+
   obug@2.1.1:
     resolution: {integrity: sha512-uTqF9MuPraAQ+IsnPf366RG4cP9RtUi7MLO1N3KEc+wb0a6yKpeL0lmk2IB1jY5KHPAlTc6T/JRdC/YqxHNwkQ==}
 
@@ -1510,6 +1536,11 @@ snapshots:
 
   '@esbuild/win32-x64@0.27.3':
     optional: true
+
+  '@hono/zod-validator@0.7.6(hono@4.12.15)(zod@4.4.1)':
+    dependencies:
+      hono: 4.12.15
+      zod: 4.4.1
 
   '@img/colour@1.1.0': {}
 
@@ -2037,6 +2068,8 @@ snapshots:
       - utf-8-validate
 
   nanoid@3.3.11: {}
+
+  nanoid@5.1.9: {}
 
   obug@2.1.1: {}
 

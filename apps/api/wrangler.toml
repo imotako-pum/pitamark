@@ -3,4 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2026-04-07"
 compatibility_flags = ["nodejs_compat"]
 
-# Phase 2 で R2 バインディング、Phase 4 で Durable Object を追加する
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "snap-share-images"
+
+[vars]
+ROOM_TTL_MS = "604800000" # 7 days
+
+# Phase 4 で Durable Object、Phase 5 で SECRETS を追加する
