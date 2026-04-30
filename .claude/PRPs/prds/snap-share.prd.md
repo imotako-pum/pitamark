@@ -184,7 +184,7 @@
 
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
-| 0 | 技術スパイク | shadcn採用判断 + Yjs+DO最小疎通PoC + Konva最小描画確認 | pending | - | - | - |
+| 0 | 技術スパイク | shadcn採用判断 + Yjs+DO最小疎通PoC + Konva最小描画確認 | complete | - | - | [phase-0-tech-spike.plan.md](../plans/completed/phase-0-tech-spike.plan.md) / [report](../reports/phase-0-tech-spike-report.md) / [spike-report](../../../docs/spikes/REPORT.md) |
 | 1 | モノレポ初期化 | turborepo + Vite/Hono workspace + Biome + Vitest + CI | pending | - | 0 | - |
 | 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | pending | with 3 | 1 | - |
 | 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | pending | with 2 | 1 | - |
@@ -263,6 +263,9 @@
 | 言語ファースト | 日本語 | 英語ファースト | プライマリユーザー要件、競合との差別化 |
 | Canvas SDK | Konva（自前UI） | tldraw / Excalidraw / Fabric | オーナー経験あり、~80KB gz、Shottr級「軽量感」を実現するためUIを完全自前制御 |
 | ライセンス | 未決（OSS方針） | MIT / Apache 2.0 / BUSL | 公開時に決定、デフォルトMIT想定 |
+| UIコンポーネント | **shadcn/ui 採用**（Tailwind v4 + 自前所有モデル） | 自前UIコンポーネント / Material UI / Chakra | Phase 0 スパイクで Vite + Tailwind v4 + Radix の組合せが動作確認済、コードを所有できる shadcn モデルが「最小限を最小限に」に整合 |
+| React バージョン | **React 19 + react-konva 19** | React 18 LTS | Phase 0 で react-konva 18 が npm 上に LTS 提供されておらず、19 系が事実上の最新唯一の選択肢 |
+| Konva バンドル | gz 152.7 KB（Phase 0 実測） | — | PRD 当初想定 ~80KB は Konva 単体の話。React + react-konva + use-image 含めて 150KB 前後。Phase 6 で `dynamic import` によるコード分割を必須タスク化 |
 
 ---
 

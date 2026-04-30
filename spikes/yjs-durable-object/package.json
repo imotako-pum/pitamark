@@ -1,0 +1,21 @@
+{
+  "name": "yjs-durable-object",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "tail": "wrangler tail",
+    "test": "echo \"no unit tests in spike B - run dev + client\""
+  },
+  "dependencies": {
+    "hono": "^4.12",
+    "y-durableobjects": "^1.0",
+    "yjs": "^13.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260430",
+    "typescript": "^5.6",
+    "wrangler": "^4"
+  }
+}
