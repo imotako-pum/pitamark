@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Communication language
+
+このリポジトリでは **日本語ファースト** で書くことを原則とする。
+
+| 対象 | 言語 |
+|---|---|
+| ユーザー (Claude Code) との対話 | 日本語 |
+| コミットメッセージ | Conventional Commits の `type(scope):` プレフィックスは英語、本文・件名の説明部分は日本語 (例: `refactor(phase-5): code-review の MED-2 を解消`) |
+| PR タイトル / 本文 | 日本語 (チェックリストの `- [ ]` などの記号は維持) |
+| 生成ドキュメント (`.claude/PRPs/` 配下の prd / plan / report / review) | 日本語 |
+| コードコメント | 既存ファイルの主言語に合わせる。新規ファイルは原則英語 (短く WHY のみ)。日本語が混在する既存ファイルでは日本語可 |
+| 識別子 (変数名・関数名・ファイル名) | 英語 |
+| 一次資料からの引用・固有名詞・コード片 | 原文ママ |
+
+例外: 外部公開物 (OSS README の英語版、外部サービス連携時のエラーメッセージなど) は対象読者に合わせて英語を選ぶ。
+
 ## Common commands
 
 Run from repo root unless noted. Tasks are turborepo-aware so they fan out across workspaces.
