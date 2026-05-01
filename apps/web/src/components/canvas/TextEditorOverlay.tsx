@@ -18,12 +18,19 @@ export const TextEditorOverlay = ({
   onCancel,
 }: TextEditorOverlayProps) => {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const armedRef = useRef(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.focus();
     el.select();
+    // Ignore the first blur events that fire from the same click that
+    // mounted the textarea (mousedown -> mount -> mouseup loses focus).
+    const t = setTimeout(() => {
+      armedRef.current = true;
+    }, 250);
+    return () => clearTimeout(t);
   }, []);
 
   return (
@@ -48,7 +55,10 @@ export const TextEditorOverlay = ({
         outline: 'none',
         zIndex: 100,
       }}
-      onBlur={(e) => onCommit(e.currentTarget.value)}
+      onBlur={(e) => {
+        if (!armedRef.current) return;
+        onCommit(e.currentTarget.value);
+      }}
       onKeyDown={(e) => {
         e.stopPropagation();
         if (e.key === 'Enter' && !e.shiftKey) {

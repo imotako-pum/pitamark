@@ -114,6 +114,40 @@
 | `apps/web/src/lib/logger.ts` | logger wrapper |
 | `.claude/PRPs/prds/snap-share.prd.md` | Phase 3 → in-progress |
 
+## Post-Implementation Bugs Found via Manual Smoke (Chrome MCP)
+
+`/code-review` 後にユーザーから「全ツール機能していない」「画像の上に図形を配置できない」と指摘され、systematic-debugging skill で 4 つの相互作用バグを特定・修正:
+
+### Bug 1: `useAnnotationsStore.dispatch` の stale closure による race condition
+
+- **症状**: ドラッグで矩形描画しても store に追加されない
+- **原因**: dispatch wrapper が `useCallback(..., [state, ...])` で `state` を closing。`handleMouseUp` で `add` → `select/set` を連続 dispatch すると、2 回目が古い state を base に next を計算して 1 回目の add 結果を上書き。
+- **Fix**: `useAnnotationsStore` を `useReducer(storeReducer)` ベースに refactor。history も同一 reducer 内で扱う設計に統合。useReducer は連続 dispatch でも reducer 内で常に prev state 最新を受け取るため race condition 解消。
+- **副作用**: `useHistory.ts` (旧 wrapper) が dead code 化したため削除。
+
+### Bug 2: `dragStart` / `draft` の useState による stale closure
+
+- **症状**: handleMouseUp が `draft=null` を見続けて dispatch 経路に到達しない
+- **原因**: `setDraft` の React state update flush 前に同一 click cycle の mouseup が発火。React-Konva の listener 再 bind が間に合わず古い handler が起動。
+- **Fix**: `dragStart` / `draft` を `useState` から `useRef` に変更。ref は同期更新できて handler 再生成不要。draft は描画用に state mirror も保持。
+
+### Bug 3: text annotation 即削除（textarea mount 直後の blur）
+
+- **症状**: テキストツールでクリック → 一瞬出るが即消える
+- **原因**: `setEditingTextId(id)` 後に `<textarea>` が mount → 同 click cycle の mouseup で blur 発火 → `onBlur` で空文字確定 → `handleTextCommit('')` → `annotation/remove` 経路。
+- **Fix**: `TextEditorOverlay` に `armedRef = useRef(false)` を追加し、mount から 250ms 経過まで `onBlur` を無視するガード。
+
+### Bug 4: 画像領域内で注釈ツールが反応しない
+
+- **症状**: 白背景部分では矩形/矢印描画 OK だが、画像領域内では何も描画されない
+- **原因**: `<KonvaImage>` の listening が default true なので、画像範囲内のクリックは `e.target = Image` になる。CanvasStage の `if (e.target !== stage) return;` ガードで early return。
+- **Fix**: `ImageLayer` の `<Layer>` と `<KonvaImage>` に `listening={false}` 追加。画像は描画のみで pointer event を吸収しない。
+
+### 検証 (Chrome MCP)
+- 矩形 / 矢印 / ハイライト / テキスト (日本語 IME 含む) すべて画像の上で描画 OK
+- Undo / Redo 動作確認 OK
+- 全 validation 緑 (typecheck / lint / test 115 passing / build gz 177.90KB / E2E 4/4)
+
 ## Deviations from Plan
 
 ### Deviation 1: hook テスト戦略の方針転換（Tasks 9, 10, 11）

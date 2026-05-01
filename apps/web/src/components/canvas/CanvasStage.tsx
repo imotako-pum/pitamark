@@ -1,6 +1,6 @@
 import type { Annotation } from '@snap-share/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { generateId } from '../../lib/id';
@@ -75,8 +75,13 @@ export const CanvasStage = ({
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations } = state;
+  // draft and dragStart live in refs so consecutive mouse events within a single
+  // React render cycle (mousedown -> mousemove -> mouseup) always observe the
+  // latest values without waiting for state flush. The state mirror keeps the
+  // draft visible during the drag preview.
+  const dragStartRef = useRef<DragStart | null>(null);
+  const draftRef = useRef<Annotation | null>(null);
   const [draft, setDraft] = useState<Annotation | null>(null);
-  const [dragStart, setDragStart] = useState<DragStart | null>(null);
 
   const handleMouseDown = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
@@ -116,13 +121,14 @@ export const CanvasStage = ({
         id: generateId(),
         createdAt: Date.now(),
       };
-      setDragStart(start);
+      dragStartRef.current = start;
     },
     [tool, dispatch, onStartTextEditing],
   );
 
   const handleMouseMove = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      const dragStart = dragStartRef.current;
       if (!dragStart) return;
       const stage = e.target.getStage();
       if (!stage) return;
@@ -133,26 +139,32 @@ export const CanvasStage = ({
       if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y);
       else if (tool === 'highlight') next = buildDraftHighlight(dragStart, pos.x, pos.y);
       else if (tool === 'arrow') next = buildDraftArrow(dragStart, pos.x, pos.y);
-      if (next) setDraft(next);
+      if (next) {
+        draftRef.current = next;
+        setDraft(next);
+      }
     },
-    [dragStart, tool],
+    [tool],
   );
 
   const handleMouseUp = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      const dragStart = dragStartRef.current;
+      const currentDraft = draftRef.current;
       if (!dragStart) return;
       const stage = e.target.getStage();
       const pos = stage?.getPointerPosition() ?? null;
       const reachedThreshold = pos && distance(dragStart, pos.x, pos.y) >= MIN_DRAG_PIXELS;
 
-      if (reachedThreshold && draft) {
-        dispatch({ type: 'annotation/add', annotation: draft });
-        dispatch({ type: 'select/set', id: draft.id });
+      if (reachedThreshold && currentDraft) {
+        dispatch({ type: 'annotation/add', annotation: currentDraft });
+        dispatch({ type: 'select/set', id: currentDraft.id });
       }
+      draftRef.current = null;
+      dragStartRef.current = null;
       setDraft(null);
-      setDragStart(null);
     },
-    [dragStart, draft, dispatch],
+    [dispatch],
   );
 
   const handleShapeClick = useCallback(

@@ -7,5 +7,7 @@ type ImageLayerProps = Readonly<{
 
 export const ImageLayer = ({ src }: ImageLayerProps) => {
   const [image] = useImage(src);
-  return <Layer>{image && <KonvaImage image={image} />}</Layer>;
+  // listening={false} keeps the image purely visual so pointer events fall
+  // through to the stage and the annotation tools work over the image.
+  return <Layer listening={false}>{image && <KonvaImage image={image} listening={false} />}</Layer>;
 };

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useReducer } from 'react';
 import {
   type AnnotationsAction,
   type AnnotationsState,
@@ -6,58 +6,59 @@ import {
   initialAnnotationsState,
   isCommittingAction,
 } from './annotationsReducer';
-import { useHistory } from './useHistory';
+import { createHistoryState, type HistoryState, historyReducer } from './historyReducer';
 
 export type AnnotationsStore = Readonly<{
   state: AnnotationsState;
   canUndo: boolean;
   canRedo: boolean;
   dispatch: (action: AnnotationsAction) => void;
-  replace: (action: AnnotationsAction) => void;
   undo: () => void;
   redo: () => void;
   reset: () => void;
 }>;
 
+type StoreAction =
+  | { type: 'annotation'; action: AnnotationsAction }
+  | { type: 'undo' }
+  | { type: 'redo' }
+  | { type: 'reset' };
+
+const storeReducer = (
+  state: HistoryState<AnnotationsState>,
+  action: StoreAction,
+): HistoryState<AnnotationsState> => {
+  if (action.type === 'undo') return historyReducer(state, { type: 'undo' });
+  if (action.type === 'redo') return historyReducer(state, { type: 'redo' });
+  if (action.type === 'reset')
+    return historyReducer(state, { type: 'reset', value: initialAnnotationsState });
+
+  const next = annotationsReducer(state.present, action.action);
+  if (next === state.present) return state;
+  if (isCommittingAction(action.action)) {
+    return historyReducer(state, { type: 'commit', value: next });
+  }
+  return historyReducer(state, { type: 'replace', value: next });
+};
+
 export const useAnnotationsStore = (): AnnotationsStore => {
-  const history = useHistory<AnnotationsState>(initialAnnotationsState);
-  const { state, commit, replace: setPresent, undo, redo, reset } = history;
+  const [history, dispatch] = useReducer(storeReducer, initialAnnotationsState, createHistoryState);
 
-  const dispatch = useCallback(
-    (action: AnnotationsAction) => {
-      const next = annotationsReducer(state, action);
-      if (next === state) return;
-      if (isCommittingAction(action)) {
-        commit(next);
-      } else {
-        setPresent(next);
-      }
-    },
-    [state, commit, setPresent],
+  const dispatchAnnotation = useCallback(
+    (action: AnnotationsAction) => dispatch({ type: 'annotation', action }),
+    [],
   );
-
-  const replace = useCallback(
-    (action: AnnotationsAction) => {
-      const next = annotationsReducer(state, action);
-      if (next !== state) {
-        setPresent(next);
-      }
-    },
-    [state, setPresent],
-  );
-
-  const handleReset = useCallback(() => {
-    reset(initialAnnotationsState);
-  }, [reset]);
+  const undo = useCallback(() => dispatch({ type: 'undo' }), []);
+  const redo = useCallback(() => dispatch({ type: 'redo' }), []);
+  const reset = useCallback(() => dispatch({ type: 'reset' }), []);
 
   return {
-    state,
-    canUndo: history.canUndo,
-    canRedo: history.canRedo,
-    dispatch,
-    replace,
+    state: history.present,
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
+    dispatch: dispatchAnnotation,
     undo,
     redo,
-    reset: handleReset,
+    reset,
   };
 };
