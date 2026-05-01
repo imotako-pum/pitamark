@@ -51,6 +51,18 @@ catalogs:
     vitest:
       specifier: ^4.1
       version: 4.1.5
+    y-durableobjects:
+      specifier: ^1.0
+      version: 1.0.5
+    y-protocols:
+      specifier: ^1.0
+      version: 1.0.7
+    y-websocket:
+      specifier: ^3.0
+      version: 3.0.0
+    yjs:
+      specifier: ^13.6
+      version: 13.6.30
     zod:
       specifier: ^4.4
       version: 4.4.1
@@ -89,6 +101,12 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 5.1.9
+      y-durableobjects:
+        specifier: 'catalog:'
+        version: 1.0.5(hono@4.12.15)
+      yjs:
+        specifier: 'catalog:'
+        version: 13.6.30
       zod:
         specifier: 'catalog:'
         version: 4.4.1
@@ -144,6 +162,15 @@ importers:
       use-image:
         specifier: 'catalog:'
         version: 1.1.4(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      y-protocols:
+        specifier: 'catalog:'
+        version: 1.0.7(yjs@13.6.30)
+      y-websocket:
+        specifier: 'catalog:'
+        version: 3.0.0(yjs@13.6.30)
+      yjs:
+        specifier: 'catalog:'
+        version: 13.6.30
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260430
@@ -1101,6 +1128,9 @@ packages:
     resolution: {integrity: sha512-qM0jDhFEaCBb4TxoW7f53Qrpv9RBiayUHo0S52JudprkhvpjIrGoU1mnnr29Fvd1U335ZFPZQY1wlkqgfGXyLg==}
     engines: {node: '>=16.9.0'}
 
+  isomorphic.js@0.2.5:
+    resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
+
   its-fine@2.0.0:
     resolution: {integrity: sha512-KLViCmWx94zOvpLwSlsx6yOCeMhZYaxrJV87Po5k/FoZzcPSahvK5qJ7fYhS61sZi5ikmh2S3Hz55A2l3U69ng==}
     peerDependencies:
@@ -1116,6 +1146,11 @@ packages:
 
   konva@10.2.5:
     resolution: {integrity: sha512-WwBoe/EBhFcv+seL1Wnp3OAOwOFjCY4nCCgpLRrzUzw1IX4lKf/lYhj2Z3qo9P9q2fA3h+OdGDlimSNqZJaY5A==}
+
+  lib0@0.2.117:
+    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -1496,10 +1531,31 @@ packages:
       utf-8-validate:
         optional: true
 
+  y-durableobjects@1.0.5:
+    resolution: {integrity: sha512-sFVe7W7894PXjVUrASum+6McKD6OjTvzU3zfPRznsRORiHIiIxDZW8/SZcvNe+gzSWUINl5Gp3V3kH9scdNo1w==}
+    peerDependencies:
+      hono: '>=4.3'
+
+  y-protocols@1.0.7:
+    resolution: {integrity: sha512-YSVsLoXxO67J6eE/nV4AtFtT3QEotZf5sK5BHxFBXso7VDUT3Tx07IfA6hsu5Q5OmBdMkQVmFZ9QOA7fikWvnw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.0.0
+
+  y-websocket@3.0.0:
+    resolution: {integrity: sha512-mUHy7AzkOZ834T/7piqtlA8Yk6AchqKqcrCXjKW8J1w2lPtRDjz8W5/CvXz9higKAHgKRKqpI3T33YkRFLkPtg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.5.6
+
   yaml@2.8.3:
     resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
     engines: {node: '>= 14.6'}
     hasBin: true
+
+  yjs@13.6.30:
+    resolution: {integrity: sha512-vv/9h42eCMC81ZHDFswuu/MKzkl/vyq1BhaNGfHyOonwlG4CJbQF4oiBBJPvfdeCt/PlVDWh7Nov9D34YY09uQ==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   youch-core@0.3.3:
     resolution: {integrity: sha512-ho7XuGjLaJ2hWHoK8yFnsUGy2Y5uDpqSTq1FkHLK4/oqKtyUU1AFbOOxY4IpC9f0fTLjwYbslUz0Po5BpD1wrA==}
@@ -2170,6 +2226,8 @@ snapshots:
 
   hono@4.12.15: {}
 
+  isomorphic.js@0.2.5: {}
+
   its-fine@2.0.0(@types/react@19.2.14)(react@19.2.5):
     dependencies:
       '@types/react-reconciler': 0.28.9(@types/react@19.2.14)
@@ -2182,6 +2240,10 @@ snapshots:
   kleur@4.1.5: {}
 
   konva@10.2.5: {}
+
+  lib0@0.2.117:
+    dependencies:
+      isomorphic.js: 0.2.5
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -2502,7 +2564,29 @@ snapshots:
 
   ws@8.20.0: {}
 
+  y-durableobjects@1.0.5(hono@4.12.15):
+    dependencies:
+      hono: 4.12.15
+      lib0: 0.2.117
+      y-protocols: 1.0.7(yjs@13.6.30)
+      yjs: 13.6.30
+
+  y-protocols@1.0.7(yjs@13.6.30):
+    dependencies:
+      lib0: 0.2.117
+      yjs: 13.6.30
+
+  y-websocket@3.0.0(yjs@13.6.30):
+    dependencies:
+      lib0: 0.2.117
+      y-protocols: 1.0.7(yjs@13.6.30)
+      yjs: 13.6.30
+
   yaml@2.8.3: {}
+
+  yjs@13.6.30:
+    dependencies:
+      lib0: 0.2.117
 
   youch-core@0.3.3:
     dependencies:

@@ -22,7 +22,10 @@
     "react-dom": "catalog:",
     "react-konva": "catalog:",
     "tailwind-merge": "^3.0",
-    "use-image": "catalog:"
+    "use-image": "catalog:",
+    "y-protocols": "catalog:",
+    "y-websocket": "catalog:",
+    "yjs": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260430",
