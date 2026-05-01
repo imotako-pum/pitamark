@@ -92,6 +92,13 @@ export const imagesRoute = new OpenAPIHono<{ Bindings: Bindings }>().openapi(
     headers.set('etag', obj.httpEtag);
     // Prevent MIME sniffing: browsers must honor the Content-Type set by R2.
     headers.set('x-content-type-options', 'nosniff');
+    // Protected rooms must not leak via browser/CDN cache. Phase 2 stored
+    // `Cache-Control: public, max-age=3600` on the R2 object for unprotected
+    // rooms; override here so a Bearer-authenticated response is never
+    // re-served from a shared cache to an unauthenticated client.
+    if (meta.auth) {
+      headers.set('cache-control', 'private, no-store');
+    }
     // SVG can carry inline scripts that execute when opened directly in a browser tab.
     // Force download to neutralise the XSS vector while still allowing <img src=...> rendering.
     if (meta.image.contentType === 'image/svg+xml') {

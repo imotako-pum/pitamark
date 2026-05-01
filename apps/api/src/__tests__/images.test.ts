@@ -133,4 +133,23 @@ describe('GET /rooms/:id/image (Phase 5 — protected rooms)', () => {
     );
     expect(res.status).toBe(401);
   });
+
+  it('overrides Cache-Control to private/no-store for protected rooms', async () => {
+    // HIGH-1 regression: R2 stores `public, max-age=3600` httpMetadata for
+    // every image (Phase 2 default). Phase 5 protected images must override
+    // this so a Bearer-authenticated response is never re-served from a
+    // shared cache to an unauthenticated client.
+    const env = buildEnv();
+    const created = await createProtectedRoomWithImage(env, 'letmein');
+    const token = await issueRoomToken(created.id, DEFAULT_ROOM_TOKEN_SECRET);
+    const res = await app.request(
+      `/rooms/${created.id}/image`,
+      { headers: { authorization: `Bearer ${token}` } },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const cc = res.headers.get('cache-control') ?? '';
+    expect(cc).toContain('no-store');
+    expect(cc).not.toContain('public');
+  });
 });
