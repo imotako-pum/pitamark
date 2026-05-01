@@ -37,4 +37,23 @@ describe('buildSyncUrl', () => {
   it('encodes unsafe characters defensively', () => {
     expect(buildSyncUrl('a/b c', 'ws://x')).toBe('ws://x/sync/a%2Fb%20c');
   });
+
+  it('appends ?token= when a token is supplied', () => {
+    expect(buildSyncUrl('V1StGXR8_Z5jdHi6B-mYT', 'ws://x', 'abc.def.ghi')).toBe(
+      'ws://x/sync/V1StGXR8_Z5jdHi6B-mYT?token=abc.def.ghi',
+    );
+  });
+
+  it('omits ?token= for null/undefined/empty token', () => {
+    expect(buildSyncUrl('V1StGXR8_Z5jdHi6B-mYT', 'ws://x')).not.toContain('?token=');
+    expect(buildSyncUrl('V1StGXR8_Z5jdHi6B-mYT', 'ws://x', null)).not.toContain('?token=');
+    expect(buildSyncUrl('V1StGXR8_Z5jdHi6B-mYT', 'ws://x', '')).not.toContain('?token=');
+  });
+
+  it('encodes the token defensively', () => {
+    // synthetic token containing characters that need URL-encoding
+    expect(buildSyncUrl('V1StGXR8_Z5jdHi6B-mYT', 'ws://x', 'a b/c?d=e')).toBe(
+      'ws://x/sync/V1StGXR8_Z5jdHi6B-mYT?token=a%20b%2Fc%3Fd%3De',
+    );
+  });
 });

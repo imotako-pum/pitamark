@@ -22,6 +22,16 @@ export const resolveWsBaseUrl = (
   return `${wsProtocol}//${location.host}`;
 };
 
-/** Build the full WS URL for a given roomId. */
-export const buildSyncUrl = (roomId: string, baseUrl: string = resolveWsBaseUrl()): string =>
-  `${baseUrl}/sync/${encodeURIComponent(roomId)}`;
+/**
+ * Build the full WS URL for a given roomId. Optionally appends `?token=...`
+ * for password-protected rooms (WebSocket cannot send Authorization headers,
+ * so the token rides as a query parameter — see Phase 5 plan / Decisions Log).
+ */
+export const buildSyncUrl = (
+  roomId: string,
+  baseUrl: string = resolveWsBaseUrl(),
+  token?: string | null,
+): string => {
+  const base = `${baseUrl}/sync/${encodeURIComponent(roomId)}`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+};

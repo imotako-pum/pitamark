@@ -37,11 +37,16 @@ const PLACEHOLDER_DOC = new Y.Doc();
 export const useYjsAnnotationsStore = (
   roomId: string,
   providerFactory?: ProviderFactory,
+  token?: string | null,
 ): YjsAnnotationsStore => {
   // y-websocket constructs the connection URL as `${serverUrl}/${roomName}`,
   // so we pass `${wsBase}/sync` as serverUrl and `roomId` as roomName.
   // Putting roomId into serverUrl with an empty roomName produces a trailing
   // slash (`/sync/<id>/`) which the Hono `/sync/:id` route rejects.
+  //
+  // Protected rooms ride a `token` query parameter — y-websocket exposes a
+  // `params` option that gets URL-encoded onto the upgrade request.
+  //
   // NOTE: tests must always pass `providerFactory`; the default branch boots
   // a real WebSocket and is not testable under happy-dom.
   const factory = useMemo<ProviderFactory>(
@@ -50,8 +55,9 @@ export const useYjsAnnotationsStore = (
       ((doc) =>
         new WebsocketProvider(`${resolveWsBaseUrl()}/sync`, roomId, doc, {
           connect: true,
+          ...(token ? { params: { token } } : {}),
         })),
-    [roomId, providerFactory],
+    [roomId, providerFactory, token],
   );
 
   // StrictMode-safe lifecycle: the CRDT context is created inside an effect
