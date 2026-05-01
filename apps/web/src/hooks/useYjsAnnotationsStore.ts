@@ -3,7 +3,7 @@ import type { Awareness } from 'y-protocols/awareness';
 import { WebsocketProvider } from 'y-websocket';
 import type * as Y from 'yjs';
 import { logger } from '../lib/logger';
-import { buildSyncUrl } from '../lib/yjs-config';
+import { resolveWsBaseUrl } from '../lib/yjs-config';
 import type { AnnotationsAction, AnnotationsState, Tool } from './annotationsReducer';
 import type { AwarenessLike } from './presence-context';
 import type { AnnotationsStore } from './useAnnotationsStore';
@@ -29,15 +29,19 @@ export const useYjsAnnotationsStore = (
   roomId: string,
   providerFactory?: ProviderFactory,
 ): YjsAnnotationsStore => {
-  // The default factory connects to `${wsBase}/sync/:id` via vite proxy in
-  // dev. y-websocket builds `${serverUrl}/${roomName}` so we put the full path
-  // into serverUrl and pass an empty roomName.
+  // y-websocket constructs the connection URL as `${serverUrl}/${roomName}`,
+  // so we pass `${wsBase}/sync` as serverUrl and `roomId` as roomName.
+  // Putting roomId into serverUrl with an empty roomName produces a trailing
+  // slash (`/sync/<id>/`) which the Hono `/sync/:id` route rejects.
   // NOTE: tests must always pass `providerFactory`; the default branch boots
   // a real WebSocket and is not testable under happy-dom.
   const factory = useMemo<ProviderFactory>(
     () =>
       providerFactory ??
-      ((doc) => new WebsocketProvider(buildSyncUrl(roomId), '', doc, { connect: true })),
+      ((doc) =>
+        new WebsocketProvider(`${resolveWsBaseUrl()}/sync`, roomId, doc, {
+          connect: true,
+        })),
     [roomId, providerFactory],
   );
 
