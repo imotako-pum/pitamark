@@ -11,6 +11,17 @@
   --color-toolbar-bg: oklch(98% 0 0 / 0.86);
   --color-toolbar-border: oklch(85% 0 0);
 
+  /* Phase 4 — Awareness palette (mirrors AWARENESS_USER_PALETTE in
+     components/canvas/colors.ts; OKLCH approximations of the hex values). */
+  --color-presence-1: oklch(60% 0.2 270);
+  --color-presence-2: oklch(60% 0.22 28);
+  --color-presence-3: oklch(70% 0.15 240);
+  --color-presence-4: oklch(60% 0.13 175);
+  --color-presence-5: oklch(60% 0.18 320);
+  --color-presence-6: oklch(78% 0.16 60);
+  --color-presence-7: oklch(65% 0.2 0);
+  --color-presence-8: oklch(72% 0.18 145);
+
   --space-section: clamp(1.5rem, 1rem + 2vw, 3rem);
   --space-toolbar: 0.5rem;
   --radius-toolbar: 0.75rem;
