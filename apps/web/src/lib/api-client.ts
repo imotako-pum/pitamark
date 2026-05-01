@@ -5,16 +5,17 @@ import { logger } from './logger';
 
 // `import type` ensures the api workspace's runtime code (Hono routes, R2
 // bindings, OpenAPI schemas) never bundles into the web build.
+//
+// Empty baseUrl is the default in `vite dev` (no `.env` set): all requests
+// become relative paths and Vite's `server.proxy` (`/rooms` + `/sync`) routes
+// them to the wrangler dev server. Set `VITE_API_URL` only when running
+// against a non-proxied origin (CI, prod, etc.).
 export const resolveApiBaseUrl = (env: ImportMetaEnv = import.meta.env): string =>
   (env as { VITE_API_URL?: string }).VITE_API_URL ?? '';
 
 const baseUrl = resolveApiBaseUrl();
-if (!baseUrl) {
-  // The dev workflow requires a base URL; missing config is a setup error.
-  throw new Error('VITE_API_URL is not configured');
-}
 
-export const api = hc<AppType>(baseUrl);
+export const api = hc<AppType>(baseUrl || window.location.origin);
 
 export const buildImageUrl = (room: Pick<Room, 'id'>, base: string = baseUrl): string =>
   `${base}/rooms/${room.id}/image`;
