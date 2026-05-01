@@ -8,7 +8,16 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    proxy: {
+      // Proxy REST and WebSocket traffic to the wrangler dev server so the
+      // browser only sees a single origin. `ws: true` is required so vite
+      // also forwards the upgrade handshake for /sync/:id.
+      '/rooms': { target: 'http://localhost:8787', changeOrigin: true },
+      '/sync': { target: 'http://localhost:8787', ws: true, changeOrigin: true },
+    },
+  },
   test: {
     environment: 'happy-dom',
     globals: false,

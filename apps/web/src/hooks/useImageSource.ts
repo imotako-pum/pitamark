@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createRoom } from '../lib/api-client';
 import { validateImageFile } from '../lib/imageValidation';
 import { logger } from '../lib/logger';
 
@@ -8,6 +9,11 @@ type ImageSource = Readonly<{
   bytes: number;
 }>;
 
+export type UseImageSourceOptions = Readonly<{
+  /** Fired with the created room id when `POST /rooms` succeeds. */
+  onRoomCreated?: (roomId: string) => void;
+}>;
+
 type UseImageSource = Readonly<{
   source: ImageSource | null;
   error: string | null;
@@ -15,10 +21,12 @@ type UseImageSource = Readonly<{
   clear: () => void;
 }>;
 
-export const useImageSource = (): UseImageSource => {
+export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSource => {
   const [source, setSource] = useState<ImageSource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const urlRef = useRef<string | null>(null);
+  const onRoomCreatedRef = useRef(options.onRoomCreated);
+  onRoomCreatedRef.current = options.onRoomCreated;
 
   useEffect(() => {
     return () => {
@@ -48,6 +56,21 @@ export const useImageSource = (): UseImageSource => {
     setError(null);
     setSource({ url, contentType: result.contentType, bytes: result.bytes });
     logger.info('image loaded', { type: result.contentType, bytes: result.bytes });
+
+    // Fire-and-forget room creation. API failure leaves the editor in
+    // local-only mode (the ObjectURL above keeps the UX intact); success
+    // transitions the URL to /r/:id via the caller's onRoomCreated callback.
+    //
+    // NOTE: this IIFE intentionally outlives the hook. The only state it
+    // touches after `await` is `onRoomCreatedRef.current`, which is null-safe.
+    // The parent (LocalEditor) only unmounts in response to that callback
+    // firing — i.e. the hook is alive whenever the callback would matter.
+    void (async () => {
+      const room = await createRoom(file);
+      if (room) {
+        onRoomCreatedRef.current?.(room.id);
+      }
+    })();
   }, []);
 
   const clear = useCallback(() => {
