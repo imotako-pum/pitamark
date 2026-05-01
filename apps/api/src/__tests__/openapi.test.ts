@@ -17,6 +17,15 @@ describe('GET /api/openapi.json', () => {
     expect(doc.paths).toHaveProperty('/rooms/{id}');
     expect(doc.paths).toHaveProperty('/rooms/{id}/image');
   });
+
+  it('does not advertise /sync routes (Yjs WS lives outside the OpenAPI surface)', async () => {
+    const res = await app.request('/api/openapi.json', undefined, buildEnv());
+    const doc = (await res.json()) as { paths: Record<string, unknown> };
+    const paths = Object.keys(doc.paths);
+    expect(paths).not.toContain('/sync/{id}');
+    expect(paths).not.toContain('/sync/:id');
+    expect(paths.some((p) => p.startsWith('/sync'))).toBe(false);
+  });
 });
 
 describe('GET /api/docs', () => {

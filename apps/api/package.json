@@ -21,6 +21,8 @@
     "@scalar/hono-api-reference": "catalog:",
     "hono": "^4.12",
     "nanoid": "catalog:",
+    "y-durableobjects": "catalog:",
+    "yjs": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

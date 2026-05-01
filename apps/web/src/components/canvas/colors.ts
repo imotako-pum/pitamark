@@ -14,3 +14,17 @@ export const DEFAULT_STROKE_WIDTH = 2;
 export const DEFAULT_FONT_SIZE = 18;
 export const ARROW_POINTER_LENGTH = 12;
 export const ARROW_POINTER_WIDTH = 12;
+
+// Awareness palette — the index into this list is chosen deterministically
+// from `userId` (FNV-1a hash, see `apps/web/src/lib/local-user.ts`). Kept in
+// physical sync with `--color-presence-1..8` in `apps/web/src/styles/tokens.css`.
+export const AWARENESS_USER_PALETTE: ReadonlyArray<string> = [
+  '#5b6dff',
+  '#e74c3c',
+  '#42a5f5',
+  '#26a69a',
+  '#ab47bc',
+  '#ffa726',
+  '#ec407a',
+  '#66bb6a',
+];

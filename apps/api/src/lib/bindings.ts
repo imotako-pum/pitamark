@@ -6,4 +6,6 @@ export type Bindings = {
    * and validate with `Number.isFinite(x) && Number.isInteger(x) && x > 0`.
    */
   ROOM_TTL_MS: string;
+  /** Yjs/CRDT room state. Bound to YDurableObjects class via wrangler.toml. */
+  Y_ROOM: DurableObjectNamespace;
 };

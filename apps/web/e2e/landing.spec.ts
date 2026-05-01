@@ -27,3 +27,11 @@ test('drop zone shows the empty-state hint when no image is loaded', async ({ pa
 
   await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
 });
+
+// Skipped — needs both `wrangler dev` and `vite` running. Verified by hand
+// in Phase 4; CI integration of the API workspace lands in Phase 7.
+test.skip('uploading an image transitions the URL to /r/:id (with API running)', async ({
+  page,
+}) => {
+  await page.goto('/');
+});
