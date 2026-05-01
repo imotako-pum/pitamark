@@ -1,6 +1,82 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Tailwind v4 — expose shadcn / Base UI tokens as `bg-*` / `text-*` utilities.
+   The actual oklch values live in `tokens.css`; this `@theme inline` block
+   only re-publishes them so Tailwind generates utilities like `bg-primary`. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* shadcn の Tooltip / AlertDialog が data-open / data-closed で使う
+     animate-in / animate-out / fade-in-0 / zoom-in-95 / slide-in-from-* 系の
+     keyframes と duration デフォルト。tw-animate-css パッケージ相当を最小限で
+     宣言（ライブラリ追加不要）。*/
+  --animate-in-duration: 100ms;
+  --animate-out-duration: 100ms;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  /* shadcn 生成コンポーネントが想定する animate-in / animate-out の最小実装。
+     tw-animate-css なしで data-open / data-closed トリガを成立させる。 */
+  @keyframes shadcn-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes shadcn-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  [data-state="delayed-open"][data-slot="tooltip-content"],
+  [data-open][data-slot="tooltip-content"],
+  [data-open][data-slot="alert-dialog-content"],
+  [data-open][data-slot="alert-dialog-overlay"] {
+    animation: shadcn-fade-in var(--animate-in-duration) ease-out;
+  }
+  [data-closed][data-slot="tooltip-content"],
+  [data-closed][data-slot="alert-dialog-content"],
+  [data-closed][data-slot="alert-dialog-overlay"] {
+    animation: shadcn-fade-out var(--animate-out-duration) ease-in;
+  }
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;

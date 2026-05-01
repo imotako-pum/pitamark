@@ -67,6 +67,11 @@
       "trailingCommas": "none"
     }
   },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "assist": {
     "enabled": true,
     "actions": {
@@ -83,6 +88,14 @@
           "suspicious": {
             "noExplicitAny": "off"
           }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "a11y": { "noLabelWithoutControl": "off" }
         }
       }
     }

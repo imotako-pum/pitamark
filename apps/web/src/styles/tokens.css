@@ -29,4 +29,35 @@
   --duration-fast: 120ms;
   --duration-normal: 200ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Phase 6 — shadcn / Base UI variable bridge.
+     shadcn の生成コンポーネント (button / input / tooltip / sonner / alert-dialog
+     等) は以下の CSS 変数を Tailwind クラス経由で参照する。snap-share 既存の
+     `--color-*` トークンと oklch 値を共有させ、見た目の主導権は引き続き
+     `--color-*` 側に残す。Konva の hex リテラルは
+     `apps/web/src/components/canvas/colors.ts` 側で管理。 */
+  --background: var(--color-surface);
+  --foreground: var(--color-text);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-accent);
+  --primary-foreground: oklch(99% 0 0);
+  --secondary: oklch(96% 0 0);
+  --secondary-foreground: var(--color-text);
+  --muted: oklch(96% 0 0);
+  --muted-foreground: oklch(50% 0 0);
+  --accent: oklch(94% 0.04 250);
+  --accent-foreground: var(--color-text);
+  --destructive: oklch(54% 0.22 27);
+  --destructive-foreground: oklch(99% 0 0);
+  --border: var(--color-toolbar-border);
+  --input: var(--color-toolbar-border);
+  --ring: var(--color-accent);
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
