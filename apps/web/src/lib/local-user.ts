@@ -3,6 +3,9 @@ import { generateId } from './id';
 
 const STORAGE_KEY = 'snap-share/user-v1';
 const DEFAULT_NAME_PREFIX = 'ゲスト-';
+// Defensive fallback if AWARENESS_USER_PALETTE is ever emptied. Matches
+// `tokens.css --color-presence-1` so the visual identity is preserved.
+const FALLBACK_PRESENCE_COLOR = '#5b6dff';
 
 export type LocalUser = Readonly<{
   userId: string;
@@ -21,8 +24,9 @@ const hashString = (s: string): number => {
 };
 
 const colorForUser = (userId: string): string => {
+  if (AWARENESS_USER_PALETTE.length === 0) return FALLBACK_PRESENCE_COLOR;
   const idx = hashString(userId) % AWARENESS_USER_PALETTE.length;
-  return AWARENESS_USER_PALETTE[idx] ?? AWARENESS_USER_PALETTE[0]!;
+  return AWARENESS_USER_PALETTE[idx] ?? FALLBACK_PRESENCE_COLOR;
 };
 
 export const getOrCreateLocalUser = (storage: Storage = window.localStorage): LocalUser => {
