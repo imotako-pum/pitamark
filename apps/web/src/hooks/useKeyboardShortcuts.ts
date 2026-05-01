@@ -7,6 +7,10 @@ export type KeyboardShortcuts = Readonly<{
   onDelete: () => void;
   onSetTool: (tool: Tool) => void;
   onEscape: () => void;
+  /** Optional. ⌘S/Ctrl+S → PNG export. preventDefault() is only fired when
+   *  this is provided, so the browser's "Save Page" dialog is never blocked
+   *  for users who haven't loaded an image yet. */
+  onExport?: () => void;
 }>;
 
 const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
@@ -34,6 +38,14 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
 
+      if (mod && key === 's' && !e.shiftKey) {
+        const onExport = ref.current.onExport;
+        if (onExport) {
+          e.preventDefault();
+          onExport();
+        }
+        return;
+      }
       if (mod && key === 'z' && !e.shiftKey) {
         e.preventDefault();
         ref.current.onUndo();
