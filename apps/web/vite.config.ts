@@ -11,11 +11,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Proxy REST and WebSocket traffic to the wrangler dev server so the
-      // browser only sees a single origin. `ws: true` is required so vite
-      // also forwards the upgrade handshake for /sync/:id.
+      // Proxy REST traffic to wrangler so the browser sees a single origin
+      // and CORS is sidestepped.
       '/rooms': { target: 'http://localhost:8787', changeOrigin: true },
-      '/sync': { target: 'http://localhost:8787', ws: true, changeOrigin: true },
+      // `/sync` is intentionally NOT proxied: Vite's WS proxy mangles
+      // y-websocket's binary frames (EPIPE after upgrade). Instead the
+      // browser connects directly to wrangler via VITE_API_WS_URL set in
+      // `.env.development`. WebSockets don't enforce same-origin so this
+      // is fine for dev; production gets a proper origin via env override.
     },
   },
   test: {
