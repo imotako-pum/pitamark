@@ -1,7 +1,3 @@
-import { AppShell } from './components/app-shell/AppShell';
+import { EditorPage } from './pages/EditorPage';
 
-export const App = () => (
-  <AppShell>
-    <p>準備中 — Phase 1 monorepo init scaffold</p>
-  </AppShell>
-);
+export const App = () => <EditorPage />;

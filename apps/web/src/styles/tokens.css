@@ -3,8 +3,19 @@
   --color-text: oklch(18% 0 0);
   --color-accent: oklch(68% 0.21 250);
 
-  --space-section: clamp(1.5rem, 1rem + 2vw, 3rem);
+  /* Phase 3 — annotation tools */
+  --color-tool-rect: oklch(60% 0.18 250);
+  --color-tool-arrow: oklch(60% 0.2 30);
+  --color-tool-text: oklch(20% 0 0);
+  --color-highlight-yellow: oklch(85% 0.18 95);
+  --color-toolbar-bg: oklch(98% 0 0 / 0.86);
+  --color-toolbar-border: oklch(85% 0 0);
 
+  --space-section: clamp(1.5rem, 1rem + 2vw, 3rem);
+  --space-toolbar: 0.5rem;
+  --radius-toolbar: 0.75rem;
+
+  --duration-fast: 120ms;
   --duration-normal: 200ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
