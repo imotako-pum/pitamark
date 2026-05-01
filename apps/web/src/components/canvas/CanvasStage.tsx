@@ -1,6 +1,6 @@
 import type { Annotation } from '@snap-share/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { useCallback, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { generateId } from '../../lib/id';
@@ -23,6 +23,10 @@ type CanvasStageProps = Readonly<{
   editingTextId: string | null;
   onTextDoubleClick: (id: string) => void;
   onStartTextEditing: (id: string) => void;
+  /** Stage-relative cursor position. Null when the pointer leaves the stage. */
+  onCursorMove?: (point: { x: number; y: number } | null) => void;
+  /** Extra Konva layers rendered on top of the annotation layer. */
+  extraLayers?: ReactNode;
 }>;
 
 const MIN_DRAG_PIXELS = 4;
@@ -72,6 +76,8 @@ export const CanvasStage = ({
   editingTextId,
   onTextDoubleClick,
   onStartTextEditing,
+  onCursorMove,
+  extraLayers,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations } = state;
@@ -128,12 +134,16 @@ export const CanvasStage = ({
 
   const handleMouseMove = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
-      const dragStart = dragStartRef.current;
-      if (!dragStart) return;
       const stage = e.target.getStage();
-      if (!stage) return;
-      const pos = stage.getPointerPosition();
-      if (!pos) return;
+      const pos = stage?.getPointerPosition() ?? null;
+
+      // Broadcast the raw pointer position so presence can throttle and emit.
+      if (onCursorMove) {
+        onCursorMove(pos ? { x: pos.x, y: pos.y } : null);
+      }
+
+      const dragStart = dragStartRef.current;
+      if (!dragStart || !pos) return;
 
       let next: Annotation | null = null;
       if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y);
@@ -144,8 +154,15 @@ export const CanvasStage = ({
         setDraft(next);
       }
     },
-    [tool],
+    [tool, onCursorMove],
   );
+
+  const handleMouseLeave = useCallback(() => {
+    // Bypass any rAF throttle the parent may have applied: we want the
+    // cursor to disappear from peers' canvases immediately, not on the next
+    // animation frame after the pointer is already gone.
+    if (onCursorMove) onCursorMove(null);
+  }, [onCursorMove]);
 
   const handleMouseUp = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
@@ -191,6 +208,7 @@ export const CanvasStage = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
       <ImageLayer src={src} />
       <AnnotationLayer
@@ -201,6 +219,7 @@ export const CanvasStage = ({
         onShapeMove={handleShapeMove}
         onTextDoubleClick={onTextDoubleClick}
       />
+      {extraLayers}
     </Stage>
   );
 };
