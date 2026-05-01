@@ -1,28 +1,13 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { ROOM_ID_REGEX, RoomPublicSchema, toPublicRoom } from '@snap-share/shared';
 import type { Bindings } from '../lib/bindings';
-import { AppError, errorEnvelope } from '../lib/error';
+import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { logger } from '../lib/logger';
 import { createPasswordService } from '../services/password-service';
 import { createRoomService } from '../services/room-service';
 import { createTokenService } from '../services/token-service';
 import { createR2ImageStorage } from '../storage/r2-image-storage';
 import { createR2MetaStorage } from '../storage/r2-meta-storage';
-
-const ErrorResponseSchema = z.object({
-  ok: z.literal(false),
-  error: z.object({
-    code: z.enum([
-      'INVALID_REQUEST',
-      'UNSUPPORTED_MEDIA_TYPE',
-      'PAYLOAD_TOO_LARGE',
-      'NOT_FOUND',
-      'UNAUTHORIZED',
-      'INTERNAL',
-    ]),
-    message: z.string(),
-  }),
-});
 
 const idParamSchema = z.object({
   id: z.string().regex(ROOM_ID_REGEX),

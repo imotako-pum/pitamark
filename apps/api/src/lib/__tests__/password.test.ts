@@ -86,4 +86,16 @@ describe('base64Url round-trip', () => {
   it('decoding invalid length throws', () => {
     expect(() => base64UrlDecode('A')).toThrow();
   });
+
+  it('decoding non-alphabet characters throws (defensive validation)', () => {
+    // `*` is not in base64url alphabet — must surface as an error rather than
+    // silently producing garbage bytes via NaN coercion.
+    expect(() => base64UrlDecode('AAA*')).toThrow(/Invalid base64url/);
+    expect(() => base64UrlDecode('AA*=')).toThrow();
+    // `+` and `/` are standard base64 (not URL-safe variant) — also rejected.
+    expect(() => base64UrlDecode('AB+D')).toThrow();
+    expect(() => base64UrlDecode('AB/D')).toThrow();
+    // ASCII control byte
+    expect(() => base64UrlDecode('A\x00BC')).toThrow();
+  });
 });

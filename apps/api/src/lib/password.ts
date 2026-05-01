@@ -85,6 +85,18 @@ for (let i = 0; i < ALPHA.length; i++) {
   REVERSE[ALPHA[i]!] = i;
 }
 
+// Look up a single base64url char. Throws on chars outside the alphabet so
+// corrupt / attacker-supplied auth payloads surface as an error rather than
+// silently producing garbage bytes (NaN coercion through bit ops).
+const decodeChar = (str: string, i: number): number => {
+  const ch = str.charAt(i);
+  const v = REVERSE[ch];
+  if (v === undefined) {
+    throw new Error('Invalid base64url character');
+  }
+  return v;
+};
+
 export const base64UrlDecode = (str: string): Uint8Array => {
   const len = str.length;
   if (len === 0) return new Uint8Array(0);
@@ -96,31 +108,22 @@ export const base64UrlDecode = (str: string): Uint8Array => {
   let oi = 0;
   let i = 0;
   for (let c = 0; c < fullChunks; c++) {
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v0 = REVERSE[str[i++]!]!;
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v1 = REVERSE[str[i++]!]!;
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v2 = REVERSE[str[i++]!]!;
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v3 = REVERSE[str[i++]!]!;
+    const v0 = decodeChar(str, i++);
+    const v1 = decodeChar(str, i++);
+    const v2 = decodeChar(str, i++);
+    const v3 = decodeChar(str, i++);
     out[oi++] = (v0 << 2) | (v1 >> 4);
     out[oi++] = ((v1 & 0x0f) << 4) | (v2 >> 2);
     out[oi++] = ((v2 & 0x03) << 6) | v3;
   }
   if (tail === 2) {
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v0 = REVERSE[str[i++]!]!;
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v1 = REVERSE[str[i++]!]!;
+    const v0 = decodeChar(str, i++);
+    const v1 = decodeChar(str, i++);
     out[oi++] = (v0 << 2) | (v1 >> 4);
   } else if (tail === 3) {
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v0 = REVERSE[str[i++]!]!;
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v1 = REVERSE[str[i++]!]!;
-    // biome-ignore lint/style/noNonNullAssertion: bounded
-    const v2 = REVERSE[str[i++]!]!;
+    const v0 = decodeChar(str, i++);
+    const v1 = decodeChar(str, i++);
+    const v2 = decodeChar(str, i++);
     out[oi++] = (v0 << 2) | (v1 >> 4);
     out[oi++] = ((v1 & 0x0f) << 4) | (v2 >> 2);
   }
