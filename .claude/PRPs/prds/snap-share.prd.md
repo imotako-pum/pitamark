@@ -191,7 +191,7 @@
 | 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | complete | with 2.5 | 1 | [phase-3-canvas-annotation-tools.plan.md](../plans/completed/phase-3-canvas-annotation-tools.plan.md) / [report](../reports/phase-3-canvas-annotation-tools-report.md) |
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | complete | - | 2, 3 | [phase-4-realtime-sync.plan.md](../plans/completed/phase-4-realtime-sync.plan.md) / [report](../reports/phase-4-realtime-sync-report.md) |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
-| 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | pending | with 5 | 4 | - |
+| 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
 | 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | pending | - | 5, 6 | - |
 | 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7 | - |
 
