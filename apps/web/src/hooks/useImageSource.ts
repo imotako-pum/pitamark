@@ -17,7 +17,11 @@ export type UseImageSourceOptions = Readonly<{
 type UseImageSource = Readonly<{
   source: ImageSource | null;
   error: string | null;
-  loadFromFile: (file: File) => void;
+  /**
+   * Validates and previews the image, then fires `POST /rooms`. When `password`
+   * is supplied (non-empty), the resulting room is password-protected.
+   */
+  loadFromFile: (file: File, password?: string) => void;
   clear: () => void;
 }>;
 
@@ -37,7 +41,7 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
     };
   }, []);
 
-  const loadFromFile = useCallback((file: File) => {
+  const loadFromFile = useCallback((file: File, password?: string) => {
     const result = validateImageFile(file);
     if (!result.ok) {
       logger.warn('image rejected', {
@@ -66,7 +70,7 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
     // The parent (LocalEditor) only unmounts in response to that callback
     // firing — i.e. the hook is alive whenever the callback would matter.
     void (async () => {
-      const room = await createRoom(file);
+      const room = await createRoom(file, password);
       if (room) {
         onRoomCreatedRef.current?.(room.id);
       }

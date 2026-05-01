@@ -1,20 +1,37 @@
+import { z } from '@hono/zod-openapi';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from './logger';
 
-export type ErrorCode =
-  | 'INVALID_REQUEST'
-  | 'UNSUPPORTED_MEDIA_TYPE'
-  | 'PAYLOAD_TOO_LARGE'
-  | 'NOT_FOUND'
-  | 'INTERNAL';
+// Single source of truth for error codes. The Zod enum below derives from this
+// tuple, so adding a new code propagates to OpenAPI / hc clients automatically.
+export const ERROR_CODES = [
+  'INVALID_REQUEST',
+  'UNSUPPORTED_MEDIA_TYPE',
+  'PAYLOAD_TOO_LARGE',
+  'NOT_FOUND',
+  'UNAUTHORIZED',
+  'INTERNAL',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export type ErrorEnvelope = {
   ok: false;
   error: { code: ErrorCode; message: string };
 };
 
-type AppErrorStatus = 400 | 404 | 413 | 415 | 500;
+type AppErrorStatus = 400 | 401 | 404 | 413 | 415 | 500;
+
+// Shared OpenAPI / hc error response schema. Kept here (not in routes/) so
+// every route's response schema picks up new codes automatically.
+export const ErrorResponseSchema = z.object({
+  ok: z.literal(false),
+  error: z.object({
+    code: z.enum(ERROR_CODES),
+    message: z.string(),
+  }),
+});
 
 const PUBLIC_PATH_MAX = 80;
 const sanitizePath = (path: string): string => {

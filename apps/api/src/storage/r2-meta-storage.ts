@@ -5,6 +5,8 @@ import { logger } from '../lib/logger';
 export type MetaStorage = {
   putMeta(room: Room): Promise<void>;
   getMeta(id: string): Promise<Room | null>;
+  /** Returns `true` if the delete succeeded (or the object did not exist), `false` if R2 errored. */
+  deleteMeta(id: string): Promise<boolean>;
 };
 
 export const metaKey = (id: string): string => `rooms/${id}/meta.json`;
@@ -50,5 +52,16 @@ export const createR2MetaStorage = (bucket: R2Bucket): MetaStorage => ({
       throw new AppError(500, 'INTERNAL', 'Stored room metadata is corrupt', { id });
     }
     return result.data;
+  },
+  async deleteMeta(id) {
+    try {
+      await bucket.delete(metaKey(id));
+      return true;
+    } catch (err: unknown) {
+      // Best-effort: alarm-driven cleanup tolerates missing/failed deletes; the
+      // caller can escalate to ERROR severity if rollback semantics require it.
+      logger.warn('R2 deleteMeta failed (non-fatal)', { id, err: getErrorMessage(err) });
+      return false;
+    }
   },
 });

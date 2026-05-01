@@ -115,3 +115,183 @@ describe('GET /rooms/:id', () => {
     expect(body.error.code).toBe('INVALID_REQUEST');
   });
 });
+
+type PublicRoom = {
+  id: string;
+  createdAt: number;
+  ttlMs: number;
+  protected: boolean;
+  image?: { key: string; contentType: string; size: number };
+};
+
+type AuthOk = { token: string };
+
+const createUnprotectedRoom = async (env: ReturnType<typeof buildEnv>): Promise<PublicRoom> => {
+  const form = new FormData();
+  form.set('image', pngFile(4));
+  const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+  return (await res.json()) as PublicRoom;
+};
+
+const createProtectedRoom = async (
+  env: ReturnType<typeof buildEnv>,
+  password: string,
+): Promise<PublicRoom> => {
+  const form = new FormData();
+  form.set('image', pngFile(4));
+  form.set('password', password);
+  const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+  return (await res.json()) as PublicRoom;
+};
+
+describe('POST /rooms (Phase 5 — password)', () => {
+  it('returns RoomPublic with protected:false and image present when no password is given', async () => {
+    const env = buildEnv();
+    const body = await createUnprotectedRoom(env);
+    expect(body.protected).toBe(false);
+    expect(body.image).toBeDefined();
+    expect(body.image?.contentType).toBe('image/png');
+  });
+
+  it('returns RoomPublic with protected:true and no image when a password is given', async () => {
+    const env = buildEnv();
+    const body = await createProtectedRoom(env, 'letmein');
+    expect(body.protected).toBe(true);
+    expect(body.image).toBeUndefined();
+  });
+
+  it('treats empty password as unprotected', async () => {
+    const env = buildEnv();
+    const form = new FormData();
+    form.set('image', pngFile(4));
+    form.set('password', '');
+    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as PublicRoom;
+    expect(body.protected).toBe(false);
+  });
+
+  it('rejects passwords longer than 256 chars with 400', async () => {
+    const env = buildEnv();
+    const form = new FormData();
+    form.set('image', pngFile(4));
+    form.set('password', 'a'.repeat(257));
+    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+});
+
+describe('GET /rooms/:id (Phase 5 — public shape)', () => {
+  it('returns image for unprotected rooms', async () => {
+    const env = buildEnv();
+    const created = await createUnprotectedRoom(env);
+    const res = await app.request(`/rooms/${created.id}`, undefined, env);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as PublicRoom;
+    expect(body.protected).toBe(false);
+    expect(body.image).toBeDefined();
+  });
+
+  it('hides image for protected rooms (does not leak R2 key)', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(`/rooms/${created.id}`, undefined, env);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as PublicRoom;
+    expect(body.protected).toBe(true);
+    expect(body.image).toBeUndefined();
+    // Auth field must never leak, even by accident.
+    expect((body as Record<string, unknown>).auth).toBeUndefined();
+  });
+});
+
+describe('POST /rooms/:id/auth (Phase 5 — token issuance)', () => {
+  it('returns 200 + JWT when password matches', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(
+      `/rooms/${created.id}/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'letmein' }),
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as AuthOk;
+    expect(typeof body.token).toBe('string');
+    expect(body.token.split('.').length).toBe(3); // JWT has 3 segments
+  });
+
+  it('returns 401 UNAUTHORIZED when password does not match', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(
+      `/rooms/${created.id}/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'wrong' }),
+      },
+      env,
+    );
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('UNAUTHORIZED');
+    // Public message must not vary based on what failed (timing/oracle protection).
+    expect(body.error.message).toBe('Invalid password');
+  });
+
+  it('returns 400 when the room is not password-protected', async () => {
+    const env = buildEnv();
+    const created = await createUnprotectedRoom(env);
+    const res = await app.request(
+      `/rooms/${created.id}/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'anything' }),
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('returns 400 when password field is missing', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(
+      `/rooms/${created.id}/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('returns 404 when the room does not exist', async () => {
+    const env = buildEnv();
+    const res = await app.request(
+      '/rooms/V1StGXR8_Z5jdHi6B-mYT/auth',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'letmein' }),
+      },
+      env,
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+});

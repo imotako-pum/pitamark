@@ -1,7 +1,8 @@
 import type { Room } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
-import { buildEnv } from './helpers/build-env';
+import { issueRoomToken } from '../lib/token';
+import { buildEnv, DEFAULT_ROOM_TOKEN_SECRET } from './helpers/build-env';
 
 type ErrorBody = { ok: false; error: { code: string; message: string } };
 
@@ -52,5 +53,63 @@ describe('GET /sync/:id (room-existence middleware)', () => {
         // Non-JSON body is acceptable — yRoute can emit plain text on 426.
       }
     }
+  });
+});
+
+const createProtectedRoomViaApi = async (
+  env: ReturnType<typeof buildEnv>,
+  password: string,
+): Promise<{ id: string }> => {
+  const form = new FormData();
+  form.set('image', new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' }));
+  form.set('password', password);
+  const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+  return (await res.json()) as { id: string };
+};
+
+describe('GET /sync/:id (Phase 5 — query token authorization)', () => {
+  it('passes through unprotected rooms even without a token', async () => {
+    const env = buildEnv();
+    const form = new FormData();
+    form.set('image', new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' }));
+    const created = (await (
+      await app.request('/rooms', { method: 'POST', body: form }, env)
+    ).json()) as Room;
+    const res = await app.request(`/sync/${created.id}`, undefined, env);
+    expect(res.status).not.toBe(401);
+    expect(res.status).not.toBe(404);
+  });
+
+  it('returns 401 when a protected room is accessed without ?token=', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoomViaApi(env, 'letmein');
+    const res = await app.request(`/sync/${created.id}`, undefined, env);
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('returns 401 when ?token= carries an invalid JWT', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoomViaApi(env, 'letmein');
+    const res = await app.request(`/sync/${created.id}?token=garbage`, undefined, env);
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('passes the middleware when ?token= is a valid room-bound JWT', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoomViaApi(env, 'letmein');
+    const token = await issueRoomToken(created.id, DEFAULT_ROOM_TOKEN_SECRET);
+    const res = await app.request(
+      `/sync/${created.id}?token=${encodeURIComponent(token)}`,
+      undefined,
+      env,
+    );
+    // Same as the unprotected passthrough check: not a 4xx envelope from
+    // our middleware; yRoute is allowed to respond however it wants.
+    expect(res.status).not.toBe(401);
+    expect(res.status).not.toBe(404);
   });
 });

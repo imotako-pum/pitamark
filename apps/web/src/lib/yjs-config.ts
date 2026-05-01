@@ -22,6 +22,14 @@ export const resolveWsBaseUrl = (
   return `${wsProtocol}//${location.host}`;
 };
 
-/** Build the full WS URL for a given roomId. */
+/**
+ * Build the full WS URL for a given roomId.
+ *
+ * NOTE: For password-protected rooms, the JWT token rides on the upgrade
+ * request via y-websocket's `params: { token }` option (set in
+ * `useYjsAnnotationsStore`), NOT through this URL builder. WebSocket cannot
+ * send Authorization headers, so token-as-query is the chosen transport, but
+ * y-websocket owns the encoding so this helper stays token-free.
+ */
 export const buildSyncUrl = (roomId: string, baseUrl: string = resolveWsBaseUrl()): string =>
   `${baseUrl}/sync/${encodeURIComponent(roomId)}`;

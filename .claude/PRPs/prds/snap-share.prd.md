@@ -189,8 +189,8 @@
 | 2 | 画像アップロード基盤 | R2バインディング + Workers API + ルーム作成エンドポイント | complete | with 3 | 1 | [phase-2-image-upload.plan.md](../plans/completed/phase-2-image-upload.plan.md) / [report](../reports/phase-2-image-upload-report.md) |
 | 2.5 | API モダン化 | `@hono/zod-openapi` 移行 + `hc` 型安全クライアント配線 + Scalar `/api/docs` ([ADR-0002](../../../docs/adr/ADR-0002-hono-zod-openapi-tanstack-stack.md)) | complete | with 3 | 2 | [phase-2.5-api-modernization.plan.md](../plans/completed/phase-2.5-api-modernization.plan.md) / [report](../reports/phase-2.5-api-modernization-report.md) |
 | 3 | キャンバス & 注釈ツール | Konva実装 + 4種注釈 + Undo/Redo | complete | with 2.5 | 1 | [phase-3-canvas-annotation-tools.plan.md](../plans/completed/phase-3-canvas-annotation-tools.plan.md) / [report](../reports/phase-3-canvas-annotation-tools-report.md) |
-| 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | in-progress | - | 2, 3 | [phase-4-realtime-sync.plan.md](../plans/phase-4-realtime-sync.plan.md) |
-| 5 | パスワード保護 + TTL | ルーム作成時パスワード + Argon2 + DO TTL | pending | with 6 | 4 | - |
+| 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | complete | - | 2, 3 | [phase-4-realtime-sync.plan.md](../plans/completed/phase-4-realtime-sync.plan.md) / [report](../reports/phase-4-realtime-sync-report.md) |
+| 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | pending | with 5 | 4 | - |
 | 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | pending | - | 5, 6 | - |
 | 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7 | - |
