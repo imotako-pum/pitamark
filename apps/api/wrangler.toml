@@ -7,7 +7,18 @@ compatibility_flags = ["nodejs_compat"]
 binding = "IMAGES"
 bucket_name = "snap-share-images"
 
+# Yjs/CRDT room state. The class is exported by `src/index.ts` (re-exported
+# from `src/yjs.ts`); see Phase 0 spike B for the proven configuration.
+# `new_classes` (NOT `new_sqlite_classes`) — YDurableObjects is KV-backed.
+[[durable_objects.bindings]]
+name = "Y_ROOM"
+class_name = "YDurableObjects"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["YDurableObjects"]
+
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
 
-# Phase 4 で Durable Object、Phase 5 で SECRETS を追加する
+# Phase 5 で SECRETS を追加する
