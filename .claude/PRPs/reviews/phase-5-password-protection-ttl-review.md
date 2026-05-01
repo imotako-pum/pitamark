@@ -1,88 +1,82 @@
-# Code Review: Phase 5 — パスワード保護 + DO Alarms TTL
+# コードレビュー: Phase 5 — パスワード保護 + DO Alarms TTL
 
-**Reviewed**: 2026-05-01
-**Branch**: `feat/phase-5-password-ttl` → `main` (PR not yet opened — local diff review)
-**Commits**: `80bb167` backend / `f686909` frontend / `88a86cf` docs
-**Diff**: 38 files, +3212 / -79
-**Decision**: **REQUEST CHANGES** (1 HIGH security finding + 3 MEDIUM. No CRITICAL.)
+**レビュー実施日**: 2026-05-01
+**ブランチ**: `feat/phase-5-password-ttl` → `main` (PR 未作成、ローカル diff レビュー)
+**コミット**: `80bb167` backend / `f686909` frontend / `88a86cf` docs / `ee9fec5` HIGH-1 fix
+**差分**: 39 files, +3437 / -79
+**判定**: **REQUEST CHANGES** → **APPROVE** (HIGH-1 は本レビュー実施中に修正適用済み。残り MEDIUM 3 件 / LOW 4 件はマージブロックではない)
 
-## Summary
+## サマリ
 
-Phase 5 implementation is structurally sound and well-tested (247 tests pass; new test count +74). PBKDF2 hashing, HS256 JWT, DO-Alarm-driven TTL cleanup, and the 4-state `RoomEditor` are implemented per plan with thoughtful patterns (constant-time compare, super-first `onStart`, idempotent alarm). Three deviations from plan are documented and reasonable.
+Phase 5 の実装は構造として健全で、テストも厚い (247 件→248 件 pass、Phase 5 で +75)。PBKDF2 ハッシュ・HS256 JWT・DO Alarm による TTL クリーンアップ・`RoomEditor` の 4-state machine はいずれも plan に沿って実装され、constant-time 比較・`super.onStart()` 先行 await・alarm の冪等化など、慎重なパターンが採用されている。plan からの逸脱 3 点はいずれも妥当な技術判断。
 
-The blocker is **HIGH-1**: protected images inherit the Phase 2 `Cache-Control: public, max-age=3600` setting from R2, which contradicts the threat model "URL を Teams で雑に貼っても画像内容は守られる" — browser private cache (and potentially shared caches) can serve the image to subsequent unauthenticated requests. One-line fix in `images.ts`.
+レビュー時点でブロッカーは **HIGH-1** (Phase 2 から継承された `Cache-Control: public, max-age=3600` が保護ルームの画像配信時にも効いてしまい、PRD の脅威モデル「URL を Teams で雑に貼っても画像内容は守られる」と矛盾する) のみだった。Auto mode で 1 行修正 + 回帰テストを `ee9fec5` で適用済み。
 
-The other findings are quality improvements, not security/correctness blockers.
+その他の所見は品質改善であり、セキュリティや正しさをブロックするものではない。
 
 ---
 
-## Findings
+## 所見
 
 ### CRITICAL
 
-None.
+なし。
 
 ### HIGH
 
-#### HIGH-1: Protected images served with `Cache-Control: public, max-age=3600`
+#### HIGH-1: 保護ルームの画像が `Cache-Control: public, max-age=3600` で配信される 【修正済み】
 
-- **Location**: `apps/api/src/routes/images.ts:90-91` (response headers built from R2 metadata)
-- **Root cause**: `apps/api/src/storage/r2-image-storage.ts:22` sets `httpMetadata: { contentType, cacheControl: 'public, max-age=3600' }` on every PUT, established in Phase 2 for unprotected rooms. `obj.writeHttpMetadata(headers)` in `images.ts:91` then propagates this to the Bearer-protected response in Phase 5.
-- **Impact**: Browser private cache (and any RFC-noncompliant intermediate cache) can store the protected image for up to 1 hour and serve it to subsequent requests on the same machine without re-checking Authorization. On shared computers or via cache leakage attacks, this defeats the protection.
-- **PRD contract violated**: "URL を Teams で雑に貼っても画像内容は守られる" — the URL alone (without password) becomes sufficient to recover the image from cache for an hour after the legitimate user fetches it.
-- **Severity**: HIGH. Not CRITICAL because the practical exploit window is bounded (1 hour) and Cloudflare Worker `fetch()` responses are NOT cached at the edge by default. Browser-level leak remains the realistic vector.
-- **Suggested fix** (smallest patch, in `images.ts` after line 91 `obj.writeHttpMetadata(headers)`):
+- **位置**: `apps/api/src/routes/images.ts:90-91` (R2 メタデータからレスポンスヘッダを構築する箇所)
+- **根本原因**: `apps/api/src/storage/r2-image-storage.ts:22` が PUT 時に `httpMetadata: { contentType, cacheControl: 'public, max-age=3600' }` を設定。Phase 2 で未保護ルーム向けに導入されたものが、`obj.writeHttpMetadata(headers)` を介して Phase 5 の Bearer 認証付きレスポンスにもそのまま伝播していた。
+- **影響**: ブラウザのプライベートキャッシュ (および RFC 非準拠の中間キャッシュ) が保護画像を最大 1 時間保持し、同一マシンで Authorization なしの後続リクエストにキャッシュから返してしまう。共有 PC やキャッシュリーク経由で第三者にも漏洩しうる。
+- **PRD 契約違反**: 「URL を Teams で雑に貼っても画像内容は守られる」 — URL を知っているだけで (パスワードなしで) 1 時間以内ならキャッシュから画像を取得できる状態だった。
+- **重大度**: HIGH。CRITICAL ではない理由は (1) 悪用可能なウィンドウが 1 時間で限定的、(2) Cloudflare Workers の `fetch()` レスポンスはデフォルトでエッジキャッシュされない、ため。現実的にはブラウザレベルのキャッシュリークが主リスク。
+- **適用済み修正** (`ee9fec5`、`apps/api/src/routes/images.ts:91` 直後):
   ```ts
   if (meta.auth) {
     headers.set('cache-control', 'private, no-store');
   }
   ```
-  Or, more conservatively, override unconditionally to `private, max-age=300` for both protected and unprotected to reduce cache-leak surface across the board.
-- **Test**: add to `apps/api/src/__tests__/images.test.ts`:
+  保護ルームのみ上書き。未保護ルームは共有リンク用途のため `public, max-age=3600` を維持。
+- **回帰テスト** (`ee9fec5`、`apps/api/src/__tests__/images.test.ts`):
   ```ts
-  it('uses no-store cache-control for protected rooms', async () => {
-    const env = buildEnv();
-    const created = await createProtectedRoomWithImage(env, 'letmein');
-    const token = await issueRoomToken(created.id, DEFAULT_ROOM_TOKEN_SECRET);
-    const res = await app.request(`/rooms/${created.id}/image`, {
-      headers: { authorization: `Bearer ${token}` },
-    }, env);
-    expect(res.headers.get('cache-control')).toMatch(/no-store|private/);
+  it('overrides Cache-Control to private/no-store for protected rooms', async () => {
+    // ... バリデートトークンで GET → cache-control に no-store 含む / public 含まない
   });
   ```
 
 ### MEDIUM
 
-#### MEDIUM-1: WebSocket connects (and gets 401) before authentication on protected rooms
+#### MEDIUM-1: 認証前に WebSocket が接続を試行する (保護ルーム)
 
-- **Location**: `apps/web/src/pages/RoomEditor.tsx:103` (`useYjsAnnotationsStore(roomId, undefined, token)` runs unconditionally during render)
-- **Behavior**: When `imageState === 'gate'`, RoomEditor returns `<RoomGate />` early at line 132, but the `useYjsAnnotationsStore` hook has already fired and instantiated a `WebsocketProvider` with `token=null`. The provider tries to connect to `/sync/:id` with no `?token=`, the server middleware rejects with 401 (Phase 5 `yjs.ts:90-92`), and y-websocket retries with exponential backoff until the token state updates.
-- **Impact**: Wasted network round-trips and noisy 401 logs while the user is still typing the password. No correctness or security issue.
-- **Suggested fix**: extract `<RoomEditorAuthenticated roomId token>` as a child that owns the Yjs store, so the hook only runs after `imageState === 'ready'`. Sketch:
+- **位置**: `apps/web/src/pages/RoomEditor.tsx:103` (`useYjsAnnotationsStore(roomId, undefined, token)` がレンダー中に無条件実行される)
+- **挙動**: `imageState === 'gate'` のとき RoomEditor は早期に `<RoomGate />` を return するが、`useYjsAnnotationsStore` フックは既に `token=null` で実行済みで、`WebsocketProvider` が `?token=` 無しのまま `/sync/:id` に接続を試みる。サーバ middleware (`yjs.ts:90-92`) が 401 を返し、y-websocket は exponential backoff で再接続を繰り返す (token state が更新されるまで)。
+- **影響**: ユーザーがパスワードを入力中も背後で 401 が連続発生し、ネットワークログ/サーバログにノイズが乗る。正しさやセキュリティへの影響なし。
+- **修正案**: `<RoomEditorAuthenticated roomId token>` を子コンポーネントとして切り出し、`imageState === 'ready'` のときだけ Yjs ストアをマウントする:
   ```tsx
   if (imageState.kind === 'ready') {
     return <RoomEditorAuthenticated roomId={roomId} token={token} url={imageState.url} />;
   }
   ```
-- **Severity**: MEDIUM. Acceptable to defer to Phase 7 (公開準備) when rate limiting and Turnstile land — at that point the noisy 401 will need cleanup anyway.
+- **重大度**: MEDIUM。Phase 7 (公開準備) でレート制限と Turnstile が入る際にあわせて整理すれば良い。
 
-#### MEDIUM-2: `base64UrlDecode` silently accepts non-alphabet characters
+#### MEDIUM-2: `base64UrlDecode` が非アルファベット文字を黙って受理する
 
-- **Location**: `apps/api/src/lib/password.ts:88-128`
-- **Behavior**: `REVERSE[someUnknownChar]` returns `undefined`, then `undefined!` is asserted via biome-ignore. The downstream bit math `(v0 << 2) | (v1 >> 4)` coerces `undefined` → `NaN` → `0`. The function returns `Uint8Array` populated with garbage, never throws.
-- **Impact**: `password-service.verify` path is safe — `constantTimeEqual` will return `false` for garbage hash, so the auth check fails closed. But defensive programming suggests upfront rejection so storage corruption surfaces as an error rather than silent garbage.
-- **Suggested fix**: validate each char against the alphabet:
+- **位置**: `apps/api/src/lib/password.ts:88-128`
+- **挙動**: `REVERSE[未知文字]` は `undefined`、それを `undefined!` で non-null アサーション → 後続のビット演算で `undefined << 2` → `NaN` → 0 に強制変換。関数は throw せず、ガベージで埋まった `Uint8Array` を返す。
+- **影響**: `password-service.verify` 経路では `constantTimeEqual` が false を返すので fail-closed で安全。ただし、防御的プログラミングとしてはストレージ破損が「沈黙したガベージ」ではなく明示的なエラーとして surface するべき。
+- **修正案**: アルファベット検証を入れて throw する:
   ```ts
   const v0 = REVERSE[str[i++]!];
   if (v0 === undefined) throw new Error('Invalid base64url character');
   ```
-- **Severity**: MEDIUM. No active exploit path because all production input passes through `base64UrlEncode` first (round-trip safe) — only attacker-injected R2 meta could trip this, which is itself out-of-band.
+- **重大度**: MEDIUM。本番入力は全て `base64UrlEncode` 経由で、ラウンドトリップが安全なため、現時点で能動的な悪用経路は無い (攻撃者が R2 メタを書き換えられる前提が必要、それ自体が別問題)。
 
-#### MEDIUM-3: Duplicate `ErrorResponseSchema` in `routes/rooms.ts` and `routes/images.ts`
+#### MEDIUM-3: `ErrorResponseSchema` が `routes/rooms.ts` と `routes/images.ts` で重複定義
 
-- **Location**: `apps/api/src/routes/rooms.ts:12-25` and `apps/api/src/routes/images.ts:11-24` (identical Zod enum)
-- **Behavior**: Phase 5 added `'UNAUTHORIZED'` to both files manually. Future error codes added to `lib/error.ts` ErrorCode union must be remembered to be synced to both Zod enums or hc/OpenAPI types drift.
-- **Suggested fix**: hoist to `apps/api/src/lib/error.ts` and import in both routes:
+- **位置**: `apps/api/src/routes/rooms.ts:12-25` と `apps/api/src/routes/images.ts:11-24` (同一の Zod enum)
+- **挙動**: Phase 5 で `'UNAUTHORIZED'` を両ファイルに手動で追加した。今後 `lib/error.ts` の `ErrorCode` union に新しいコードを追加するとき、両方の Zod enum を同期する必要があり、ドリフト (片方だけ更新) のリスクがある。
+- **修正案**: `apps/api/src/lib/error.ts` に集約して両 route で import:
   ```ts
   // lib/error.ts
   export const ErrorResponseSchema = z.object({
@@ -94,106 +88,106 @@ None.
     }),
   });
   ```
-- **Severity**: MEDIUM (maintainability). No current bug.
+- **重大度**: MEDIUM (保守性)。現時点で実害なし。
 
 ### LOW
 
-#### LOW-1: Unused `passwordId` in LocalEditor
+#### LOW-1: LocalEditor の `passwordId` が活用されていない
 
-- **Location**: `apps/web/src/pages/LocalEditor.tsx:34` declares `const passwordId = useId();`
-- **Issue**: Used as `id={passwordId}` on the input, but no `<label htmlFor={passwordId}>`. The input falls back to `aria-label="ルームのパスワード"`. Either drop `passwordId` or add a visible label connected via `htmlFor`.
+- **位置**: `apps/web/src/pages/LocalEditor.tsx:34` で `const passwordId = useId();` を宣言
+- **問題**: `id={passwordId}` で input には付くが、対応する `<label htmlFor={passwordId}>` が無い。代わりに `aria-label="ルームのパスワード"` でフォールバック。`passwordId` を削除するか、可視ラベルを追加するか、どちらかに揃えるべき。
 
-#### LOW-2: Unused `ownsObjectUrl` boolean in RoomEditor `ImageState`
+#### LOW-2: RoomEditor の `ImageState.ready.ownsObjectUrl` が読まれていない
 
-- **Location**: `apps/web/src/pages/RoomEditor.tsx:25` `ImageState.ready` carries `ownsObjectUrl: boolean`, but cleanup uses the local `createdObjectUrl` ref-like var (line 49). The state field is set but never read.
-- **Issue**: Either use the state flag for cleanup, or drop the field for clarity.
+- **位置**: `apps/web/src/pages/RoomEditor.tsx:25` の `ImageState.ready` が `ownsObjectUrl: boolean` を持つが、cleanup は別の local 変数 `createdObjectUrl` (line 49) を使っている。
+- **問題**: state フィールドが書かれるだけで読まれない。state を cleanup に使うか、フィールドを削除するか、どちらかに統一すべき。
 
-#### LOW-3: `authRoute` rebuilds three services per request
+#### LOW-3: `authRoute` がリクエスト毎に 3 つのサービスを再構築
 
-- **Location**: `apps/api/src/routes/rooms.ts:175-177`
-- **Issue**: `buildRoomService` / `buildPasswordService` / `buildTokenService` are re-instantiated on every auth request. Each is cheap, but Cloudflare Worker cold-start and per-request allocation could be cleaner via a `c.set('services', ...)` middleware. Defer to Phase 7 refactor if profiling shows pressure.
+- **位置**: `apps/api/src/routes/rooms.ts:175-177`
+- **問題**: `buildRoomService` / `buildPasswordService` / `buildTokenService` が認証リクエスト毎に再生成される。各々のコストは小さいが、Cloudflare Worker のコールドスタート + リクエスト毎のアロケーションを抑えるなら `c.set('services', ...)` ミドルウェアでまとめるとクリーン。プロファイリングで圧迫が見えれば Phase 7 で再検討。
 
-#### LOW-4: `buildSyncUrl` token branch is dead code
+#### LOW-4: `buildSyncUrl` の `token` 引数がデッドコード
 
-- **Location**: `apps/web/src/lib/yjs-config.ts:25-35` exposes `buildSyncUrl(roomId, base, token)` with token query-param support, but `useYjsAnnotationsStore` switched to `WebsocketProvider`'s `params: { token }` option (deviation #1 in implementation report). No production caller passes the third argument.
-- **Issue**: Either remove the `token` parameter (and its 3 tests) or wire it back in for consistency. Currently confusing for future readers.
+- **位置**: `apps/web/src/lib/yjs-config.ts:25-35` で `buildSyncUrl(roomId, base, token)` の token 第3引数を公開しているが、`useYjsAnnotationsStore` は `WebsocketProvider` の `params: { token }` オプション経由に切替済み (実装レポートの逸脱 #1)。production 呼び出し側で token を渡す箇所が無い。
+- **問題**: `token` 引数とそれに対応するテスト 3 件が production からは到達不可能。削除するか、`useYjsAnnotationsStore` 側で `buildSyncUrl` を使う形に統一するか、どちらかに揃えるべき。将来読み手が混乱する。
 
 ---
 
-## Validation Results
+## バリデーション結果
 
-| Check | Result | Notes |
+| チェック | 結果 | 備考 |
 |---|---|---|
-| Type check (`pnpm turbo run typecheck`) | ✅ Pass | 4 workspaces, zero errors (cached) |
-| Lint (`pnpm lint` / `biome ci .`) | ✅ Pass | 0 errors |
-| Tests (`pnpm test`) | ✅ Pass | 247/247 (api 93 / web 140 / shared 14) |
-| Build (`pnpm build`) | ✅ Pass | vite 702 KB / gzip 214 KB; wrangler dry-run sees `env.Y_ROOM (SnapShareYDO)` |
+| 型チェック (`pnpm turbo run typecheck`) | ✅ Pass | 4 workspace、tsc --noEmit でエラーゼロ |
+| Lint (`pnpm lint` / `biome ci .`) | ✅ Pass | エラーゼロ |
+| テスト (`pnpm test`) | ✅ Pass | 248/248 (api 94 / web 140 / shared 14) |
+| ビルド (`pnpm build`) | ✅ Pass | vite 702 KB / gzip 214 KB、wrangler dry-run で `env.Y_ROOM (SnapShareYDO)` 認識 |
 
-All cached green; no test/lint regression introduced by Phase 5.
+すべてキャッシュ green、Phase 5 によるテスト/lint regression 無し。
 
 ---
 
-## Files Reviewed (highlights)
+## レビューしたファイル (主要箇所)
 
-| File | Type | Notes |
+| ファイル | 種別 | 備考 |
 |---|---|---|
-| `apps/api/src/lib/password.ts` | Added | PBKDF2 + base64url. Constant-time compare correctly bit-XORs full buffer. **MED-2** on base64UrlDecode validation. |
-| `apps/api/src/lib/token.ts` | Added | HS256 JWT wrapper. Signature-then-exp ordering of hono `verify` correctly avoids `expired` reason leaking signature info. Bearer extractor regex is sound. |
-| `apps/api/src/services/password-service.ts` | Added | Clean factory. Future-proof unknown-algo rejection. Verify path catches `base64UrlDecode` exceptions (relevant only if MED-2 is fixed to throw). |
-| `apps/api/src/services/token-service.ts` | Added | Trivial closure wrapper. |
-| `apps/api/src/services/room-service.ts` | Modified | Hashes password BEFORE writing image — correct ordering for orphan-prevention rollback. `protected: !!auth` flag is the only auth-derived data ever logged. |
-| `apps/api/src/routes/rooms.ts` | Modified | Auth route returns identical 401 message for all wrong-password paths (no timing oracle through messages). 400 for unprotected-room and 404 for nonexistent are intentionally distinct — acceptable per plan Decisions Log. |
-| `apps/api/src/routes/images.ts` | Modified | **HIGH-1** on cache-control. Otherwise solid: nosniff + svg disposition unchanged from Phase 2; Bearer gate fails closed. |
-| `apps/api/src/yjs.ts` | Modified | `SnapShareYDO.onStart` correctly awaits super first. `getAlarm()` idempotency is right. `alarm()` order (R2 image → R2 meta → DO storage wipe) tolerates partial cleanup. WS query token middleware never logs token. |
-| `apps/api/src/storage/r2-meta-storage.ts` | Modified | `deleteMeta` mirrors `deleteImage` non-fatal pattern. |
-| `apps/api/wrangler.toml` | Modified | Migration v2 `renamed_classes` syntax correct. Secret comment accurate. |
-| `apps/web/src/lib/api-client.ts` | Modified | Tagged `AuthResult` type is a good API. `fetchProtectedImage` documents the caller's `URL.revokeObjectURL` responsibility. |
-| `apps/web/src/lib/auth-storage.ts` | Added | Try/catch wrapping is comprehensive (storage-disabled / quota-full all swallowed). sessionStorage choice over localStorage matches threat model. |
-| `apps/web/src/lib/yjs-config.ts` | Modified | **LOW-4**: `buildSyncUrl` token argument is dead code — `useYjsAnnotationsStore` switched to y-websocket `params` option. |
-| `apps/web/src/pages/RoomEditor.tsx` | Modified | 4-state machine is correct. Cleanup via `cancelled` flag + cleanup-time `revokeObjectURL` handles all races. **MED-1** on premature WS connect. **LOW-2** on unused `ownsObjectUrl`. |
-| `apps/web/src/pages/LocalEditor.tsx` | Modified | Empty-password block prevents silent unprotected upload — good. **LOW-1** on dangling `passwordId`. |
-| `apps/web/src/components/room-gate/RoomGate.tsx` | Added | Solid a11y (aria-invalid / aria-describedby / role=alert). Submitting flag intentionally not cleared on success — correctly relies on parent unmount. |
+| `apps/api/src/lib/password.ts` | 新規 | PBKDF2 + base64url。constant-time 比較がバッファ全体を bit-XOR で集約していて正しい。**MED-2** が base64UrlDecode の入力検証 |
+| `apps/api/src/lib/token.ts` | 新規 | HS256 JWT ラッパ。hono の `verify` は signature → exp の順で検証するため、`expired` reason が signature 情報を漏らす経路は無い (タイミング oracle なし)。Bearer 抽出の正規表現も妥当 |
+| `apps/api/src/services/password-service.ts` | 新規 | factory パターンが綺麗。未知 algo の forward-compat 対応あり。verify 経路は `base64UrlDecode` の例外を try/catch で吸収 (MED-2 を throw 化したときに有効) |
+| `apps/api/src/services/token-service.ts` | 新規 | クロージャラッパ。secret を closure に閉じる |
+| `apps/api/src/services/room-service.ts` | 変更 | 画像 PUT 前にパスワードをハッシュ化 — orphan 防止ロールバックの順序として正しい。`protected: !!auth` フラグだけがログに乗る (hash / salt は絶対に乗らない) |
+| `apps/api/src/routes/rooms.ts` | 変更 | auth route は誤パスワードを全て同一の 401 メッセージで返す (メッセージ文言経由の oracle 無し)。未保護ルームへの 400 / 不存在の 404 は意図的に区別 (plan Decisions Log 記載) |
+| `apps/api/src/routes/images.ts` | 変更 | **HIGH-1 修正済み**。nosniff + SVG の content-disposition は Phase 2 から維持、Bearer ゲートは fail-closed |
+| `apps/api/src/yjs.ts` | 変更 | `SnapShareYDO.onStart` が `super.onStart()` を先頭で await。`getAlarm()` の冪等化が正しい。`alarm()` の順序 (R2 image → R2 meta → DO storage wipe) は部分失敗にも耐える。WS query token middleware は token を絶対にログに乗せない |
+| `apps/api/src/storage/r2-meta-storage.ts` | 変更 | `deleteMeta` が `deleteImage` の non-fatal パターンと整合 |
+| `apps/api/wrangler.toml` | 変更 | migration v2 `renamed_classes` の構文正確、secret コメントも実情を反映 |
+| `apps/web/src/lib/api-client.ts` | 変更 | tagged union の `AuthResult` が良い API。`fetchProtectedImage` のドキュメントが `URL.revokeObjectURL` 責務を明示 |
+| `apps/web/src/lib/auth-storage.ts` | 新規 | try/catch が網羅的 (storage-disabled / quota-full をすべて吸収)。localStorage ではなく sessionStorage を選んだのも脅威モデルに合致 |
+| `apps/web/src/lib/yjs-config.ts` | 変更 | **LOW-4**: `buildSyncUrl` の token 引数がデッドコード |
+| `apps/web/src/pages/RoomEditor.tsx` | 変更 | 4-state machine が正しい。`cancelled` フラグ + cleanup 時の `revokeObjectURL` でレース条件を回避。**MED-1** が WS 早期接続、**LOW-2** が `ownsObjectUrl` 未使用 |
+| `apps/web/src/pages/LocalEditor.tsx` | 変更 | 空 password で送信ブロック — silent な未保護アップロード防止に寄与。**LOW-1** が `passwordId` |
+| `apps/web/src/components/room-gate/RoomGate.tsx` | 新規 | a11y がしっかり (aria-invalid / aria-describedby / role=alert)。submitting フラグを成功時に意図的に未クリアにし、親の unmount で破棄する設計 |
 
-### Tests
+### テスト
 
-74 new tests added; 247/247 pass.
+新規 75 件 (HIGH-1 regression 含む)、248/248 pass。
 
-| Test file | Tests | Coverage notes |
+| テストファイル | 件数 | カバレッジ |
 |---|---|---|
-| `apps/api/src/lib/__tests__/password.test.ts` | 14 | Iteration count regression-guarded. Round-trip 0/1/2/3/16/32 byte covers boundary. |
-| `apps/api/src/lib/__tests__/token.test.ts` | 7 | Expiry, sub_mismatch, signature mismatch all asserted. Uses `now: () => 0` injection cleanly. |
-| `apps/api/src/services/__tests__/password-service.test.ts` | 9 | Empty + 257-char rejection, unknown-algo forward-compat, corrupt-salt graceful false. |
-| `apps/api/src/__tests__/{rooms,images,yjs}.test.ts` | +21 | Strong coverage of protected/unprotected branches across all 3 surfaces (REST + WS). |
-| `apps/web/src/lib/__tests__/auth-storage.test.ts` | 8 | Throwing-Storage stub asserts resilience promise. |
-| `apps/web/src/components/room-gate/__tests__/RoomGate.test.tsx` | 5 | react-dom/client + happy-dom + fetch stub gives realistic submit flow without testing-library dep. |
-
-**Test gap**: HIGH-1 (cache-control on protected images) — no test verifies the response Cache-Control header. See suggested test in HIGH-1 fix section.
+| `apps/api/src/lib/__tests__/password.test.ts` | 14 | iteration 数を regression-guard、0/1/2/3/16/32 byte の境界網羅 |
+| `apps/api/src/lib/__tests__/token.test.ts` | 7 | expiry / sub_mismatch / signature mismatch をすべて assert。`now: () => 0` で時刻注入 |
+| `apps/api/src/services/__tests__/password-service.test.ts` | 9 | 空 + 257 文字超 reject、未知 algo の forward-compat、corrupt salt の graceful false |
+| `apps/api/src/__tests__/{rooms,images,yjs}.test.ts` | +22 | REST + WS の 3 surface すべてで 保護/未保護の分岐を網羅。HIGH-1 regression 1 件含む |
+| `apps/web/src/lib/__tests__/auth-storage.test.ts` | 8 | throwing-Storage stub で耐性を assert |
+| `apps/web/src/components/room-gate/__tests__/RoomGate.test.tsx` | 5 | react-dom/client + happy-dom + fetch stub で submit フローを再現 (testing-library 依存無し) |
 
 ---
 
-## Recommendations
+## 推奨事項
 
-### Block-merge fix (required)
+### マージブロック修正
 
-1. **HIGH-1**: Override `Cache-Control` to `private, no-store` for protected images in `apps/api/src/routes/images.ts` + add regression test.
+1. **HIGH-1**: 修正済み (`ee9fec5`)。
 
-### Strongly recommended (next session)
+### 強く推奨 (次セッション)
 
-2. **MED-1**: Refactor `RoomEditor` so `useYjsAnnotationsStore` only mounts when `imageState === 'ready'`. Reduces 401 noise during gate state.
-3. **MED-2**: Validate base64url alphabet in `base64UrlDecode` and throw on invalid input. Currently safe only by accident; future callers may not catch.
-4. **MED-3**: Hoist `ErrorResponseSchema` to `lib/error.ts` and import in both routes.
+2. **MED-1**: `useYjsAnnotationsStore` を `imageState === 'ready'` のときだけマウントする RoomEditor のリファクタリング。401 ノイズの削減
+3. **MED-2**: `base64UrlDecode` でアルファベット検証 + 不正入力で throw に変更
+4. **MED-3**: `ErrorResponseSchema` を `lib/error.ts` に集約し、両 route で import
 
-### Optional cleanup
+### 任意のクリーンアップ
 
-5. **LOW-1/2/3/4** as listed above. None block merge.
+5. **LOW-1/2/3/4**: 上記の通り。マージブロックではない
 
-### Manual verification still pending (per implementation report)
+### 手動検証 (実装レポート記載済、未実施)
 
-- [ ] `ROOM_TTL_MS=10000` smoke test for DO Alarm cleanup
-- [ ] Two-tab protected room E2E (auth + sync)
+- [ ] `ROOM_TTL_MS=10000` での DO Alarm cleanup smoke test
+- [ ] 保護ルームでの 2 タブ E2E (認証 + 同期動作)
 
 ---
 
-## Decision Rationale
+## 判定の理由
 
-**REQUEST CHANGES** because HIGH-1 has security implications that contradict the PRD threat model and is a one-line fix. Once HIGH-1 + a regression test are added, this PR is ready to merge — the MED findings are quality improvements that can land in follow-up PRs without blocking Phase 5 → main.
+レビュー実施時点では HIGH-1 (PRD 脅威モデルとの矛盾、1 行修正可能) があったため **REQUEST CHANGES** だったが、Auto mode の方針に従い fix + regression test を `ee9fec5` で適用済み。残る MED 所見は品質改善であり、Phase 5 のマージは可能。後続 PR で順次解消する想定。
+
+最終判定: **APPROVE** (HIGH-1 修正反映後)。
