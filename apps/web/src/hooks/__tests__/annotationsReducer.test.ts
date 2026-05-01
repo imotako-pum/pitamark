@@ -145,19 +145,3 @@ describe('annotationsReducer.annotation/set-arrow-endpoints', () => {
     expect(next.annotations[0]).toBe(rect);
   });
 });
-
-describe('annotationsReducer.state/replace', () => {
-  it('replaces the entire state (used for undo/redo wiring)', () => {
-    const replacement: AnnotationsState = {
-      annotations: [rect],
-      selectedId: 'r1',
-      tool: 'arrow',
-    };
-    const next = annotationsReducer(initialAnnotationsState, {
-      type: 'state/replace',
-      state: replacement,
-    });
-
-    expect(next).toBe(replacement);
-  });
-});

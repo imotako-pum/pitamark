@@ -27,8 +27,7 @@ export type AnnotationsAction =
   | { type: 'annotation/resize-rect'; id: string; width: number; height: number }
   | { type: 'annotation/resize-highlight'; id: string; width: number; height: number }
   | { type: 'annotation/set-arrow-endpoints'; id: string; from: Point; to: Point }
-  | { type: 'annotation/set-text'; id: string; text: string }
-  | { type: 'state/replace'; state: AnnotationsState };
+  | { type: 'annotation/set-text'; id: string; text: string };
 
 export const initialAnnotationsState: AnnotationsState = {
   annotations: [],
@@ -78,8 +77,6 @@ export const annotationsReducer = (
         ...state,
         annotations: setText(state.annotations, action.id, action.text),
       };
-    case 'state/replace':
-      return action.state;
     default: {
       const _exhaustive: never = action;
       return _exhaustive;
