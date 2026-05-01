@@ -1,6 +1,7 @@
 import type { Annotation } from '@snap-share/shared';
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { type ReactNode, useCallback, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { generateId } from '../../lib/id';
@@ -27,6 +28,8 @@ type CanvasStageProps = Readonly<{
   onCursorMove?: (point: { x: number; y: number } | null) => void;
   /** Extra Konva layers rendered on top of the annotation layer. */
   extraLayers?: ReactNode;
+  /** Ref to the underlying Konva.Stage (for PNG export). */
+  stageRef?: Ref<Konva.Stage>;
 }>;
 
 const MIN_DRAG_PIXELS = 4;
@@ -78,6 +81,7 @@ export const CanvasStage = ({
   onStartTextEditing,
   onCursorMove,
   extraLayers,
+  stageRef,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations } = state;
@@ -203,6 +207,7 @@ export const CanvasStage = ({
 
   return (
     <Stage
+      ref={stageRef}
       width={width}
       height={height}
       onMouseDown={handleMouseDown}

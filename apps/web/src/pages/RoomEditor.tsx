@@ -1,7 +1,9 @@
 import type { Annotation } from '@snap-share/shared';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import type Konva from 'konva';
+import { type ReactNode, type Ref, useCallback, useEffect, useState } from 'react';
 import { AwarenessLayer } from '../components/canvas/AwarenessLayer';
 import { ConnectionBadge } from '../components/connection/ConnectionBadge';
+import { ConfirmClearAllDialog } from '../components/dialogs/ConfirmClearAllDialog';
 import { RoomGate } from '../components/room-gate/RoomGate';
 import { CopyUrlButton } from '../components/toolbar/CopyUrlButton';
 import { type PresenceHandle, usePresence } from '../hooks/usePresence';
@@ -25,11 +27,9 @@ type ImageState =
   | { kind: 'ready'; url: string; ownsObjectUrl: boolean }
   | { kind: 'not-found' };
 
-const CLEAR_ALL_CONFIRM =
-  'ルーム内の注釈をすべて削除します。この操作は他の参加者にも反映されます。続行しますか？';
-
 export const RoomEditor = ({ roomId }: Props) => {
   const [imageState, setImageState] = useState<ImageState>({ kind: 'loading' });
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   // `token` is hoisted into state so a successful RoomGate auth re-runs the
   // image-fetch effect AND propagates the JWT into useYjsAnnotationsStore so
   // the WebSocket reconnects with `?token=`.
@@ -107,9 +107,12 @@ export const RoomEditor = ({ roomId }: Props) => {
   const presence = usePresence(store.awareness, localUser);
 
   const handleClearImage = useCallback(() => {
-    if (window.confirm(CLEAR_ALL_CONFIRM)) {
-      store.reset();
-    }
+    setConfirmClearOpen(true);
+  }, []);
+
+  const handleConfirmClear = useCallback(() => {
+    store.reset();
+    setConfirmClearOpen(false);
   }, [store]);
 
   if (imageState.kind === 'not-found') {
@@ -133,30 +136,43 @@ export const RoomEditor = ({ roomId }: Props) => {
   }
 
   const source = imageState.kind === 'ready' ? { url: imageState.url } : null;
-  const awarenessLayer = (annotations: ReadonlyArray<Annotation>): ReactNode => (
-    <AwarenessLayer others={presence.others} annotations={annotations} />
+  const awarenessLayer = (
+    annotations: ReadonlyArray<Annotation>,
+    layerRef: Ref<Konva.Layer>,
+  ): ReactNode => (
+    <AwarenessLayer ref={layerRef} others={presence.others} annotations={annotations} />
   );
 
   return (
-    <RoomShellAdapter
-      source={source}
-      store={store}
-      presence={presence}
-      awarenessLayer={awarenessLayer}
-      onClearImage={handleClearImage}
-    />
+    <>
+      <RoomShellAdapter
+        roomId={roomId}
+        source={source}
+        store={store}
+        presence={presence}
+        awarenessLayer={awarenessLayer}
+        onClearImage={handleClearImage}
+      />
+      <ConfirmClearAllDialog
+        open={confirmClearOpen}
+        onOpenChange={setConfirmClearOpen}
+        onConfirm={handleConfirmClear}
+      />
+    </>
   );
 };
 
 type AdapterProps = Readonly<{
+  roomId: string;
   source: { url: string } | null;
   store: YjsAnnotationsStore;
   presence: PresenceHandle;
-  awarenessLayer: (annotations: ReadonlyArray<Annotation>) => ReactNode;
+  awarenessLayer: (annotations: ReadonlyArray<Annotation>, layerRef: Ref<Konva.Layer>) => ReactNode;
   onClearImage: () => void;
 }>;
 
 const RoomShellAdapter = ({
+  roomId,
   source,
   store,
   presence,
@@ -164,6 +180,7 @@ const RoomShellAdapter = ({
   onClearImage,
 }: AdapterProps) => (
   <EditorShell
+    roomId={roomId}
     source={source}
     imageError={null}
     onClearImage={onClearImage}

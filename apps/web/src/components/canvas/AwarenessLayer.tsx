@@ -1,5 +1,6 @@
 import type { Annotation, UserPresence } from '@snap-share/shared';
-import type { JSX } from 'react';
+import type Konva from 'konva';
+import { forwardRef, type JSX } from 'react';
 import { Group, Layer, Line, Rect, Text } from 'react-konva';
 
 type Props = Readonly<{
@@ -34,8 +35,8 @@ const renderSelectionRect = (target: Annotation, key: string, color: string) => 
   );
 };
 
-export const AwarenessLayer = ({ others, annotations }: Props) => (
-  <Layer listening={false}>
+export const AwarenessLayer = forwardRef<Konva.Layer, Props>(({ others, annotations }, ref) => (
+  <Layer ref={ref} listening={false}>
     {others.flatMap((u) => {
       const items: Array<JSX.Element> = [];
       if (u.cursor) {
@@ -54,4 +55,6 @@ export const AwarenessLayer = ({ others, annotations }: Props) => (
       return items;
     })}
   </Layer>
-);
+));
+
+AwarenessLayer.displayName = 'AwarenessLayer';

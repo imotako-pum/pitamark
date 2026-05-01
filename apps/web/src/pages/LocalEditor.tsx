@@ -1,5 +1,8 @@
 import { Lock } from 'lucide-react';
 import { useCallback, useId, useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useImageSource } from '../hooks/useImageSource';
 import { setRoomIdInUrl } from '../lib/url-room';
@@ -32,6 +35,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
   const [password, setPassword] = useState('');
   const checkboxId = useId();
   const passwordId = useId();
+  const errorId = useId();
 
   const handleClear = useCallback(() => {
     clear();
@@ -58,23 +62,24 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     <>
       {source === null && (
         <div className="pointer-events-none absolute top-4 left-1/2 z-10 -translate-x-1/2">
-          <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-white/90 p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
-            <label htmlFor={checkboxId} className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
+          <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <Checkbox
                 id={checkboxId}
-                type="checkbox"
                 checked={protect}
-                onChange={(e) => {
-                  setProtect(e.target.checked);
-                  if (!e.target.checked) setPassword('');
+                onCheckedChange={(checked) => {
+                  const next = checked === true;
+                  setProtect(next);
+                  if (!next) setPassword('');
                 }}
-                className="h-4 w-4 cursor-pointer accent-(--color-accent)"
               />
               <Lock aria-hidden="true" className="h-4 w-4 text-(--color-accent)" />
-              <span>パスワードで保護する（任意）</span>
-            </label>
+              <Label htmlFor={checkboxId} className="cursor-pointer">
+                パスワードで保護する（任意）
+              </Label>
+            </div>
             {protect && (
-              <input
+              <Input
                 id={passwordId}
                 type="password"
                 placeholder="パスワード"
@@ -82,11 +87,14 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-label="ルームのパスワード"
-                className="rounded-md border border-(--color-toolbar-border) bg-(--color-surface) px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
+                aria-invalid={blockedByEmptyPassword || undefined}
+                aria-describedby={blockedByEmptyPassword ? errorId : undefined}
               />
             )}
             {blockedByEmptyPassword && (
-              <p className="text-xs text-rose-600">パスワードを入力してください</p>
+              <p id={errorId} className="text-xs text-destructive">
+                パスワードを入力してください
+              </p>
             )}
           </div>
         </div>
