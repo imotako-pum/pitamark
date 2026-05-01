@@ -7,18 +7,26 @@ compatibility_flags = ["nodejs_compat"]
 binding = "IMAGES"
 bucket_name = "snap-share-images"
 
-# Yjs/CRDT room state. The class is exported by `src/index.ts` (re-exported
-# from `src/yjs.ts`); see Phase 0 spike B for the proven configuration.
+# Yjs/CRDT room state. Phase 5 renames the class to `SnapShareYDO` (a subclass
+# of YDurableObjects) so the DO can run TTL alarms via DO Alarms API.
 # `new_classes` (NOT `new_sqlite_classes`) — YDurableObjects is KV-backed.
 [[durable_objects.bindings]]
 name = "Y_ROOM"
-class_name = "YDurableObjects"
+class_name = "SnapShareYDO"
 
 [[migrations]]
 tag = "v1"
 new_classes = ["YDurableObjects"]
 
+[[migrations]]
+tag = "v2"
+renamed_classes = [{ from = "YDurableObjects", to = "SnapShareYDO" }]
+
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
 
-# Phase 5 で SECRETS を追加する
+# `ROOM_TOKEN_SECRET` is a secret (HS256 JWT signing key for password-protected
+# room tokens). Inject via:
+#   wrangler secret put ROOM_TOKEN_SECRET   (production)
+#   apps/api/.dev.vars                      (local; gitignored)
+# Minimum 32 bytes recommended.

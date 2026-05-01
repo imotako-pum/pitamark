@@ -1,6 +1,7 @@
 import { MAX_IMAGE_BYTES } from '@snap-share/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '../../lib/error';
+import { createPasswordService } from '../../services/password-service';
 import { createRoomService } from '../../services/room-service';
 import { createR2ImageStorage } from '../../storage/r2-image-storage';
 import { createR2MetaStorage, metaKey } from '../../storage/r2-meta-storage';
@@ -16,6 +17,7 @@ const buildService = () => {
     meta: createR2MetaStorage(bucket),
     now: () => FIXED_NOW,
     ttlMs: TTL_MS,
+    password: createPasswordService(),
   });
   return { service, bucket, store };
 };
@@ -148,6 +150,9 @@ describe('roomService.create — orphan rollback', () => {
       async getMeta() {
         return null;
       },
+      async deleteMeta() {
+        return true;
+      },
     };
 
     const service = createRoomService({
@@ -155,6 +160,7 @@ describe('roomService.create — orphan rollback', () => {
       meta: failingMeta,
       now: () => FIXED_NOW,
       ttlMs: TTL_MS,
+      password: createPasswordService(),
     });
 
     const file = makeFile(new Uint8Array([1, 2, 3]), 'image/png');
@@ -187,9 +193,13 @@ describe('roomService.create — orphan rollback', () => {
         async getMeta() {
           return null;
         },
+        async deleteMeta() {
+          return true;
+        },
       },
       now: () => FIXED_NOW,
       ttlMs: TTL_MS,
+      password: createPasswordService(),
     });
 
     const file = makeFile(new Uint8Array([1, 2, 3]), 'image/png');
@@ -206,6 +216,7 @@ describe('roomService.create — TTL configuration guard', () => {
       meta: createR2MetaStorage(bucket),
       now: () => FIXED_NOW,
       ttlMs: Number.NaN,
+      password: createPasswordService(),
     });
     const file = makeFile(new Uint8Array([1]), 'image/png');
     await expect(service.create(file)).rejects.toMatchObject({
@@ -221,6 +232,7 @@ describe('roomService.create — TTL configuration guard', () => {
       meta: createR2MetaStorage(bucket),
       now: () => FIXED_NOW,
       ttlMs: 0,
+      password: createPasswordService(),
     });
     const file = makeFile(new Uint8Array([1]), 'image/png');
     await expect(service.create(file)).rejects.toMatchObject({

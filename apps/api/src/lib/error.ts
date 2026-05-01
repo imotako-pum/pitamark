@@ -7,6 +7,7 @@ export type ErrorCode =
   | 'UNSUPPORTED_MEDIA_TYPE'
   | 'PAYLOAD_TOO_LARGE'
   | 'NOT_FOUND'
+  | 'UNAUTHORIZED'
   | 'INTERNAL';
 
 export type ErrorEnvelope = {
@@ -14,7 +15,7 @@ export type ErrorEnvelope = {
   error: { code: ErrorCode; message: string };
 };
 
-type AppErrorStatus = 400 | 404 | 413 | 415 | 500;
+type AppErrorStatus = 400 | 401 | 404 | 413 | 415 | 500;
 
 const PUBLIC_PATH_MAX = 80;
 const sanitizePath = (path: string): string => {

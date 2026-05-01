@@ -5,9 +5,14 @@ import {
   isExpired,
   MAX_IMAGE_BYTES,
   type Room,
+  type RoomAuth,
   type RoomImage,
   RoomImageSchema,
+  RoomPublicSchema,
   RoomSchema,
+  type RoomStored,
+  RoomStoredSchema,
+  toPublicRoom,
 } from '../room';
 
 const image: RoomImage = {
@@ -156,5 +161,104 @@ describe('RoomSchema', () => {
         image: { key: 'k', contentType: 'text/plain', size: 1 },
       }),
     ).toThrow();
+  });
+});
+
+const auth: RoomAuth = {
+  algo: 'PBKDF2-SHA256',
+  iterations: 210_000,
+  salt: 'ZmFrZS1zYWx0',
+  hash: 'ZmFrZS1oYXNo',
+};
+
+describe('RoomStoredSchema', () => {
+  it('parses a stored room without auth (unprotected)', () => {
+    const parsed = RoomStoredSchema.parse(room);
+    expect(parsed).toEqual(room);
+    expect(parsed.auth).toBeUndefined();
+  });
+
+  it('parses a stored room with auth (protected)', () => {
+    const protectedRoom: RoomStored = { ...room, auth };
+    const parsed = RoomStoredSchema.parse(protectedRoom);
+    expect(parsed.auth).toEqual(auth);
+  });
+
+  it('keeps RoomSchema as a backwards-compatible alias of RoomStoredSchema', () => {
+    expect(RoomSchema).toBe(RoomStoredSchema);
+  });
+});
+
+describe('RoomPublicSchema', () => {
+  it('accepts protected: false with image present', () => {
+    const parsed = RoomPublicSchema.parse({
+      id: room.id,
+      createdAt: room.createdAt,
+      ttlMs: room.ttlMs,
+      protected: false,
+      image,
+    });
+    expect(parsed.protected).toBe(false);
+    expect(parsed.image).toEqual(image);
+  });
+
+  it('accepts protected: true with image absent', () => {
+    const parsed = RoomPublicSchema.parse({
+      id: room.id,
+      createdAt: room.createdAt,
+      ttlMs: room.ttlMs,
+      protected: true,
+    });
+    expect(parsed.protected).toBe(true);
+    expect(parsed.image).toBeUndefined();
+  });
+
+  it('rejects protected: false without image', () => {
+    expect(() =>
+      RoomPublicSchema.parse({
+        id: room.id,
+        createdAt: room.createdAt,
+        ttlMs: room.ttlMs,
+        protected: false,
+      }),
+    ).toThrow();
+  });
+
+  it('rejects protected: true with image present', () => {
+    expect(() =>
+      RoomPublicSchema.parse({
+        id: room.id,
+        createdAt: room.createdAt,
+        ttlMs: room.ttlMs,
+        protected: true,
+        image,
+      }),
+    ).toThrow();
+  });
+});
+
+describe('toPublicRoom', () => {
+  it('strips image and sets protected: true when auth is present', () => {
+    const result = toPublicRoom({ ...room, auth });
+    expect(result).toEqual({
+      id: room.id,
+      createdAt: room.createdAt,
+      ttlMs: room.ttlMs,
+      protected: true,
+    });
+    expect(Object.hasOwn(result, 'image')).toBe(false);
+    expect(Object.hasOwn(result, 'auth')).toBe(false);
+  });
+
+  it('keeps image and sets protected: false when auth is absent', () => {
+    const result = toPublicRoom(room);
+    expect(result).toEqual({
+      id: room.id,
+      createdAt: room.createdAt,
+      ttlMs: room.ttlMs,
+      protected: false,
+      image,
+    });
+    expect(Object.hasOwn(result, 'auth')).toBe(false);
   });
 });
