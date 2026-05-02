@@ -42,11 +42,12 @@ describe('roomService.create', () => {
     expect(room.id).toMatch(/^[A-Za-z0-9_-]{21}$/);
     expect(room.createdAt).toBe(FIXED_NOW);
     expect(room.ttlMs).toBe(TTL_MS);
-    expect(room.image).toEqual({
-      key: `rooms/${room.id}/image.png`,
-      contentType: 'image/png',
-      size: 4,
-    });
+    // Phase 7: `image.sha256` is now populated; assert shape per-field so the
+    // test stays robust to future additions.
+    expect(room.image.key).toBe(`rooms/${room.id}/image.png`);
+    expect(room.image.contentType).toBe('image/png');
+    expect(room.image.size).toBe(4);
+    expect(room.image.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(context.store.has(room.image.key)).toBe(true);
     expect(context.store.has(metaKey(room.id))).toBe(true);
   });

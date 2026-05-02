@@ -192,7 +192,7 @@
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | complete | - | 2, 3 | [phase-4-realtime-sync.plan.md](../plans/completed/phase-4-realtime-sync.plan.md) / [report](../reports/phase-4-realtime-sync-report.md) |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
-| 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | pending | - | 5, 6 | - |
+| 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | in-progress | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) |
 | 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7 | - |
 
 ### Phase Details
@@ -277,7 +277,7 @@
 | 画像ストレージ | Cloudflare R2 | S3 / Workers KV | エグレス無料、10GB無料、CFスタック整合 |
 | 言語ファースト | 日本語 | 英語ファースト | プライマリユーザー要件、競合との差別化 |
 | Canvas SDK | Konva（自前UI） | tldraw / Excalidraw / Fabric | オーナー経験あり、~80KB gz、Shottr級「軽量感」を実現するためUIを完全自前制御 |
-| ライセンス | 未決（OSS方針） | MIT / Apache 2.0 / BUSL | 公開時に決定、デフォルトMIT想定 |
+| ライセンス | **MIT 確定（Phase 7）** | Apache 2.0 / BUSL | 個人 OSS、依存ライブラリ（hono / yjs / konva / shadcn 全部 MIT or Apache 2.0）と互換、`LICENSE` をリポジトリ直下に追加 |
 | UIコンポーネント | **shadcn/ui 採用**（Tailwind v4 + 自前所有モデル） | 自前UIコンポーネント / Material UI / Chakra | Phase 0 スパイクで Vite + Tailwind v4 + Radix の組合せが動作確認済、コードを所有できる shadcn モデルが「最小限を最小限に」に整合 |
 | React バージョン | **React 19 + react-konva 19** | React 18 LTS | Phase 0 で react-konva 18 が npm 上に LTS 提供されておらず、19 系が事実上の最新唯一の選択肢 |
 | Konva バンドル | gz 152.7 KB（Phase 0 実測） | — | PRD 当初想定 ~80KB は Konva 単体の話。React + react-konva + use-image 含めて 150KB 前後。Phase 6 で `dynamic import` によるコード分割を必須タスク化 |
@@ -288,6 +288,9 @@
 | 共有依存のバージョン管理 | **pnpm catalog 採用**（`pnpm-workspace.yaml` の `catalog:` セクション） | 各 workspace で個別記述 / npm overrides | `typescript` は 4 workspace 共有 / `vitest` は 3 workspace / `zod` は Phase 2/4/5 で広がる予定。1 行更新で全 workspace に伝播 |
 | バリデーションライブラリ | **Zod v4（`^4.4`）** | Zod v3 / Yup / Valibot | Phase 1 時点 latest 4.4.1。parse 7-14× 高速化、bundle ~50% 削減。`RoomSchema` レベルの API は v3/v4 共通のため移行コスト無し |
 | SSOT 戦略 | **`packages/shared` は Zod スキーマ駆動**。型は `z.infer<typeof RoomSchema>` で導出、API 境界では `RoomSchema.parse` で runtime 検証 | 素の TypeScript type のみ / 型と検証を二重定義 | `.claude/rules/typescript/coding-style.md` 推奨、Phase 2 の `POST /rooms` body validation・Phase 5 のパスワード validation・Phase 4 の Yjs ペイロード境界検証を見越して Phase 1 で確立。Hono との統合は `@hono/zod-validator` 経由（Phase 2 で導入予定） |
+| スパム対策階層（Phase 7） | **Workers Rate Limiting + Cloudflare Turnstile + 画像 SHA-256 ブラックリスト の三層** | IP-only RL のみ / WAF / 認証必須化 | 各層が独立に fail / disable 可能、運用負荷最小、Workers binding で実装簡素 |
+| アナリティクス（Phase 7） | **Cloudflare Web Analytics（cookieless）** | Plausible / GA4 / Umami | CF スタック整合 + cookie 同意不要 + 無料、ビルド時に `data-cf-beacon` token 注入 |
+| ルート middleware 配線（Phase 7） | **`createRoute({ middleware })` フィールドで宣言** | `OpenAPIHono.use()` を chain | `.use()` が chained 型推論を `any` に潰し `hc<AppType>` クライアントの型情報が壊れる。Plan 段階のリスク予測通り |
 
 ---
 

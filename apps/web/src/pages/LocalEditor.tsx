@@ -3,8 +3,10 @@ import { useCallback, useId, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TurnstileWidget } from '../components/turnstile/TurnstileWidget';
 import { useAnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useImageSource } from '../hooks/useImageSource';
+import { useTurnstileToken } from '../hooks/useTurnstileToken';
 import { setRoomIdInUrl } from '../lib/url-room';
 import { EditorShell } from './EditorShell';
 
@@ -12,11 +14,15 @@ type Props = Readonly<{
   onRoomIdChange: (roomId: string | null) => void;
 }>;
 
+const TURNSTILE_SITE_KEY = (import.meta.env as { VITE_TURNSTILE_SITE_KEY?: string })
+  .VITE_TURNSTILE_SITE_KEY;
+
 /**
  * Local-only editor — Phase 3 behavior, extended in Phase 5 with optional
- * password protection. Uploaded images call `POST /rooms` (with `password`
- * if the user opted in) and, on success, transition the URL to /r/:id; the
- * parent App then swaps in `RoomEditor`.
+ * password protection and Phase 7 with invisible Cloudflare Turnstile.
+ * Uploaded images call `POST /rooms` (with `password` if the user opted in
+ * and a Turnstile token) and, on success, transition the URL to /r/:id;
+ * the parent App then swaps in `RoomEditor`.
  */
 export const LocalEditor = ({ onRoomIdChange }: Props) => {
   const handleRoomCreated = useCallback(
@@ -31,6 +37,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     onRoomCreated: handleRoomCreated,
   });
   const store = useAnnotationsStore();
+  const turnstile = useTurnstileToken(TURNSTILE_SITE_KEY);
   const [protect, setProtect] = useState(false);
   const [password, setPassword] = useState('');
   const checkboxId = useId();
@@ -44,19 +51,27 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
 
   // Wraps `loadFromFile` so the active password (when the user opted in) is
   // forwarded to `POST /rooms`. Empty/whitespace passwords are normalized to
-  // unprotected by the api-client layer.
+  // unprotected by the api-client layer. The Turnstile token is consumed
+  // each call; widget state machine returns empty string in `disabled` mode.
   const handleLoad = useCallback(
     (file: File) => {
       const pw = protect && password.length > 0 ? password : undefined;
-      loadFromFile(file, pw);
+      loadFromFile(file, turnstile.consumeToken(), pw);
+      // After consuming the (single-use) token, reset so the next upload
+      // attempt waits for a fresh one. `disabled` resets back to `disabled`.
+      turnstile.reset();
     },
-    [protect, password, loadFromFile],
+    [protect, password, loadFromFile, turnstile],
   );
 
   // Disable file load while the user has ticked "protect" but left the
   // password empty — better than silently uploading unprotected.
   const blockedByEmptyPassword = protect && password.length === 0;
-  const onLoadFile = blockedByEmptyPassword ? undefined : handleLoad;
+  // Phase 7: also block while Turnstile is still pending or has errored.
+  // `disabled` (no site key) and `ready` are both safe to upload.
+  const turnstileBlocking =
+    turnstile.state.status === 'pending' || turnstile.state.status === 'error';
+  const onLoadFile = blockedByEmptyPassword || turnstileBlocking ? undefined : handleLoad;
 
   return (
     <>
@@ -98,6 +113,13 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
             )}
           </div>
         </div>
+      )}
+      {TURNSTILE_SITE_KEY && (
+        <TurnstileWidget
+          siteKey={TURNSTILE_SITE_KEY}
+          onSuccess={turnstile.setToken}
+          onError={turnstile.setError}
+        />
       )}
       <EditorShell
         source={source}

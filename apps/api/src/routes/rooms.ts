@@ -2,10 +2,14 @@ import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import { ROOM_ID_REGEX, RoomPublicSchema, toPublicRoom } from '@snap-share/shared';
 import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
+import { extractClientIp } from '../lib/ip';
 import { logger } from '../lib/logger';
+import { withRateLimit } from '../middleware/rate-limit';
+import { createImageBlocklistService } from '../services/image-blocklist-service';
 import { createPasswordService } from '../services/password-service';
 import { createRoomService } from '../services/room-service';
 import { createTokenService } from '../services/token-service';
+import { createTurnstileService } from '../services/turnstile-service';
 import { createR2ImageStorage } from '../storage/r2-image-storage';
 import { createR2MetaStorage } from '../storage/r2-meta-storage';
 
@@ -15,9 +19,13 @@ const idParamSchema = z.object({
 
 // File field is rendered as `string($binary)` in OpenAPI 3.1.
 // `password` is optional — empty string or absent ⇒ unprotected room.
+// `cf-turnstile-response` is required at the API surface; in dev/CI the
+// runtime short-circuits via `BYPASS_TURNSTILE=true` so the field can be a
+// dummy "ok" string.
 const uploadFormSchema = z.object({
   image: z.instanceof(File).openapi({ type: 'string', format: 'binary' }),
   password: z.string().max(256).optional().openapi({ type: 'string' }),
+  'cf-turnstile-response': z.string().min(1).max(2048).openapi({ type: 'string' }),
 });
 
 const authBodySchema = z.object({
@@ -37,6 +45,11 @@ const buildRoomService = (env: Bindings) =>
     now: () => Date.now(),
     ttlMs: Number(env.ROOM_TTL_MS),
     password: buildPasswordService(),
+    turnstile: createTurnstileService({
+      secret: env.TURNSTILE_SECRET_KEY,
+      bypass: env.BYPASS_TURNSTILE === 'true',
+    }),
+    blocklist: createImageBlocklistService({ kv: env.IMAGE_BLOCKLIST }),
   });
 
 const buildTokenService = (env: Bindings) => createTokenService({ secret: env.ROOM_TOKEN_SECRET });
@@ -45,6 +58,13 @@ const createRoomRoute = createRoute({
   method: 'post',
   path: '/',
   tags: ['rooms'],
+  middleware: [
+    withRateLimit({
+      binding: (env) => env.RL_CREATE_ROOM,
+      keyFn: (c) => `rooms-create:${extractClientIp(c.req.raw)}`,
+      routeId: 'rooms-create',
+    }),
+  ] as const,
   request: {
     body: { content: { 'multipart/form-data': { schema: uploadFormSchema } } },
   },
@@ -55,7 +75,12 @@ const createRoomRoute = createRoute({
     },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Bad request (missing image, empty file, or password too long)',
+      description:
+        'Bad request (missing image, empty file, password too long, or missing turnstile token)',
+    },
+    401: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Turnstile verification failed',
     },
     413: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
@@ -64,6 +89,14 @@ const createRoomRoute = createRoute({
     415: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
       description: 'Unsupported image MIME type',
+    },
+    422: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Image rejected by the blocklist',
+    },
+    429: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Rate limit exceeded',
     },
   },
 });
@@ -93,6 +126,13 @@ const authRoute = createRoute({
   method: 'post',
   path: '/{id}/auth',
   tags: ['rooms'],
+  middleware: [
+    withRateLimit({
+      binding: (env) => env.RL_AUTH,
+      keyFn: (c) => `rooms-auth:${c.req.param('id')}:${extractClientIp(c.req.raw)}`,
+      routeId: 'rooms-auth',
+    }),
+  ] as const,
   request: {
     params: idParamSchema,
     body: { content: { 'application/json': { schema: authBodySchema } } },
@@ -114,17 +154,29 @@ const authRoute = createRoute({
       content: { 'application/json': { schema: ErrorResponseSchema } },
       description: 'Room not found',
     },
+    429: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Rate limit exceeded',
+    },
   },
 });
 
 // Chain `.openapi()` calls so the export retains the merged route schema
-// (required by `hc<AppType>` for end-to-end type inference).
+// (required by `hc<AppType>` for end-to-end type inference). Rate-limit
+// middleware is declared inline on each route via `createRoute({ middleware })`
+// rather than via `OpenAPIHono.use()` — chaining `.use()` collapses the typed
+// route info to `any` and breaks the `hc` client.
 export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
   .openapi(
     createRoomRoute,
     async (c) => {
       const { image, password } = c.req.valid('form');
-      const room = await buildRoomService(c.env).create(image, password);
+      const turnstileToken = c.req.valid('form')['cf-turnstile-response'];
+      const room = await buildRoomService(c.env).create(image, {
+        password,
+        turnstileToken,
+        remoteIp: extractClientIp(c.req.raw),
+      });
       return c.json(toPublicRoom(room), 201);
     },
     (result, c) => {

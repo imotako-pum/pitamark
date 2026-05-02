@@ -1,10 +1,21 @@
-import type { Room } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
 import { issueRoomToken } from '../lib/token';
 import { buildEnv, DEFAULT_ROOM_TOKEN_SECRET } from './helpers/build-env';
+import { createStubRateLimit } from './helpers/in-memory-rl';
 
 type ErrorBody = { ok: false; error: { code: string; message: string } };
+type CreatedRoom = { id: string };
+// Phase 7: every multipart upload must carry `cf-turnstile-response`.
+const TEST_TS_TOKEN = 'test-turnstile-token';
+
+const createUnprotectedRoom = async (env: ReturnType<typeof buildEnv>): Promise<CreatedRoom> => {
+  const form = new FormData();
+  form.set('image', new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' }));
+  form.set('cf-turnstile-response', TEST_TS_TOKEN);
+  const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+  return (await res.json()) as CreatedRoom;
+};
 
 describe('GET /sync/:id (room-existence middleware)', () => {
   it('returns 400 INVALID_REQUEST when the room ID does not match the NanoID pattern', async () => {
@@ -31,11 +42,7 @@ describe('GET /sync/:id (room-existence middleware)', () => {
 
   it('passes the middleware for an existing room (yRoute receives the request)', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' }));
-    const created = (await (
-      await app.request('/rooms', { method: 'POST', body: form }, env)
-    ).json()) as Room;
+    const created = await createUnprotectedRoom(env);
 
     const res = await app.request(`/sync/${created.id}`, undefined, env);
 
@@ -63,6 +70,7 @@ const createProtectedRoomViaApi = async (
   const form = new FormData();
   form.set('image', new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' }));
   form.set('password', password);
+  form.set('cf-turnstile-response', TEST_TS_TOKEN);
   const res = await app.request('/rooms', { method: 'POST', body: form }, env);
   return (await res.json()) as { id: string };
 };
@@ -70,11 +78,7 @@ const createProtectedRoomViaApi = async (
 describe('GET /sync/:id (Phase 5 — query token authorization)', () => {
   it('passes through unprotected rooms even without a token', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' }));
-    const created = (await (
-      await app.request('/rooms', { method: 'POST', body: form }, env)
-    ).json()) as Room;
+    const created = await createUnprotectedRoom(env);
     const res = await app.request(`/sync/${created.id}`, undefined, env);
     expect(res.status).not.toBe(401);
     expect(res.status).not.toBe(404);
@@ -111,5 +115,32 @@ describe('GET /sync/:id (Phase 5 — query token authorization)', () => {
     // our middleware; yRoute is allowed to respond however it wants.
     expect(res.status).not.toBe(401);
     expect(res.status).not.toBe(404);
+  });
+});
+
+describe('GET /sync/:id (Phase 7 — sync rate limit on unprotected rooms)', () => {
+  it('returns 429 RATE_LIMITED when RL_SYNC blocks an unprotected room upgrade', async () => {
+    const env = buildEnv({ RL_SYNC: createStubRateLimit({ alwaysBlock: true }) });
+    const created = await createUnprotectedRoom(env);
+    const res = await app.request(`/sync/${created.id}`, undefined, env);
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
+
+  it('does NOT apply RL_SYNC to protected rooms (token verify replaces RL)', async () => {
+    // RL_SYNC alwaysBlock would force 429 if it were consulted, but for
+    // protected rooms the middleware skips it and returns 401 (no token).
+    const env = buildEnv({ RL_SYNC: createStubRateLimit({ alwaysBlock: true }) });
+    const created = await createProtectedRoomViaApi(env, 'letmein');
+    const res = await app.request(`/sync/${created.id}`, undefined, env);
+    expect(res.status).toBe(401); // missing token, NOT 429
+  });
+
+  it('passes through unprotected rooms when RL_SYNC permits the request', async () => {
+    const env = buildEnv(); // default permissive stub
+    const created = await createUnprotectedRoom(env);
+    const res = await app.request(`/sync/${created.id}`, undefined, env);
+    expect(res.status).not.toBe(429);
   });
 });

@@ -1,27 +1,53 @@
-import { MAX_IMAGE_BYTES, type Room } from '@snap-share/shared';
+import { MAX_IMAGE_BYTES } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
 import { buildEnv } from './helpers/build-env';
+import { createInMemoryKv } from './helpers/in-memory-kv';
+import { createStubRateLimit } from './helpers/in-memory-rl';
 
 const pngFile = (bytes = 4): File =>
   new File([new Uint8Array(bytes).fill(0)], 'cat.png', { type: 'image/png' });
 
+// Phase 7: every multipart upload must carry `cf-turnstile-response`. In
+// tests `BYPASS_TURNSTILE='true'` lets any non-empty token through, but the
+// field itself is still required by the Zod schema.
+const TEST_TS_TOKEN = 'test-turnstile-token';
+
+const formWithImage = (file: File, extra: Record<string, string> = {}): FormData => {
+  const form = new FormData();
+  form.set('image', file);
+  form.set('cf-turnstile-response', TEST_TS_TOKEN);
+  for (const [k, v] of Object.entries(extra)) form.set(k, v);
+  return form;
+};
+
 type ErrorBody = { ok: false; error: { code: string; message: string } };
+type PublicRoom = {
+  id: string;
+  createdAt: number;
+  ttlMs: number;
+  protected: boolean;
+  image?: { key: string; contentType: string; size: number; sha256?: string };
+};
+type AuthOk = { token: string };
 
 describe('POST /rooms', () => {
   it('returns 201 with Room JSON when valid PNG is uploaded', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', pngFile(4));
-
-    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4)) },
+      env,
+    );
 
     expect(res.status).toBe(201);
-    const body = (await res.json()) as Room;
+    const body = (await res.json()) as PublicRoom;
     expect(body.id).toMatch(/^[A-Za-z0-9_-]{21}$/);
-    expect(body.image.contentType).toBe('image/png');
-    expect(body.image.size).toBe(4);
-    expect(body.image.key).toBe(`rooms/${body.id}/image.png`);
+    expect(body.protected).toBe(false);
+    expect(body.image?.contentType).toBe('image/png');
+    expect(body.image?.size).toBe(4);
+    expect(body.image?.key).toBe(`rooms/${body.id}/image.png`);
+    expect(body.image?.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(body.ttlMs).toBeGreaterThan(0);
     expect(body.createdAt).toBeGreaterThan(0);
   });
@@ -30,6 +56,7 @@ describe('POST /rooms', () => {
     const env = buildEnv();
     const form = new FormData();
     form.set('other', 'value');
+    form.set('cf-turnstile-response', TEST_TS_TOKEN);
     const res = await app.request('/rooms', { method: 'POST', body: form }, env);
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
@@ -37,13 +64,22 @@ describe('POST /rooms', () => {
     expect(body.error.code).toBe('INVALID_REQUEST');
   });
 
-  it('returns 415 envelope without echoing the user-supplied MIME type', async () => {
+  it('returns 400 envelope when cf-turnstile-response field is missing', async () => {
     const env = buildEnv();
     const form = new FormData();
+    form.set('image', pngFile(4));
+    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('returns 415 envelope without echoing the user-supplied MIME type', async () => {
+    const env = buildEnv();
     // Attacker tries to inject a long / control-bearing MIME string.
     const malicious = `text/plain;${'A'.repeat(200)}\n[api] forged log line`;
-    form.set('image', new File([new Uint8Array([1, 2])], 'note.txt', { type: malicious }));
-    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const file = new File([new Uint8Array([1, 2])], 'note.txt', { type: malicious });
+    const res = await app.request('/rooms', { method: 'POST', body: formWithImage(file) }, env);
     expect(res.status).toBe(415);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('UNSUPPORTED_MEDIA_TYPE');
@@ -55,14 +91,10 @@ describe('POST /rooms', () => {
 
   it('returns 413 envelope with a fixed public message', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set(
-      'image',
-      new File([new Uint8Array(MAX_IMAGE_BYTES + 1).fill(0)], 'big.png', {
-        type: 'image/png',
-      }),
-    );
-    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const big = new File([new Uint8Array(MAX_IMAGE_BYTES + 1).fill(0)], 'big.png', {
+      type: 'image/png',
+    });
+    const res = await app.request('/rooms', { method: 'POST', body: formWithImage(big) }, env);
     expect(res.status).toBe(413);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('PAYLOAD_TOO_LARGE');
@@ -71,28 +103,77 @@ describe('POST /rooms', () => {
 
   it('returns 400 envelope when file is empty', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', new File([new Uint8Array(0)], 'empty.png', { type: 'image/png' }));
-    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const empty = new File([new Uint8Array(0)], 'empty.png', { type: 'image/png' });
+    const res = await app.request('/rooms', { method: 'POST', body: formWithImage(empty) }, env);
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('INVALID_REQUEST');
   });
 });
 
+describe('POST /rooms (Phase 7 — Turnstile + RL + blocklist)', () => {
+  it('returns 401 UNAUTHORIZED when Turnstile bypass is off and the token verifies as invalid', async () => {
+    // Force bypass=false and let the dev secret fail the live siteverify call.
+    // We also stub `fetch` indirectly by making the secret empty so the service
+    // short-circuits to `misconfigured`. The public envelope must still surface
+    // as 401 — clients should not learn whether it was misconfig vs invalid.
+    const env = buildEnv({ BYPASS_TURNSTILE: 'false', TURNSTILE_SECRET_KEY: '' });
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4)) },
+      env,
+    );
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('returns 422 UNPROCESSABLE_ENTITY when the image SHA-256 is in the blocklist', async () => {
+    // Pre-compute the SHA-256 of the test fixture so we can prime the blocklist.
+    const buf = new Uint8Array(4); // matches pngFile(4) — all zero bytes
+    const digest = await crypto.subtle.digest('SHA-256', buf.buffer);
+    const hex = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const env = buildEnv({
+      IMAGE_BLOCKLIST: createInMemoryKv({ [hex]: 'phishing-sample' }),
+    });
+
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4)) },
+      env,
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    expect(body.error.message).toBe('This image cannot be uploaded');
+  });
+
+  it('returns 429 RATE_LIMITED when RL_CREATE_ROOM rejects', async () => {
+    const env = buildEnv({ RL_CREATE_ROOM: createStubRateLimit({ alwaysBlock: true }) });
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4)) },
+      env,
+    );
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
+});
+
 describe('GET /rooms/:id', () => {
   it('returns 200 with the same Room created via POST', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', pngFile(4));
     const created = (await (
-      await app.request('/rooms', { method: 'POST', body: form }, env)
-    ).json()) as Room;
+      await app.request('/rooms', { method: 'POST', body: formWithImage(pngFile(4)) }, env)
+    ).json()) as PublicRoom;
 
     const res = await app.request(`/rooms/${created.id}`, undefined, env);
 
     expect(res.status).toBe(200);
-    const fetched = (await res.json()) as Room;
+    const fetched = (await res.json()) as PublicRoom;
     expect(fetched).toEqual(created);
   });
 
@@ -116,20 +197,8 @@ describe('GET /rooms/:id', () => {
   });
 });
 
-type PublicRoom = {
-  id: string;
-  createdAt: number;
-  ttlMs: number;
-  protected: boolean;
-  image?: { key: string; contentType: string; size: number };
-};
-
-type AuthOk = { token: string };
-
 const createUnprotectedRoom = async (env: ReturnType<typeof buildEnv>): Promise<PublicRoom> => {
-  const form = new FormData();
-  form.set('image', pngFile(4));
-  const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+  const res = await app.request('/rooms', { method: 'POST', body: formWithImage(pngFile(4)) }, env);
   return (await res.json()) as PublicRoom;
 };
 
@@ -137,10 +206,11 @@ const createProtectedRoom = async (
   env: ReturnType<typeof buildEnv>,
   password: string,
 ): Promise<PublicRoom> => {
-  const form = new FormData();
-  form.set('image', pngFile(4));
-  form.set('password', password);
-  const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+  const res = await app.request(
+    '/rooms',
+    { method: 'POST', body: formWithImage(pngFile(4), { password }) },
+    env,
+  );
   return (await res.json()) as PublicRoom;
 };
 
@@ -162,10 +232,11 @@ describe('POST /rooms (Phase 5 — password)', () => {
 
   it('treats empty password as unprotected', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', pngFile(4));
-    form.set('password', '');
-    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4), { password: '' }) },
+      env,
+    );
     expect(res.status).toBe(201);
     const body = (await res.json()) as PublicRoom;
     expect(body.protected).toBe(false);
@@ -173,10 +244,11 @@ describe('POST /rooms (Phase 5 — password)', () => {
 
   it('rejects passwords longer than 256 chars with 400', async () => {
     const env = buildEnv();
-    const form = new FormData();
-    form.set('image', pngFile(4));
-    form.set('password', 'a'.repeat(257));
-    const res = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4), { password: 'a'.repeat(257) }) },
+      env,
+    );
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('INVALID_REQUEST');
@@ -293,5 +365,22 @@ describe('POST /rooms/:id/auth (Phase 5 — token issuance)', () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('returns 429 RATE_LIMITED when RL_AUTH rejects', async () => {
+    const env = buildEnv({ RL_AUTH: createStubRateLimit({ alwaysBlock: true }) });
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(
+      `/rooms/${created.id}/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'letmein' }),
+      },
+      env,
+    );
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('RATE_LIMITED');
   });
 });
