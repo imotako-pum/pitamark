@@ -193,7 +193,7 @@
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
 | 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | complete | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) / [review](../reviews/phase-7-public-launch-review.md) |
-| 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | pending | - | 7 | - |
+| 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | code/docs complete (A 実機オペ未実施) | - | 7 | [plan](../plans/completed/phase-7.5-production-provisioning.plan.md) / [report](../reports/phase-7.5-production-provisioning-report.md) |
 | 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.5 | - |
 
 ### Phase Details
@@ -326,6 +326,10 @@
 | スパム対策階層（Phase 7） | **Workers Rate Limiting + Cloudflare Turnstile + 画像 SHA-256 ブラックリスト の三層** | IP-only RL のみ / WAF / 認証必須化 | 各層が独立に fail / disable 可能、運用負荷最小、Workers binding で実装簡素 |
 | アナリティクス（Phase 7） | **Cloudflare Web Analytics（cookieless）** | Plausible / GA4 / Umami | CF スタック整合 + cookie 同意不要 + 無料、ビルド時に `data-cf-beacon` token 注入 |
 | ルート middleware 配線（Phase 7） | **`createRoute({ middleware })` フィールドで宣言** | `OpenAPIHono.use()` を chain | `.use()` が chained 型推論を `any` に潰し `hc<AppType>` クライアントの型情報が壊れる。Plan 段階のリスク予測通り |
+| 本番デプロイ運用（Phase 7.5） | **手動 `wrangler deploy` (API) + Pages Git 連携 (Web)** | `main` push の auto-deploy via GitHub Actions | 個人開発で main = production の関係が緊密。dogfood 中に「壊れたコードを押し戻したい」場面で手動が早い。GitHub Actions に `CLOUDFLARE_API_TOKEN` を入れる追加リスクも避ける。Web は静的なので Pages Git 連携で十分 |
+| `apps/web/.env.production` の取り扱い（Phase 7.5） | **commit せず Pages build env のみで管理** | リポジトリにコミットして履歴で追跡 | site key / analytics token は public bundle に焼かれるので秘匿性は低いが、本番 URL を git 履歴に残す副作用を避ける。`.env.example` にエントリは残し、本番値は Pages settings に投入する |
+| E2E プロジェクト構成（Phase 7.5） | **chromium + mobile-chrome（Pixel 5 emulation）** | Firefox / WebKit を同時追加 | Phase 7.5 の主目的は本番プロビジョニングと観測設計。webServer multi-process 化と新 spec 4 件追加と同時に WebKit を入れると flake リスクが上がる。Firefox / WebKit は Phase 8 dogfood 後に判断 |
+| 観測手段（Phase 7.5） | **Cloudflare Web Analytics + `wrangler tail` のみ** | Sentry / Datadog / Workers Logpush | 月額 $0〜$30 制約と「最小限を最小限に」の方針。dogfood 規模での十分性を docs/observability.md で言語化、必要が顕在化したら Phase 8 follow-up で再評価 |
 
 ---
 

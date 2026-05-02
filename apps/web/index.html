@@ -30,8 +30,13 @@
          from VITE_CF_ANALYTICS_TOKEN; left blank in dev so no beacon ships. -->
     <script>
       (() => {
-        const t = "%VITE_CF_ANALYTICS_TOKEN%";
-        if (!t || t.startsWith("%")) return;
+        // CF Web Analytics の token は base62 + ハイフン/アンダースコアのみ。
+        // フォーク時に引用符等が混入しても JS 文字列脱出 → XSS が起きないよう
+        // 想定文字集合外を sanitize で削る (Phase 7 review LOW-2 対応)。
+        const tRaw = "%VITE_CF_ANALYTICS_TOKEN%";
+        if (!tRaw || tRaw.startsWith("%")) return;
+        const t = tRaw.replace(/[^A-Za-z0-9_-]/g, "");
+        if (!t) return;
         const s = document.createElement("script");
         s.defer = true;
         s.src = "https://static.cloudflareinsights.com/beacon.min.js";

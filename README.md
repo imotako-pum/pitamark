@@ -173,7 +173,13 @@ Yjs 同期。保護ルームは `?token=<JWT>` 必須。未保護は `RL_SYNC` (
 
 ## Production deploy
 
-前提: Cloudflare Workers Paid plan ($5/月) + R2 + KV + Pages（無料枠）。
+前提: Cloudflare Workers Paid plan ($5/月) + R2 + KV + Pages（無料枠）+ Turnstile + Web Analytics。
+
+運用方針（Phase 7.5 で確定 / [PRD Decisions Log](./.claude/PRPs/prds/snap-share.prd.md#decisions-log)）:
+
+- API は **手動 `wrangler deploy`**（オーナーのみが実行）
+- Web は **Cloudflare Pages の Git 連携で `main` 自動 build**
+- `.env.production` は **commit せず Pages build env で管理**（site key / analytics token は public bundle に焼かれるが本番 URL を履歴に残さない）
 
 ```sh
 # 1. R2 bucket
@@ -181,31 +187,51 @@ wrangler r2 bucket create snap-share-images
 
 # 2. KV namespace for image blocklist
 wrangler kv namespace create IMAGE_BLOCKLIST
-# → 出力された ID を apps/api/wrangler.toml の `[[kv_namespaces]] id = "..."` に貼る
+# → 出力された 32 文字 hex の ID を apps/api/wrangler.toml の
+#   `[[kv_namespaces]] id = "..."` に貼る（REPLACE_WITH_PRODUCTION_KV_ID を上書き）。
+#   貼り忘れると blocklist は fail-open でゼロ件 KV と等価になるため要注意。
 
 # 3. Secrets
 wrangler secret put ROOM_TOKEN_SECRET    # 32+ byte random (例: openssl rand -base64 48)
 wrangler secret put TURNSTILE_SECRET_KEY # CF dashboard → Turnstile → widget secret
 
-# 4. Variables for production
-#    apps/api/wrangler.toml の [vars]:
-#    - TURNSTILE_SITE_KEY を本番 site key に
+# 4. Turnstile widget の Allowed hostnames
+#    dashboard.cloudflare.com → Turnstile → widget → Settings →
+#    Allowed hostnames に `snap-share.pages.dev` を登録（カスタムドメインなら両方）。
+#    登録漏れは siteverify が `invalid-input-secret` で常時失敗するので
+#    `wrangler tail --search "turnstile verify failed"` で即発見できる。
+
+# 5. apps/api/wrangler.toml の [vars]:
+#    - TURNSTILE_SITE_KEY を本番 widget site key に書き換え
 #    - BYPASS_TURNSTILE は "false" のまま
 
-# 5. Deploy API (Workers)
+# 6. Deploy API (Workers)
 cd apps/api && pnpm wrangler deploy
+# 初回 deploy で DO migration v1 → v2 が atomic に適用される。
+# RL binding 3 つは [[ratelimits]] 経由で deploy 時に自動 provision される。
 
-# 6. Deploy Web (Pages, Git 連携)
+# 7. smoke check
+curl -i https://snap-share-api.<account>.workers.dev/health
+# → 200 { "ok": true, "service": "snap-share-api", "ts": ... }
+
+# 8. Deploy Web (Pages, Git 連携)
 # Cloudflare ダッシュボード → Pages → New project → Connect to GitHub
-#   Build command: pnpm install --frozen-lockfile && pnpm -F @snap-share/web build
-#   Build output:  apps/web/dist
-#   Root:          (空) または apps/web
-#   Environment variables:
-#     VITE_API_URL=https://snap-share-api.{account}.workers.dev
-#     VITE_API_WS_URL=wss://snap-share-api.{account}.workers.dev
+#   Production branch: main
+#   Build command:     pnpm install --frozen-lockfile && pnpm -F @snap-share/web build
+#   Build output:      apps/web/dist
+#   Root directory:    (空)  ※ monorepo のため
+#   Node version:      22
+#   PNPM_VERSION:      10  ※ デフォルトの 8 だと catalog: 記法を解釈できない
+#   Environment variables (Production):
+#     VITE_API_URL=https://snap-share-api.<account>.workers.dev
+#     VITE_API_WS_URL=wss://snap-share-api.<account>.workers.dev
 #     VITE_TURNSTILE_SITE_KEY=<本番 site key>
 #     VITE_CF_ANALYTICS_TOKEN=<CF Web Analytics token>
 #     VITE_PUBLIC_URL=https://snap-share.pages.dev
+
+# 9. 観測 / KPI
+# 運用フローと観測 KPI / SLO / wrangler tail クエリ集は
+# docs/observability.md を参照。
 ```
 
 ブラックリストへの追加は KV を直接更新：
@@ -213,6 +239,8 @@ cd apps/api && pnpm wrangler deploy
 ```sh
 wrangler kv key put --binding=IMAGE_BLOCKLIST <sha256-hex> "phishing-2026q2"
 ```
+
+> 運用フロー / KPI / SLO / 撤退ライン / `wrangler tail` クエリ集は [docs/observability.md](./docs/observability.md) を参照。
 
 ## PRP Workflow
 

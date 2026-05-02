@@ -52,21 +52,29 @@ period = 60
 # hex digest of the original bytes; values are operator-supplied reason
 # strings (free-form; only used in dashboards / `wrangler kv key get`).
 #
-# Provision per-environment:
+# Provision per-environment (Phase 7.5 runbook):
 #   wrangler kv namespace create IMAGE_BLOCKLIST
-# then paste the returned ID into `id = "..."` below before deploying.
+#   wrangler kv namespace create IMAGE_BLOCKLIST --preview   # 任意 (dev 用)
+# Returns a 32-char hex `id` — replace `REPLACE_WITH_PRODUCTION_KV_ID` below
+# with that value BEFORE the first `wrangler deploy`. Without this, the
+# `image-blocklist-service` falls open (treats every SHA as unblocked) and
+# silently disables the blocklist tier. See docs/observability.md.
 [[kv_namespaces]]
 binding = "IMAGE_BLOCKLIST"
 id = "REPLACE_WITH_PRODUCTION_KV_ID"
 
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
-# Public Turnstile site key. Override to the real production widget key via
-# `wrangler.toml` overrides or environment-specific `[env.production.vars]`
-# when ready to ship. The default is the always-passes dev test key.
+# Public Turnstile site key. The default is the always-passes dev test key
+# so `wrangler dev` and CI work without contacting Cloudflare. Phase 7.5:
+# replace with the production widget site key (`dashboard.cloudflare.com`
+# → Turnstile → Add a site) before running `wrangler deploy`. The key is
+# public — safe to commit.
 TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
 # `BYPASS_TURNSTILE` MUST be `"false"` in production. The flag exists only so
 # `wrangler dev` and CI can run without contacting the live siteverify endpoint.
+# Phase 7.5: confirmed production keeps this `"false"`; local dev overrides via
+# `apps/api/.dev.vars` BYPASS_TURNSTILE=true (see .dev.vars.example).
 BYPASS_TURNSTILE = "false"
 
 # Secrets — set via `wrangler secret put NAME` (production) or
