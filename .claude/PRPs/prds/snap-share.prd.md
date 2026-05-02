@@ -192,8 +192,9 @@
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | complete | - | 2, 3 | [phase-4-realtime-sync.plan.md](../plans/completed/phase-4-realtime-sync.plan.md) / [report](../reports/phase-4-realtime-sync-report.md) |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
-| 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | in-progress | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) |
-| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7 | - |
+| 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | complete | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) / [review](../reviews/phase-7-public-launch-review.md) |
+| 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | pending | - | 7 | - |
+| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.5 | - |
 
 ### Phase Details
 
@@ -253,6 +254,39 @@
 - Scope: Turnstile、レート制限、Cloudflare Analytics、README/CONTRIBUTING/LICENSE、Cloudflare Pagesデプロイ
 - Success signal: 本番URLでスパム経路が塞がれており、READMEで個人開発として恥ずかしくない説明
 
+**Phase 7.5: 本番プロビジョニング + 観測 + E2E 拡充（〜5日）**
+- Goal: Phase 8 dogfood を開始するための物理的・運用的前提を揃える
+- 背景: Phase 7 で「コード上は公開可能」になったが、本番 Cloudflare リソースは未確定 / KPI 未定義 / E2E は smoke 1 件のみ。dogfood を「感想で終わる 2 週間」にしないために、計測設計と回帰検知をここで先回り。
+- Scope:
+  - **A. Cloudflare 本番設定（必須）**
+    - R2 bucket / Durable Object migration / KV namespace (`IMAGE_BLOCKLIST`) / Rate Limiting binding ×3 (`RL_CREATE_ROOM_*`) を本番作成し `wrangler.toml` の placeholder（`REPLACE_WITH_PRODUCTION_*`）を確定値に差し替え
+    - Turnstile site key / secret を発行、`apps/web` の `.env.production` と `wrangler secret put TURNSTILE_SECRET` に注入
+    - Cloudflare Web Analytics token 発行 → CI で `VITE_CF_ANALYTICS_TOKEN` 注入
+    - Cloudflare Pages プロジェクト作成、`apps/web/dist` をデプロイ、`_headers` の CSP が反映されているか実機検証
+    - Workers route / カスタムドメイン or workers.dev URL 確定（Turnstile site の host 制約に影響）
+    - GitHub Actions の本番 secrets を投入し、main マージで自動デプロイ可能にする（or 手動 tag 運用を確定）
+    - README / CONTRIBUTING のデプロイ手順を実機オペで再検証し、`wrangler secret put` の手順をドキュメント化
+  - **B. 観測 / KPI 設計（dogfood 合否を後付けにしないために必須）**
+    - dogfood で見る KPI の事前定義: rooms 作成成功率 / 画像アップロード成功率 / p95 WebSocket RTT / Rate Limit ヒット率 / Turnstile fail 率 / 画像 SHA-256 重複率 / 24h 後の room 残存率
+    - エラーバジェット / 撤退ライン: rooms 作成成功率 < 99% / p95 WS RTT > 500ms 等で改修着手
+    - Cloudflare Web Analytics でのダッシュボード組み立て（Page views / 主要 referer / device 比率）
+    - `wrangler tail` で見るログ項目を確定（`error.code` / `RL` / `turnstile` 結果）
+  - **C. E2E 拡充（review LOW-3 / Phase 1 の宿題回収）**
+    - クリティカルパス: 画像貼付 → 注釈 → PNG エクスポート / 共有リンク作成 → 別コンテキストで参加 → 同期反映 / パスワード付きルーム作成 → ゲート通過
+    - awareness 出退室 / 再接続シナリオ
+    - Turnstile / Rate Limit を test 用 site key (`1x00000000000000000000AA`) と bypass モードで E2E 経路に組み込む
+    - Firefox / WebKit を chromium に追加するか判断（Phase 1 で「Phase 6 後に拡張」と明記）
+    - モバイル viewport の Playwright screenshot 回帰
+  - **D. レビュー残課題の刈り取り**
+    - Phase 7 review の LOW-1〜4 の要否判断（LOW-1 KV placeholder は A で自動解消、LOW-2/3/4 は要否判断）
+- Success signal:
+  - 本番 URL で rooms 作成 → 閲覧 → 注釈 → PNG エクスポート / 共有 → 別ブラウザ参加が踏める
+  - KPI ダッシュボードが「数字が読める」状態で見える（測定設計の検証は dogfood 開始時点でできる）
+  - クリティカルパス E2E が緑、CI 経由で main マージごとに走る
+- 非スコープ（Phase 8 で扱う）:
+  - dogfood で「実際に発生した問題」への小修正
+  - README の英語化 / privacy ページの追加（公開規模が固まってから判断）
+
 **Phase 8: dogfood & 計測（〜2週間）**
 - Goal: 仮説の一次検証
 - Scope: オーナー自身の業務利用、コア指標の集計、必要な小修正
@@ -263,6 +297,7 @@
 - **Phase 2 と 3 は並行可**: 画像アップロード（API側）と キャンバス（フロント側）は独立
 - **Phase 2.5 は Phase 3 着手前の先行推奨**: Phase 2.5 が ~2日で済む上、Phase 3 のフロント実装が `hc` 型推論を最初から使える方が手戻りがない
 - **Phase 5 と 6 は並行可**: バックエンド（パスワード/TTL）とUI仕上げは独立
+- **Phase 7.5 内の A / B / C は並行可**: A（CF プロビジョニング）と C（E2E 拡充）は実装担当が分かれるため独立、B（KPI 設計）はドキュメント作業で並走可能。ただし「dogfood 開始」のゲートは A と B が揃うこと（C は「追従できていれば良い」位置づけ）
 - 個人開発・週15h想定だが、並行可能枠を活用すれば実質ピッチを上げられる
 
 ---
