@@ -16,3 +16,4 @@ test-results/
 .tsbuildinfo/
 *.tsbuildinfo
 .claude/settings.local.json
+docs/.tmp
