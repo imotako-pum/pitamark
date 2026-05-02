@@ -194,7 +194,7 @@
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
 | 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | complete | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) / [review](../reviews/phase-7-public-launch-review.md) |
 | 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | complete (Track A 実機オペ + smoke / 発見バグの回収は 7.6 へ持ち越し) | - | 7 | [plan](../plans/completed/phase-7.5-production-provisioning.plan.md) / [report](../reports/phase-7.5-production-provisioning-report.md) |
-| 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | pending | - | 7.5 | - |
+| 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | in-progress | - | 7.5 | [plan](../plans/phase-7.6-manual-qa-bug-recovery.plan.md) |
 | 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.6 | - |
 
 ### Phase Details

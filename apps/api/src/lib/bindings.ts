@@ -56,6 +56,14 @@ export type Bindings = {
    * Defaults to `"false"` in production.
    */
   BYPASS_TURNSTILE: string;
+  /**
+   * Phase 7.6: When `"true"`, all `withRateLimit` middleware short-circuits
+   * and lets every request through. Used by E2E test runs where 14+ rooms
+   * are created in a 60s window and the production limit (5/60s) would
+   * cause spurious failures. MUST be `"false"` (or unset) in production.
+   * Defaults to `"false"`.
+   */
+  BYPASS_RATE_LIMIT: string;
 
   /**
    * Phase 7.5: API を叩いてよいブラウザ origin の allowlist（カンマ区切り）。

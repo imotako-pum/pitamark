@@ -30,6 +30,15 @@ TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 # See docs/observability.md for post-deploy validation.
 BYPASS_TURNSTILE="true"
 
+# Phase 7.6: When "true", every `withRateLimit` middleware short-circuits
+# and lets the request through. Use only in dev / E2E so the production
+# limit (5/60s on POST /rooms) does not block rapid local testing —
+# Playwright runs in particular create 14+ rooms in parallel within a
+# 60s window. Production MUST stay "false" (the wrangler.toml `[vars]`
+# default). Strict-string compare: only the exact string "true" triggers
+# bypass; "1" / "yes" / "TRUE" do NOT.
+BYPASS_RATE_LIMIT="true"
+
 # `wrangler dev` 時に API を叩いてよいブラウザ origin の allowlist。
 # `.dev.vars` は wrangler.toml `[vars]` を**完全に置換**（マージしない）ので、
 # 本番ホスト + localhost の dev origin を両方ここに書く必要がある。

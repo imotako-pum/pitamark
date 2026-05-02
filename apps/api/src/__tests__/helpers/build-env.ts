@@ -39,6 +39,10 @@ export const buildEnv = (overrides: Partial<Bindings> = {}): Bindings => ({
   TURNSTILE_SITE_KEY: DEFAULT_TURNSTILE_DEV_SITE_KEY,
   TURNSTILE_SECRET_KEY: DEFAULT_TURNSTILE_DEV_SECRET,
   BYPASS_TURNSTILE: 'true',
+  // Phase 7.6: テスト helper の default は production と同じ "false" にして、
+  // RL middleware が in-memory stub に到達する経路を維持する。E2E のように
+  // 全環境で bypass したい場合は呼び出し側で `buildEnv({ BYPASS_RATE_LIMIT: 'true' })`。
+  BYPASS_RATE_LIMIT: 'false',
   // Phase 7.5: テストは Origin header を立てないため CORS middleware が
   // pass-through するが、空 allowlist を fail-closed にしている関係で
   // 値そのものは必須。プロダクション同等の本番 + preview を入れる。
