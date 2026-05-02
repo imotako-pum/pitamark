@@ -55,7 +55,7 @@ Phase 7 で「コード上は公開可能」になった snap-share を Phase 8 
 | Build (`pnpm build`) | ✅ Pass | wrangler --dry-run 緑 / vite build 緑。`__SNAP_SHARE_ANNOTATIONS__` 文字列が dist bundle に含まれないことを grep で確認 |
 | E2E (ローカル `pnpm exec playwright test`) | ✅ Pass | 16 passed / 6 skipped (別 project の skip 化された spec) |
 | E2E (CI Linux) | ⏳ 次回 push で確認 | room-mobile が skip される想定。残り 14 ケースが緑 |
-| 本番手動 smoke | ✅ A7-1 実施済 / バグ 1 件を本 PR で修正 | 詳細は「Post-Implementation Smoke Findings」参照 |
+| 本番手動 smoke | ⏳ Track A 完了後 | `curl /health` / D&D / 共有 / PNG export / RoomGate を README runbook 通りに |
 
 ## Files Changed
 
@@ -116,42 +116,16 @@ Phase 7 で「コード上は公開可能」になった snap-share を Phase 8 
 
 新 unit / integration テストは無し（プラン通り）。
 
-## Post-Implementation Smoke Findings
-
-Track A 実機オペ完了後、`docs/.tmp/cloudflare-runbook.md` の A7-1 を実施した結果、本番でのみ再現する不具合 1 件と、ローカルでも再現する既存不具合 2 件を発見した。
-
-### 本 PR で同時修正（Phase 7.5 スコープ内）
-
-**画像エクスポートが本番でのみ失敗（tainted canvas）**
-
-- 症状: 受信側（共有 URL から開いた閲覧者）でエクスポートを押すと `Failed to execute 'toBlob' on 'HTMLCanvasElement': Tainted canvases may not be exported.` で失敗。
-- 根本原因: `apps/web/src/components/canvas/ImageLayer.tsx` が `useImage(src)` を `crossOrigin` 引数なしで呼んでいたため、`use-image` 内部の `<img>` が CORS 不在として扱われ canvas が tainted 化していた。
-- ローカルで再現しなかった理由: dev では `VITE_API_URL` 未設定 → 相対 URL → Vite proxy 経由で同一オリジン化されていたため。
-- 送信者・保護ルームで起きなかった理由: いずれも `URL.createObjectURL()` の `blob:` URL 経由で同一オリジン扱いだったため。
-- 修正: `useImage(src, 'anonymous')` に変更（API 側は Phase 7.5 で `app.use('*', cors(...))` を全ルートに適用済みなので追加対応不要）。
-- テスト: `apps/web/src/components/canvas/__tests__/ImageLayer.test.tsx` で `useImage` の引数を assert する unit test を追加。
-
-### 別 PR に切り出す（Phase 4 / Phase 5 の hotfix）
-
-| # | 症状 | 影響領域 | 切り出し先 | 対応 |
-|---|---|---|---|---|
-| 1 | パスワード設定 UI が画面に出てこない | Phase 5 | 別 issue / PR | ローカルでも再現するため Phase 7.5 起因ではない |
-| 2 | 画像クリアが効かない | Phase 4 | 別 issue / PR | ローカルでも再現するため Phase 7.5 起因ではない |
-
-これらは Phase 7.5 の受け入れ条件（本番で動くプロビジョニング）には影響せず、独立した hotfix として扱う。
-
 ## Next Steps
 
-- [x] Track A 実機オペ（オーナー実施済）
-  - [x] `wrangler r2 bucket create snap-share-images`
-  - [x] `wrangler kv namespace create IMAGE_BLOCKLIST` → wrangler.toml に貼付
-  - [x] CF dashboard で Turnstile widget 作成 → `wrangler secret put`
-  - [x] CF Web Analytics token 発行 → Pages build env に投入
-  - [x] Pages プロジェクト作成 + Git 連携
-  - [x] `cd apps/api && pnpm wrangler deploy`
-  - [x] 本番 URL での手動 smoke（A7-1 実施 / 発見事項は Post-Implementation Smoke Findings 参照）
-- [ ] tainted canvas 修正後に A7-1 を再実行して画像エクスポートが緑になることを確認
-- [ ] パスワード UI と画像クリアの不具合を別 issue / PR として切り出し
+- [ ] Track A 実機オペ（次セッションでオーナーが実行）
+  - [ ] `wrangler r2 bucket create snap-share-images`
+  - [ ] `wrangler kv namespace create IMAGE_BLOCKLIST` → wrangler.toml に貼付
+  - [ ] CF dashboard で Turnstile widget 作成 → `wrangler secret put`
+  - [ ] CF Web Analytics token 発行 → Pages build env に投入
+  - [ ] Pages プロジェクト作成 + Git 連携
+  - [ ] `cd apps/api && pnpm wrangler deploy`
+  - [ ] 本番 URL での手動 smoke
 - [ ] Code review via `/everything-claude-code:code-review`
 - [ ] Create PR via `/everything-claude-code:prp-pr`
 - [ ] CI Linux 上で `room-mobile` の Linux snapshot 生成（`UPDATE_SNAPSHOTS=1 pnpm exec playwright test --update-snapshots`）→ commit
