@@ -55,7 +55,7 @@ Phase 7 で「コード上は公開可能」になった snap-share を Phase 8 
 | Build (`pnpm build`) | ✅ Pass | wrangler --dry-run 緑 / vite build 緑。`__SNAP_SHARE_ANNOTATIONS__` 文字列が dist bundle に含まれないことを grep で確認 |
 | E2E (ローカル `pnpm exec playwright test`) | ✅ Pass | 16 passed / 6 skipped (別 project の skip 化された spec) |
 | E2E (CI Linux) | ⏳ 次回 push で確認 | room-mobile が skip される想定。残り 14 ケースが緑 |
-| 本番手動 smoke | ⏳ Track A 完了後 | `curl /health` / D&D / 共有 / PNG export / RoomGate を README runbook 通りに |
+| 本番手動 smoke | 🔁 Phase 7.6 へ持ち越し | Phase 7.5 セッションで一部踏み始めたが、A7-1 経路でバグ 3 件を検出したため独立フェーズで回収（後述「Carry-over to Phase 7.6」参照） |
 
 ## Files Changed
 
@@ -116,17 +116,39 @@ Phase 7 で「コード上は公開可能」になった snap-share を Phase 8 
 
 新 unit / integration テストは無し（プラン通り）。
 
+## Carry-over to Phase 7.6
+
+Phase 7.5 のスコープは「本番投入の前提を整える code/docs の確定」であり、本番に実際に踏み込んだ際に出るバグの洗い出しと回収、再発防止のための E2E 拡充は独立した Phase 7.6 として切り出す。
+
+### 1. Track A 実機オペ（A1〜A6）
+
+A1〜A6 は Cloudflare アカウント権限を持つオーナーの dashboard / wrangler 操作に依存するため、code/docs PR からは未実施のまま。Phase 7.6 では README runbook 通りに踏み、最終状態を `phase-7.6-*.md` に記録する。
+
+### 2. 網羅的な手動 QA
+
+`docs/.tmp/cloudflare-runbook.md` の A7-1 系を起点に、**本番 URL で全ユーザー導線を踏み倒して未知のバグまで洗い出す**。Phase 7.5 セッションでは A7-1 のうち画像エクスポートだけ踏んで時点で 3 件の不具合が発見されたため、網羅的に踏めばさらに出る蓋然性が高い。検出バグは GitHub issue で全件起票し、Phase 7.6 の report に網羅表で記録する。
+
+### 3. 既知の入口バグ（あくまで起点。Phase 7.6 で全件洗い出す）
+
+| # | 症状 | 領域 | 切り分け状況 |
+|---|------|------|------------|
+| 既知-1 | 公開ルームの受信側で画像エクスポートが `Failed to execute 'toBlob' ... Tainted canvases may not be exported.` で失敗 | `apps/web/src/components/canvas/ImageLayer.tsx` | 原因特定済。`useImage(src)` に `crossOrigin='anonymous'` が渡っておらず、本番の cross-origin 画像取得で canvas が tainted 化。試験的に修正→ revert したコミット `2e2d533` が参考実装。**preview URL では `VITE_API_URL` が空のため再現せず**、本番 (`snap-share.pages.dev`, build env で `VITE_API_URL=workers.dev` 注入) でのみ顕在化する点に注意 |
+| 既知-2 | パスワード設定 UI が画面に出ない | Phase 5 周辺 | ローカルでも再現する既存バグ。原因切り分け未着手 |
+| 既知-3 | 画像クリアが効かない | Phase 4 / 6 周辺 | ローカルでも再現する既存バグ。原因切り分け未着手 |
+
+### 4. E2E 強化（再発防止）
+
+7.6 で hotfix した各バグに対応する E2E spec を `apps/web/e2e/` に追加し、「次に同じバグが入ったら CI で落ちる」状態にする。重要シナリオで未カバーだったものを優先（受信側エクスポート / パスワード設定 UI / 画像クリア / 画像差し替え / 共有 URL の cross-origin 経路など）。Firefox / WebKit プロジェクト追加の判断、`room-mobile` の Linux snapshot 整備も 7.6 内で実施。
+
+### 5. 7.6 のクロージング条件
+
+全 hotfix が main にマージ → 本番再デプロイ → 手動 QA を clean run で全緑 → 新設 E2E spec が CI Linux で緑 → エビデンスを `reports/phase-7.6-*.md` に貼って Phase 8 dogfood の Go/No-Go 判断材料にする。
+
 ## Next Steps
 
-- [ ] Track A 実機オペ（次セッションでオーナーが実行）
-  - [ ] `wrangler r2 bucket create snap-share-images`
-  - [ ] `wrangler kv namespace create IMAGE_BLOCKLIST` → wrangler.toml に貼付
-  - [ ] CF dashboard で Turnstile widget 作成 → `wrangler secret put`
-  - [ ] CF Web Analytics token 発行 → Pages build env に投入
-  - [ ] Pages プロジェクト作成 + Git 連携
-  - [ ] `cd apps/api && pnpm wrangler deploy`
-  - [ ] 本番 URL での手動 smoke
 - [ ] Code review via `/everything-claude-code:code-review`
-- [ ] Create PR via `/everything-claude-code:prp-pr`
-- [ ] CI Linux 上で `room-mobile` の Linux snapshot 生成（`UPDATE_SNAPSHOTS=1 pnpm exec playwright test --update-snapshots`）→ commit
+- [ ] Create PR via `/everything-claude-code:prp-pr`（Phase 7.5 をクローズ）
+- [ ] **次回 main にて `/everything-claude-code:prp-plan .claude/PRPs/prds/snap-share.prd.md` を実行 → Phase 7.6 が立ち上がる**（PRD に Phase 7.6 を pending として登録済）
+- [ ] Phase 7.6 で Track A 実機オペ + A7-1〜 スモーク + バグ 3 件 hotfix を回収（詳細は「Carry-over to Phase 7.6」参照）
+- [ ] CI Linux 上で `room-mobile` の Linux snapshot 生成（`UPDATE_SNAPSHOTS=1 pnpm exec playwright test --update-snapshots`）→ commit（Phase 7.6 内で対応可）
 - [ ] dogfood 開始時に `wrangler tail` を 1 セッション流して LOW-4 (token query string) の実害を観測

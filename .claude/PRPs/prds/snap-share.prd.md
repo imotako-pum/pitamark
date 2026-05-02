@@ -193,8 +193,9 @@
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
 | 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | complete | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) / [review](../reviews/phase-7-public-launch-review.md) |
-| 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | code/docs complete (A 実機オペ未実施) | - | 7 | [plan](../plans/completed/phase-7.5-production-provisioning.plan.md) / [report](../reports/phase-7.5-production-provisioning-report.md) |
-| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.5 | - |
+| 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | complete (Track A 実機オペ + smoke / 発見バグの回収は 7.6 へ持ち越し) | - | 7 | [plan](../plans/completed/phase-7.5-production-provisioning.plan.md) / [report](../reports/phase-7.5-production-provisioning-report.md) |
+| 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | pending | - | 7.5 | - |
+| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.6 | - |
 
 ### Phase Details
 
@@ -286,6 +287,45 @@
 - 非スコープ（Phase 8 で扱う）:
   - dogfood で「実際に発生した問題」への小修正
   - README の英語化 / privacy ページの追加（公開規模が固まってから判断）
+
+**Phase 7.6: 手動 QA + バグ回収 + E2E 強化（〜5日）**
+- Goal: Phase 7.5 で整えた本番環境を「ユーザー操作で踏み倒しても壊れない」状態にし、再発防止の自動回帰網を併せて整える
+- 背景: Phase 7.5 の本番スモーク（`docs/.tmp/cloudflare-runbook.md` の A7-1 系）を踏み始めた時点で 3 件の不具合が即座に検出された。これは「コード/docs 完了 ≠ 動く」という乖離が現状残っていることを意味する。発見済 3 件だけでなく、本番環境で網羅的に手動テストを行えばさらに別の不具合が出る蓋然性が高い。dogfood 開始前に「全部洗い出す → 全部直す → E2E でロックする」を独立フェーズで回す。
+- Scope:
+  - **A. Track A 実機オペの完了確認**
+    - `wrangler r2 bucket create snap-share-images` / `wrangler kv namespace create IMAGE_BLOCKLIST` / Turnstile widget 作成 / CF Web Analytics token 発行 / Pages プロジェクト + Git 連携 / `cd apps/api && pnpm wrangler deploy`
+    - すでに踏んだ箇所は最新状態の確認のみで通過。未踏部分は README runbook 通りに実行
+    - 本番 API `https://snap-share-api.<account>.workers.dev/health` が 200 を返すこと、本番 web `https://snap-share.pages.dev` が読み込まれることを最終確認
+  - **B. 網羅的な手動 QA（探索的テスト）**
+    - `docs/.tmp/cloudflare-runbook.md` の A7-1 以降を起点に、本番 URL で全ユーザー導線を踏み倒す
+    - 観点: 画像 D&D / paste / クリア / 差し替え、注釈 4 種の作成 / 選択 / 移動 / 削除、Undo/Redo、共有 URL の発行 / 別ブラウザでの参加 / リアルタイム同期 / awareness、PNG エクスポート（送信側 / 受信側 / 公開ルーム / パスワード保護ルーム）、TTL、Turnstile / Rate Limit、CSP / HSTS / response headers
+    - デバイス観点: デスクトップ Chrome / Safari / Firefox、iOS Safari、Android Chrome、タブレット
+    - 検出したバグは GitHub issue として全件起票し、`reports/phase-7.6-*.md` に網羅表でリンク
+    - 既知の入口バグ（Phase 7.5 で発見済）:
+      - **既知-1. 画像エクスポート失敗（tainted canvas）** — 公開ルームの受信側で `Failed to execute 'toBlob' ... Tainted canvases may not be exported.`。原因特定済（`apps/web/src/components/canvas/ImageLayer.tsx` の `useImage(src)` に `crossOrigin='anonymous'` が無いため、本番の cross-origin 画像取得で canvas が tainted 化）。試験的に修正 → revert したコミット `2e2d533` が参考実装。preview URL では `VITE_API_URL` が空のため再現せず、本番 (`snap-share.pages.dev`, build env で `VITE_API_URL=workers.dev` 注入) でのみ顕在化する点に注意
+      - **既知-2. パスワード設定 UI が画面に出ない** — Phase 5 機能のローカルでも再現する既存バグ。原因切り分け未着手
+      - **既知-3. 画像クリアが効かない** — Phase 4 / 6 周辺機能のローカルでも再現する既存バグ。原因切り分け未着手
+  - **C. バグ全件 hotfix**
+    - B で起票した issue を全部直す。「3 件だけ」ではなく **B で発見した分は全部** が対象
+    - 各 hotfix は「再現 spec → 修正 → 緑」の TDD でクローズ
+    - severity が低いものは Phase 8 follow-up に回しても良いが、その場合は明示的に `phase-7.6-*.md` に「Phase 8 へ送る理由」を記録
+  - **D. E2E 強化（再発防止）**
+    - C で直したバグごとに対応する E2E spec を `apps/web/e2e/` に追加 — 「次にこのバグが入ったら CI で落ちる」状態にする
+    - 重要シナリオで未カバーだったものを優先: 受信側エクスポート / パスワード設定 UI / 画像クリア / 画像差し替え / 共有 URL の cross-origin 経路
+    - Firefox / WebKit プロジェクト追加の判断（Phase 7.5 で「Phase 8 dogfood 後に判断」としていたが、本番バグが実機ブラウザ依存だった場合はここで前倒し）
+    - macOS / Linux 両方で snapshot が緑になる仕組みを最終調整（Phase 7.5 持ち越しの `room-mobile` Linux snapshot を含む）
+  - **E. 検収ゲート**
+    - 全 hotfix が main にマージされ、本番再デプロイ後に B の手動 QA を再走 → 全緑
+    - 新設 E2E spec が CI Linux で緑
+    - スモーク結果と E2E カバレッジ差分を `reports/phase-7.6-*.md` に貼り、Phase 8 dogfood の Go/No-Go 判断材料にする
+- Success signal:
+  - 本番 URL で B の手動 QA が clean run で全緑、検出バグが 0 件で 1 サイクル踏める状態
+  - C で起票したバグ issue が全部 close（または明示的に Phase 8 送り）
+  - D で追加した E2E spec が CI で緑、`apps/web/e2e/` のカバレッジが「7.6 で発見したバグの再発を CI で検知できる」状態
+- 非スコープ（Phase 8 で扱う）:
+  - dogfood 中に新規発生する不具合の小修正
+  - 観測 KPI の実値レビュー（Phase 8 で初回計測）
+  - パフォーマンス最適化（CLS / LCP 等の数値改善は Phase 8 で観測してから判断）
 
 **Phase 8: dogfood & 計測（〜2週間）**
 - Goal: 仮説の一次検証
