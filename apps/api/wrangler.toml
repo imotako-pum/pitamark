@@ -61,7 +61,7 @@ period = 60
 # silently disables the blocklist tier. See docs/observability.md.
 [[kv_namespaces]]
 binding = "IMAGE_BLOCKLIST"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
+id = "750e562861214964ab8e157b79a1d42d"
 
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
@@ -70,7 +70,7 @@ ROOM_TTL_MS = "604800000" # 7 days
 # replace with the production widget site key (`dashboard.cloudflare.com`
 # → Turnstile → Add a site) before running `wrangler deploy`. The key is
 # public — safe to commit.
-TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+TURNSTILE_SITE_KEY = "0x4AAAAAADHtSX4zIeH_vH_NJOJFTqQCS-A"
 # `BYPASS_TURNSTILE` MUST be `"false"` in production. The flag exists only so
 # `wrangler dev` and CI can run without contacting the live siteverify endpoint.
 # Phase 7.5: confirmed production keeps this `"false"`; local dev overrides via
