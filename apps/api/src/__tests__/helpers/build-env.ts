@@ -39,5 +39,9 @@ export const buildEnv = (overrides: Partial<Bindings> = {}): Bindings => ({
   TURNSTILE_SITE_KEY: DEFAULT_TURNSTILE_DEV_SITE_KEY,
   TURNSTILE_SECRET_KEY: DEFAULT_TURNSTILE_DEV_SECRET,
   BYPASS_TURNSTILE: 'true',
+  // Phase 7.5: テストは Origin header を立てないため CORS middleware が
+  // pass-through するが、空 allowlist を fail-closed にしている関係で
+  // 値そのものは必須。プロダクション同等の本番 + preview を入れる。
+  CORS_ALLOWED_ORIGINS: 'https://snap-share.pages.dev,*.snap-share.pages.dev',
   ...overrides,
 });

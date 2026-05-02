@@ -192,8 +192,10 @@
 | 4 | リアルタイム同期 | Durable Object WS + y-durableobjects 統合 + Awareness | complete | - | 2, 3 | [phase-4-realtime-sync.plan.md](../plans/completed/phase-4-realtime-sync.plan.md) / [report](../reports/phase-4-realtime-sync-report.md) |
 | 5 | パスワード保護 + TTL | ルーム作成時パスワード + PBKDF2 + DO Alarm TTL | complete | with 6 | 4 | [phase-5-password-protection-ttl.plan.md](../plans/completed/phase-5-password-protection-ttl.plan.md) / [report](../reports/phase-5-password-protection-ttl-report.md) |
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
-| 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | in-progress | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) |
-| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7 | - |
+| 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | complete | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) / [review](../reviews/phase-7-public-launch-review.md) |
+| 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | complete (Track A 実機オペ + smoke / 発見バグの回収は 7.6 へ持ち越し) | - | 7 | [plan](../plans/completed/phase-7.5-production-provisioning.plan.md) / [report](../reports/phase-7.5-production-provisioning-report.md) |
+| 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | pending | - | 7.5 | - |
+| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.6 | - |
 
 ### Phase Details
 
@@ -253,6 +255,78 @@
 - Scope: Turnstile、レート制限、Cloudflare Analytics、README/CONTRIBUTING/LICENSE、Cloudflare Pagesデプロイ
 - Success signal: 本番URLでスパム経路が塞がれており、READMEで個人開発として恥ずかしくない説明
 
+**Phase 7.5: 本番プロビジョニング + 観測 + E2E 拡充（〜5日）**
+- Goal: Phase 8 dogfood を開始するための物理的・運用的前提を揃える
+- 背景: Phase 7 で「コード上は公開可能」になったが、本番 Cloudflare リソースは未確定 / KPI 未定義 / E2E は smoke 1 件のみ。dogfood を「感想で終わる 2 週間」にしないために、計測設計と回帰検知をここで先回り。
+- Scope:
+  - **A. Cloudflare 本番設定（必須）**
+    - R2 bucket / Durable Object migration / KV namespace (`IMAGE_BLOCKLIST`) / Rate Limiting binding ×3 (`RL_CREATE_ROOM_*`) を本番作成し `wrangler.toml` の placeholder（`REPLACE_WITH_PRODUCTION_*`）を確定値に差し替え
+    - Turnstile site key / secret を発行、`apps/web` の `.env.production` と `wrangler secret put TURNSTILE_SECRET` に注入
+    - Cloudflare Web Analytics token 発行 → CI で `VITE_CF_ANALYTICS_TOKEN` 注入
+    - Cloudflare Pages プロジェクト作成、`apps/web/dist` をデプロイ、`_headers` の CSP が反映されているか実機検証
+    - Workers route / カスタムドメイン or workers.dev URL 確定（Turnstile site の host 制約に影響）
+    - GitHub Actions の本番 secrets を投入し、main マージで自動デプロイ可能にする（or 手動 tag 運用を確定）
+    - README / CONTRIBUTING のデプロイ手順を実機オペで再検証し、`wrangler secret put` の手順をドキュメント化
+  - **B. 観測 / KPI 設計（dogfood 合否を後付けにしないために必須）**
+    - dogfood で見る KPI の事前定義: rooms 作成成功率 / 画像アップロード成功率 / p95 WebSocket RTT / Rate Limit ヒット率 / Turnstile fail 率 / 画像 SHA-256 重複率 / 24h 後の room 残存率
+    - エラーバジェット / 撤退ライン: rooms 作成成功率 < 99% / p95 WS RTT > 500ms 等で改修着手
+    - Cloudflare Web Analytics でのダッシュボード組み立て（Page views / 主要 referer / device 比率）
+    - `wrangler tail` で見るログ項目を確定（`error.code` / `RL` / `turnstile` 結果）
+  - **C. E2E 拡充（review LOW-3 / Phase 1 の宿題回収）**
+    - クリティカルパス: 画像貼付 → 注釈 → PNG エクスポート / 共有リンク作成 → 別コンテキストで参加 → 同期反映 / パスワード付きルーム作成 → ゲート通過
+    - awareness 出退室 / 再接続シナリオ
+    - Turnstile / Rate Limit を test 用 site key (`1x00000000000000000000AA`) と bypass モードで E2E 経路に組み込む
+    - Firefox / WebKit を chromium に追加するか判断（Phase 1 で「Phase 6 後に拡張」と明記）
+    - モバイル viewport の Playwright screenshot 回帰
+  - **D. レビュー残課題の刈り取り**
+    - Phase 7 review の LOW-1〜4 の要否判断（LOW-1 KV placeholder は A で自動解消、LOW-2/3/4 は要否判断）
+- Success signal:
+  - 本番 URL で rooms 作成 → 閲覧 → 注釈 → PNG エクスポート / 共有 → 別ブラウザ参加が踏める
+  - KPI ダッシュボードが「数字が読める」状態で見える（測定設計の検証は dogfood 開始時点でできる）
+  - クリティカルパス E2E が緑、CI 経由で main マージごとに走る
+- 非スコープ（Phase 8 で扱う）:
+  - dogfood で「実際に発生した問題」への小修正
+  - README の英語化 / privacy ページの追加（公開規模が固まってから判断）
+
+**Phase 7.6: 手動 QA + バグ回収 + E2E 強化（〜5日）**
+- Goal: Phase 7.5 で整えた本番環境を「ユーザー操作で踏み倒しても壊れない」状態にし、再発防止の自動回帰網を併せて整える
+- 背景: Phase 7.5 の本番スモーク（`docs/.tmp/cloudflare-runbook.md` の A7-1 系）を踏み始めた時点で 3 件の不具合が即座に検出された。これは「コード/docs 完了 ≠ 動く」という乖離が現状残っていることを意味する。発見済 3 件だけでなく、本番環境で網羅的に手動テストを行えばさらに別の不具合が出る蓋然性が高い。dogfood 開始前に「全部洗い出す → 全部直す → E2E でロックする」を独立フェーズで回す。
+- Scope:
+  - **A. Track A 実機オペの完了確認**
+    - `wrangler r2 bucket create snap-share-images` / `wrangler kv namespace create IMAGE_BLOCKLIST` / Turnstile widget 作成 / CF Web Analytics token 発行 / Pages プロジェクト + Git 連携 / `cd apps/api && pnpm wrangler deploy`
+    - すでに踏んだ箇所は最新状態の確認のみで通過。未踏部分は README runbook 通りに実行
+    - 本番 API `https://snap-share-api.<account>.workers.dev/health` が 200 を返すこと、本番 web `https://snap-share.pages.dev` が読み込まれることを最終確認
+  - **B. 網羅的な手動 QA（探索的テスト）**
+    - `docs/.tmp/cloudflare-runbook.md` の A7-1 以降を起点に、本番 URL で全ユーザー導線を踏み倒す
+    - 観点: 画像 D&D / paste / クリア / 差し替え、注釈 4 種の作成 / 選択 / 移動 / 削除、Undo/Redo、共有 URL の発行 / 別ブラウザでの参加 / リアルタイム同期 / awareness、PNG エクスポート（送信側 / 受信側 / 公開ルーム / パスワード保護ルーム）、TTL、Turnstile / Rate Limit、CSP / HSTS / response headers
+    - デバイス観点: デスクトップ Chrome / Safari / Firefox、iOS Safari、Android Chrome、タブレット
+    - 検出したバグは GitHub issue として全件起票し、`reports/phase-7.6-*.md` に網羅表でリンク
+    - 既知の入口バグ（Phase 7.5 で発見済）:
+      - **既知-1. 画像エクスポート失敗（tainted canvas）** — 公開ルームの受信側で `Failed to execute 'toBlob' ... Tainted canvases may not be exported.`。原因特定済（`apps/web/src/components/canvas/ImageLayer.tsx` の `useImage(src)` に `crossOrigin='anonymous'` が無いため、本番の cross-origin 画像取得で canvas が tainted 化）。試験的に修正 → revert したコミット `2e2d533` が参考実装。preview URL では `VITE_API_URL` が空のため再現せず、本番 (`snap-share.pages.dev`, build env で `VITE_API_URL=workers.dev` 注入) でのみ顕在化する点に注意
+      - **既知-2. パスワード設定 UI が画面に出ない** — Phase 5 機能のローカルでも再現する既存バグ。原因切り分け未着手
+      - **既知-3. 画像クリアが効かない** — Phase 4 / 6 周辺機能のローカルでも再現する既存バグ。原因切り分け未着手
+  - **C. バグ全件 hotfix**
+    - B で起票した issue を全部直す。「3 件だけ」ではなく **B で発見した分は全部** が対象
+    - 各 hotfix は「再現 spec → 修正 → 緑」の TDD でクローズ
+    - severity が低いものは Phase 8 follow-up に回しても良いが、その場合は明示的に `phase-7.6-*.md` に「Phase 8 へ送る理由」を記録
+  - **D. E2E 強化（再発防止）**
+    - C で直したバグごとに対応する E2E spec を `apps/web/e2e/` に追加 — 「次にこのバグが入ったら CI で落ちる」状態にする
+    - 重要シナリオで未カバーだったものを優先: 受信側エクスポート / パスワード設定 UI / 画像クリア / 画像差し替え / 共有 URL の cross-origin 経路
+    - Firefox / WebKit プロジェクト追加の判断（Phase 7.5 で「Phase 8 dogfood 後に判断」としていたが、本番バグが実機ブラウザ依存だった場合はここで前倒し）
+    - macOS / Linux 両方で snapshot が緑になる仕組みを最終調整（Phase 7.5 持ち越しの `room-mobile` Linux snapshot を含む）
+  - **E. 検収ゲート**
+    - 全 hotfix が main にマージされ、本番再デプロイ後に B の手動 QA を再走 → 全緑
+    - 新設 E2E spec が CI Linux で緑
+    - スモーク結果と E2E カバレッジ差分を `reports/phase-7.6-*.md` に貼り、Phase 8 dogfood の Go/No-Go 判断材料にする
+- Success signal:
+  - 本番 URL で B の手動 QA が clean run で全緑、検出バグが 0 件で 1 サイクル踏める状態
+  - C で起票したバグ issue が全部 close（または明示的に Phase 8 送り）
+  - D で追加した E2E spec が CI で緑、`apps/web/e2e/` のカバレッジが「7.6 で発見したバグの再発を CI で検知できる」状態
+- 非スコープ（Phase 8 で扱う）:
+  - dogfood 中に新規発生する不具合の小修正
+  - 観測 KPI の実値レビュー（Phase 8 で初回計測）
+  - パフォーマンス最適化（CLS / LCP 等の数値改善は Phase 8 で観測してから判断）
+
 **Phase 8: dogfood & 計測（〜2週間）**
 - Goal: 仮説の一次検証
 - Scope: オーナー自身の業務利用、コア指標の集計、必要な小修正
@@ -263,6 +337,7 @@
 - **Phase 2 と 3 は並行可**: 画像アップロード（API側）と キャンバス（フロント側）は独立
 - **Phase 2.5 は Phase 3 着手前の先行推奨**: Phase 2.5 が ~2日で済む上、Phase 3 のフロント実装が `hc` 型推論を最初から使える方が手戻りがない
 - **Phase 5 と 6 は並行可**: バックエンド（パスワード/TTL）とUI仕上げは独立
+- **Phase 7.5 内の A / B / C は並行可**: A（CF プロビジョニング）と C（E2E 拡充）は実装担当が分かれるため独立、B（KPI 設計）はドキュメント作業で並走可能。ただし「dogfood 開始」のゲートは A と B が揃うこと（C は「追従できていれば良い」位置づけ）
 - 個人開発・週15h想定だが、並行可能枠を活用すれば実質ピッチを上げられる
 
 ---
@@ -291,6 +366,10 @@
 | スパム対策階層（Phase 7） | **Workers Rate Limiting + Cloudflare Turnstile + 画像 SHA-256 ブラックリスト の三層** | IP-only RL のみ / WAF / 認証必須化 | 各層が独立に fail / disable 可能、運用負荷最小、Workers binding で実装簡素 |
 | アナリティクス（Phase 7） | **Cloudflare Web Analytics（cookieless）** | Plausible / GA4 / Umami | CF スタック整合 + cookie 同意不要 + 無料、ビルド時に `data-cf-beacon` token 注入 |
 | ルート middleware 配線（Phase 7） | **`createRoute({ middleware })` フィールドで宣言** | `OpenAPIHono.use()` を chain | `.use()` が chained 型推論を `any` に潰し `hc<AppType>` クライアントの型情報が壊れる。Plan 段階のリスク予測通り |
+| 本番デプロイ運用（Phase 7.5） | **手動 `wrangler deploy` (API) + Pages Git 連携 (Web)** | `main` push の auto-deploy via GitHub Actions | 個人開発で main = production の関係が緊密。dogfood 中に「壊れたコードを押し戻したい」場面で手動が早い。GitHub Actions に `CLOUDFLARE_API_TOKEN` を入れる追加リスクも避ける。Web は静的なので Pages Git 連携で十分 |
+| `apps/web/.env.production` の取り扱い（Phase 7.5） | **commit せず Pages build env のみで管理** | リポジトリにコミットして履歴で追跡 | site key / analytics token は public bundle に焼かれるので秘匿性は低いが、本番 URL を git 履歴に残す副作用を避ける。`.env.example` にエントリは残し、本番値は Pages settings に投入する |
+| E2E プロジェクト構成（Phase 7.5） | **chromium + mobile-chrome（Pixel 5 emulation）** | Firefox / WebKit を同時追加 | Phase 7.5 の主目的は本番プロビジョニングと観測設計。webServer multi-process 化と新 spec 4 件追加と同時に WebKit を入れると flake リスクが上がる。Firefox / WebKit は Phase 8 dogfood 後に判断 |
+| 観測手段（Phase 7.5） | **Cloudflare Web Analytics + `wrangler tail` のみ** | Sentry / Datadog / Workers Logpush | 月額 $0〜$30 制約と「最小限を最小限に」の方針。dogfood 規模での十分性を docs/observability.md で言語化、必要が顕在化したら Phase 8 follow-up で再評価 |
 
 ---
 

@@ -48,6 +48,18 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter @snap-share/web exec playwright install --with-deps chromium
 
+      # `wrangler dev` reads `.dev.vars` at startup. The Playwright globalSetup
+      # writes the same file but races with webServer launch in CI. Pre-write
+      # here so BYPASS_TURNSTILE is in effect when wrangler boots. All values
+      # are static (no untrusted input).
+      - name: Prepare apps/api/.dev.vars for E2E
+        run: |
+          cat > apps/api/.dev.vars <<'EOF'
+          BYPASS_TURNSTILE="true"
+          TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
+          ROOM_TOKEN_SECRET="ci-test-token-secret-min-32-bytes-long-enough"
+          EOF
+
       - name: Run E2E tests
         run: pnpm turbo run test:e2e
 

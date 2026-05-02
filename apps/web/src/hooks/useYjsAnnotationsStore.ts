@@ -96,6 +96,16 @@ export const useYjsAnnotationsStore = (
     };
   }, [ctx, roomId, setStatus]);
 
+  // E2E 用の観測フック。dev/test ビルドでのみ window 経由で annotations を
+  // 露出する。production では `import.meta.env.DEV` が定数 false になり Vite の
+  // tree-shaking で副作用ごと除去されるため bundle に文字列が残らない。
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (
+      window as unknown as { __SNAP_SHARE_ANNOTATIONS__?: ReadonlyArray<Annotation> }
+    ).__SNAP_SHARE_ANNOTATIONS__ = annotations;
+  }, [annotations]);
+
   const [canUndo, setCanUndo] = useStateRef(false);
   const [canRedo, setCanRedo] = useStateRef(false);
   useEffect(() => {

@@ -1,6 +1,8 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { Scalar } from '@scalar/hono-api-reference';
+import { cors } from 'hono/cors';
 import type { Bindings } from './lib/bindings';
+import { matchOrigin, parseAllowedOrigins } from './lib/cors';
 import { onAppError, onAppNotFound } from './lib/error';
 import { openApiDocConfig } from './lib/openapi';
 import { imagesRoute } from './routes/images';
@@ -13,6 +15,29 @@ import { syncRoute } from './yjs';
 export { SnapShareYDO, YDurableObjects } from './yjs';
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
+
+// Phase 7.5: ブラウザからの呼び出しは env 駆動の allowlist
+// （`wrangler.toml [vars]` / `.dev.vars` の `CORS_ALLOWED_ORIGINS`）でゲート。
+// 空 / パース不能な値は初回リクエストで例外を投げる fail-closed 方針 —
+// 黙って全 origin を弾くと misconfiguration が観測しにくいので、誤設定を
+// ログに大きく出すための意図的な選択。WebSocket `/sync` upgrade は CORS
+// 対象外で、別経路の origin check に依存する。
+app.use(
+  '*',
+  cors({
+    origin: (origin, c) => {
+      const raw = (c.env as Bindings).CORS_ALLOWED_ORIGINS ?? '';
+      const rules = parseAllowedOrigins(raw);
+      if (rules.length === 0) {
+        throw new Error('CORS_ALLOWED_ORIGINS is empty — refusing to handle browser requests');
+      }
+      return matchOrigin(origin, rules) ? origin : undefined;
+    },
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['content-type', 'authorization'],
+    maxAge: 86400,
+  }),
+);
 
 const routed = app
   .get('/health', (c) => c.json({ ok: true, service: 'snap-share-api', ts: Date.now() }))

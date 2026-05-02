@@ -52,22 +52,42 @@ period = 60
 # hex digest of the original bytes; values are operator-supplied reason
 # strings (free-form; only used in dashboards / `wrangler kv key get`).
 #
-# Provision per-environment:
+# Provision per-environment (Phase 7.5 runbook):
 #   wrangler kv namespace create IMAGE_BLOCKLIST
-# then paste the returned ID into `id = "..."` below before deploying.
+#   wrangler kv namespace create IMAGE_BLOCKLIST --preview   # 任意 (dev 用)
+# Returns a 32-char hex `id` — replace `REPLACE_WITH_PRODUCTION_KV_ID` below
+# with that value BEFORE the first `wrangler deploy`. Without this, the
+# `image-blocklist-service` falls open (treats every SHA as unblocked) and
+# silently disables the blocklist tier. See docs/observability.md.
 [[kv_namespaces]]
 binding = "IMAGE_BLOCKLIST"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
+id = "750e562861214964ab8e157b79a1d42d"
 
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
-# Public Turnstile site key. Override to the real production widget key via
-# `wrangler.toml` overrides or environment-specific `[env.production.vars]`
-# when ready to ship. The default is the always-passes dev test key.
-TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+# Public Turnstile site key. The default is the always-passes dev test key
+# so `wrangler dev` and CI work without contacting Cloudflare. Phase 7.5:
+# replace with the production widget site key (`dashboard.cloudflare.com`
+# → Turnstile → Add a site) before running `wrangler deploy`. The key is
+# public — safe to commit.
+TURNSTILE_SITE_KEY = "0x4AAAAAADHtSX4zIeH_vH_NJOJFTqQCS-A"
 # `BYPASS_TURNSTILE` MUST be `"false"` in production. The flag exists only so
 # `wrangler dev` and CI can run without contacting the live siteverify endpoint.
+# Phase 7.5: confirmed production keeps this `"false"`; local dev overrides via
+# `apps/api/.dev.vars` BYPASS_TURNSTILE=true (see .dev.vars.example).
 BYPASS_TURNSTILE = "false"
+# Phase 7.5: API を叩いてよいブラウザ origin の allowlist（カンマ区切り）。
+# 各エントリは以下のいずれか:
+#   - 完全オリジン       `https://snap-share.pages.dev`
+#   - ワイルドカード接尾辞 `*.snap-share.pages.dev`（https 限定 — Pages の
+#                          per-commit preview URL `<hash>.snap-share.pages.dev`
+#                          を吸収）
+# ローカル dev は `apps/api/.dev.vars` で `http://localhost:5173,4173` を
+# 追加上書き（`.dev.vars` は完全置換なので注意）。この `[vars]` は本番
+# allowlist のみ。空値は misconfiguration として初回リクエストで例外
+# （fail-closed）。fork して別 Pages プロジェクトに deploy する場合は両エントリ
+# を fork 側の `<project>.pages.dev` に書き換える。
+CORS_ALLOWED_ORIGINS = "https://snap-share.pages.dev,*.snap-share.pages.dev"
 
 # Secrets — set via `wrangler secret put NAME` (production) or
 # `apps/api/.dev.vars` (local dev; gitignored. See `.dev.vars.example`).
