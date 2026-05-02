@@ -13,6 +13,10 @@ type Props = Readonly<{
 
 const ERROR_TEXT: Record<AuthFailure, string> = {
   'wrong-password': 'パスワードが違います',
+  // Phase 7: server-side RL_AUTH (10 req/min keyed on roomId+IP) protects
+  // against brute force. Public message stays user-friendly without leaking
+  // the exact threshold.
+  'rate-limited': 'しばらく経ってからお試しください（試行回数が多すぎます）',
   network: 'ネットワークエラーが発生しました',
   unexpected: '入室処理に失敗しました',
 };

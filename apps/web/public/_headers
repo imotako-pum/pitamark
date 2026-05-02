@@ -1,0 +1,23 @@
+# Cloudflare Pages headers. Phase 7: production CSP for snap-share.
+# - script-src whitelists the two external CDNs we actually load:
+#     * challenges.cloudflare.com  → Turnstile widget loader
+#     * static.cloudflareinsights.com → Web Analytics beacon
+#   `'unsafe-inline'` is required for the small inline analytics bootstrap in
+#   index.html. The bundle itself is served from `'self'`.
+# - img-src includes `blob:` because <KonvaImage> consumes ObjectURLs for
+#   pasted/dropped images and protected-room images we materialize to a Blob.
+# - frame-src must include challenges.cloudflare.com for the Turnstile
+#   challenge iframe (invisible mode still mounts a frame on suspicious traffic).
+# - connect-src is `'self'` plus wss: so the WebSocket sync works whether or
+#   not VITE_API_WS_URL points to a different origin.
+# - style-src `'unsafe-inline'` because Tailwind v4 emits inline <style> for
+#   class layer ordering during hydration; tightening this requires a bundler
+#   rework and is a Phase 8 follow-up.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

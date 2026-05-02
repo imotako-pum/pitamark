@@ -22,11 +22,54 @@ new_classes = ["YDurableObjects"]
 tag = "v2"
 renamed_classes = [{ from = "YDurableObjects", to = "SnapShareYDO" }]
 
+# Phase 7: Workers Rate Limiting bindings.
+# - period must be 10 or 60 (no other values supported).
+# - namespace_id is an arbitrary positive integer (string) unique within the account.
+# - The runtime API is `await env.<NAME>.limit({ key })` returning `{ success }`.
+
+[[ratelimits]]
+name = "RL_CREATE_ROOM"
+namespace_id = "1001"
+[ratelimits.simple]
+limit = 5
+period = 60
+
+[[ratelimits]]
+name = "RL_AUTH"
+namespace_id = "1002"
+[ratelimits.simple]
+limit = 10
+period = 60
+
+[[ratelimits]]
+name = "RL_SYNC"
+namespace_id = "1003"
+[ratelimits.simple]
+limit = 30
+period = 60
+
+# Phase 7: KV namespace for image SHA-256 blocklist. Keys are the lowercase
+# hex digest of the original bytes; values are operator-supplied reason
+# strings (free-form; only used in dashboards / `wrangler kv key get`).
+#
+# Provision per-environment:
+#   wrangler kv namespace create IMAGE_BLOCKLIST
+# then paste the returned ID into `id = "..."` below before deploying.
+[[kv_namespaces]]
+binding = "IMAGE_BLOCKLIST"
+id = "REPLACE_WITH_PRODUCTION_KV_ID"
+
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
+# Public Turnstile site key. Override to the real production widget key via
+# `wrangler.toml` overrides or environment-specific `[env.production.vars]`
+# when ready to ship. The default is the always-passes dev test key.
+TURNSTILE_SITE_KEY = "1x00000000000000000000AA"
+# `BYPASS_TURNSTILE` MUST be `"false"` in production. The flag exists only so
+# `wrangler dev` and CI can run without contacting the live siteverify endpoint.
+BYPASS_TURNSTILE = "false"
 
-# `ROOM_TOKEN_SECRET` is a secret (HS256 JWT signing key for password-protected
-# room tokens). Inject via:
-#   wrangler secret put ROOM_TOKEN_SECRET   (production)
-#   apps/api/.dev.vars                      (local; gitignored)
-# Minimum 32 bytes recommended.
+# Secrets — set via `wrangler secret put NAME` (production) or
+# `apps/api/.dev.vars` (local dev; gitignored. See `.dev.vars.example`).
+#   ROOM_TOKEN_SECRET    HS256 JWT signing key for password-protected room tokens. Min 32 bytes.
+#   TURNSTILE_SECRET_KEY Cloudflare Turnstile siteverify secret.

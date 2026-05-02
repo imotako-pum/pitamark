@@ -20,6 +20,12 @@ export const RoomImageSchema = z
     key: z.string().min(1),
     contentType: z.enum(ALLOWED_IMAGE_MIME_TYPES),
     size: z.number().int().positive().max(MAX_IMAGE_BYTES),
+    // Phase 7: lowercase hex SHA-256 of the original bytes. Optional so older
+    // R2 metadata (created in Phase 5/6 before the field existed) still parses.
+    sha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
   })
   .readonly();
 

@@ -90,6 +90,23 @@ describe('RoomImageSchema', () => {
   it('rejects empty key', () => {
     expect(() => RoomImageSchema.parse({ key: '', contentType: 'image/png', size: 1 })).toThrow();
   });
+
+  it('parses an image with a valid lowercase 64-char hex sha256', () => {
+    const sha256 = 'a'.repeat(64);
+    const parsed = RoomImageSchema.parse({ ...image, sha256 });
+    expect(parsed.sha256).toBe(sha256);
+  });
+
+  it('treats sha256 as optional (legacy meta without the field still parses)', () => {
+    const parsed = RoomImageSchema.parse(image);
+    expect(parsed.sha256).toBeUndefined();
+  });
+
+  it('rejects an sha256 that is not 64 lowercase hex chars', () => {
+    expect(() => RoomImageSchema.parse({ ...image, sha256: 'a'.repeat(63) })).toThrow();
+    expect(() => RoomImageSchema.parse({ ...image, sha256: 'A'.repeat(64) })).toThrow();
+    expect(() => RoomImageSchema.parse({ ...image, sha256: 'g'.repeat(64) })).toThrow();
+  });
 });
 
 describe('RoomSchema', () => {

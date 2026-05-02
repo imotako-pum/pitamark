@@ -11,6 +11,12 @@ export const ERROR_CODES = [
   'PAYLOAD_TOO_LARGE',
   'NOT_FOUND',
   'UNAUTHORIZED',
+  // Phase 7: image blocklist hits get a 422 distinct from generic 400 to keep
+  // the client-side toast wording specific ("画像が使えない" vs "リクエスト不正").
+  'UNPROCESSABLE_ENTITY',
+  // Phase 7: rate-limit hits. Surfaced separately so the UI can show a
+  // distinct cooldown hint instead of conflating it with auth failure.
+  'RATE_LIMITED',
   'INTERNAL',
 ] as const;
 
@@ -21,7 +27,7 @@ export type ErrorEnvelope = {
   error: { code: ErrorCode; message: string };
 };
 
-type AppErrorStatus = 400 | 401 | 404 | 413 | 415 | 500;
+type AppErrorStatus = 400 | 401 | 404 | 413 | 415 | 422 | 429 | 500;
 
 // Shared OpenAPI / hc error response schema. Kept here (not in routes/) so
 // every route's response schema picks up new codes automatically.

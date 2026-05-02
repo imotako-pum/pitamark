@@ -1,10 +1,26 @@
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
+// Phase 7: replace `%VITE_FOO%` placeholders inside index.html at build time
+// (and during dev). Vite does not expand `%env%` in HTML by default; this
+// plugin reads the same env files Vite already loads (`.env.*`) and stamps
+// them in. Used for og:url / og:image / Cloudflare Web Analytics token.
+const htmlEnvPlugin = (mode: string): Plugin => {
+  const env = loadEnv(mode, path.resolve(import.meta.dirname), 'VITE_');
+  return {
+    name: 'html-env-replace',
+    transformIndexHtml: {
+      order: 'pre',
+      handler: (html) => html.replace(/%VITE_([A-Z0-9_]+)%/g, (_, key) => env[`VITE_${key}`] ?? ''),
+    },
+  };
+};
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), tailwindcss(), htmlEnvPlugin(mode)],
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
@@ -27,4 +43,4 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
-});
+}));

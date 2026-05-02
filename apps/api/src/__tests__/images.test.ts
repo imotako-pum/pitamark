@@ -1,4 +1,3 @@
-import type { Room } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
 import { issueRoomToken } from '../lib/token';
@@ -6,17 +5,22 @@ import { buildEnv, DEFAULT_ROOM_TOKEN_SECRET } from './helpers/build-env';
 
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const SVG_BYTES = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>');
+// Phase 7: every multipart upload must carry `cf-turnstile-response`.
+const TEST_TS_TOKEN = 'test-turnstile-token';
+
+type CreatedRoom = { id: string };
 
 const createRoomWithImage = async (
   env: ReturnType<typeof buildEnv>,
   bytes: Uint8Array,
   type: string,
   name: string,
-): Promise<Room> => {
+): Promise<CreatedRoom> => {
   const form = new FormData();
   form.set('image', new File([bytes], name, { type }));
+  form.set('cf-turnstile-response', TEST_TS_TOKEN);
   const res = await app.request('/rooms', { method: 'POST', body: form }, env);
-  return (await res.json()) as Room;
+  return (await res.json()) as CreatedRoom;
 };
 
 type ErrorBody = { ok: false; error: { code: string; message: string } };
@@ -75,6 +79,7 @@ const createProtectedRoomWithImage = async (
   const form = new FormData();
   form.set('image', new File([PNG_BYTES], 'cat.png', { type: 'image/png' }));
   form.set('password', password);
+  form.set('cf-turnstile-response', TEST_TS_TOKEN);
   const res = await app.request('/rooms', { method: 'POST', body: form }, env);
   return (await res.json()) as { id: string };
 };

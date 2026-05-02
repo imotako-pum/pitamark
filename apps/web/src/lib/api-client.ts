@@ -25,31 +25,50 @@ const normalizePassword = (password: string | undefined | null): string | undefi
   return password.length > 0 ? password : undefined;
 };
 
+// Phase 7: discriminated-union failure surface. The server can now reject
+// uploads for several reasons that warrant distinct UI text, so callers
+// switch on `reason` instead of treating every miss as "network error".
+export type CreateRoomFailure =
+  | { reason: 'rate-limited' }
+  | { reason: 'image-blocked' }
+  | { reason: 'turnstile' }
+  | { reason: 'invalid' }
+  | { reason: 'network' };
+
+export type CreateRoomResult = { ok: true; room: RoomPublic } | ({ ok: false } & CreateRoomFailure);
+
 /**
- * Uploads an image to `POST /rooms`. Returns null on any failure so callers
- * can fall back to local-only behavior without surfacing a hard error.
+ * Uploads an image to `POST /rooms`.
  * Empty/whitespace `password` is normalized to undefined so the resulting
- * room stays unprotected.
+ * room stays unprotected. `turnstileToken` is sent verbatim — the API
+ * decides whether to verify it or short-circuit via `BYPASS_TURNSTILE`.
  */
-export const createRoom = async (file: File, password?: string): Promise<RoomPublic | null> => {
+export const createRoom = async (
+  file: File,
+  password: string | undefined,
+  turnstileToken: string,
+): Promise<CreateRoomResult> => {
   try {
     const form = new FormData();
     form.set('image', file);
     const pw = normalizePassword(password);
-    if (pw !== undefined) {
-      form.set('password', pw);
-    }
+    if (pw !== undefined) form.set('password', pw);
+    form.set('cf-turnstile-response', turnstileToken);
     const res = await fetch(`${baseUrl}/rooms`, { method: 'POST', body: form });
-    if (res.status !== 201) {
-      logger.warn('createRoom: unexpected status', { status: res.status });
-      return null;
+    if (res.status === 201) return { ok: true, room: (await res.json()) as RoomPublic };
+    if (res.status === 429) return { ok: false, reason: 'rate-limited' };
+    if (res.status === 422) return { ok: false, reason: 'image-blocked' };
+    if (res.status === 401) return { ok: false, reason: 'turnstile' };
+    if (res.status === 400 || res.status === 413 || res.status === 415) {
+      return { ok: false, reason: 'invalid' };
     }
-    return (await res.json()) as RoomPublic;
+    logger.warn('createRoom: unexpected status', { status: res.status });
+    return { ok: false, reason: 'network' };
   } catch (e: unknown) {
     logger.warn('createRoom: network error', {
       error: e instanceof Error ? e.message : String(e),
     });
-    return null;
+    return { ok: false, reason: 'network' };
   }
 };
 
@@ -66,14 +85,16 @@ export const fetchRoom = async (id: string): Promise<RoomPublic | null> => {
   }
 };
 
-export type AuthFailure = 'wrong-password' | 'network' | 'unexpected';
+// Phase 7: 'rate-limited' is added to the Phase 5 union so RoomGate can
+// distinguish bad password (401) from cooldown (429).
+export type AuthFailure = 'wrong-password' | 'rate-limited' | 'network' | 'unexpected';
 
 export type AuthResult = { ok: true; token: string } | { ok: false; reason: AuthFailure };
 
 /**
  * POST /rooms/:id/auth — exchanges a password for a 24h JWT.
  * Returns a tagged result so callers can show different UI for
- * 401 (bad password) vs network failures.
+ * 401 (bad password), 429 (cooldown) vs network failures.
  */
 export const authenticateRoom = async (id: string, password: string): Promise<AuthResult> => {
   try {
@@ -88,6 +109,9 @@ export const authenticateRoom = async (id: string, password: string): Promise<Au
     }
     if (res.status === 401) {
       return { ok: false, reason: 'wrong-password' };
+    }
+    if (res.status === 429) {
+      return { ok: false, reason: 'rate-limited' };
     }
     logger.warn('authenticateRoom: unexpected status', { status: res.status });
     return { ok: false, reason: 'unexpected' };

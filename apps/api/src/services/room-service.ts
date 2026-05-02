@@ -7,9 +7,12 @@ import {
 import { AppError } from '../lib/error';
 import { generateRoomId } from '../lib/id';
 import { logger } from '../lib/logger';
+import { sha256Hex } from '../lib/sha256';
 import type { ImageStorage } from '../storage/r2-image-storage';
 import type { MetaStorage } from '../storage/r2-meta-storage';
+import type { ImageBlocklistService } from './image-blocklist-service';
 import type { PasswordService } from './password-service';
+import type { TurnstileService } from './turnstile-service';
 
 export type RoomServiceDeps = {
   images: ImageStorage;
@@ -17,10 +20,33 @@ export type RoomServiceDeps = {
   now: () => number;
   ttlMs: number;
   password: PasswordService;
+  /**
+   * Phase 7: optional Turnstile verification. Tests + legacy callers may
+   * omit it; in that case `create` skips the token check.
+   */
+  turnstile?: TurnstileService;
+  /**
+   * Phase 7: optional SHA-256 blocklist. When omitted, every image passes.
+   */
+  blocklist?: ImageBlocklistService;
+  /**
+   * Phase 7: hash function override for tests that need a deterministic
+   * digest without recomputing on each call. Defaults to the real Web Crypto
+   * `sha256Hex` helper.
+   */
+  sha256?: (buf: ArrayBuffer) => Promise<string>;
 };
 
+export type RoomCreateOptions = Readonly<{
+  password?: string;
+  /** Token from the Turnstile widget. Required when `deps.turnstile` is set. */
+  turnstileToken?: string;
+  /** Visitor IP forwarded to siteverify. Optional. */
+  remoteIp?: string;
+}>;
+
 export type RoomService = {
-  create(file: File, password?: string): Promise<Room>;
+  create(file: File, opts?: RoomCreateOptions): Promise<Room>;
   get(id: string): Promise<Room>;
 };
 
@@ -63,7 +89,7 @@ const isProtectingPassword = (password: string | undefined): boolean =>
   typeof password === 'string' && password.length > 0;
 
 export const createRoomService = (deps: RoomServiceDeps): RoomService => ({
-  async create(file: File, password?: string): Promise<Room> {
+  async create(file: File, opts: RoomCreateOptions = {}): Promise<Room> {
     if (file.size === 0) {
       throw new AppError(400, 'INVALID_REQUEST', 'Empty file');
     }
@@ -76,23 +102,56 @@ export const createRoomService = (deps: RoomServiceDeps): RoomService => ({
     const contentType = assertAllowedMime(file.type);
     assertValidTtlMs(deps.ttlMs);
 
+    // Phase 7: Turnstile verification BEFORE we touch R2. Skipped when no
+    // service is wired (test fixtures, legacy paths). The token must be a
+    // non-empty string when verification is required — empty strings come
+    // from the `disabled` widget state and should not contact siteverify.
+    if (deps.turnstile) {
+      const token = opts.turnstileToken ?? '';
+      if (token.length === 0) {
+        throw new AppError(401, 'UNAUTHORIZED', 'Turnstile token required');
+      }
+      const verdict = await deps.turnstile.verify({ token, remoteIp: opts.remoteIp });
+      if (!verdict.ok) {
+        // Public message stays uniform across reasons; the reason ends up in logs.
+        throw new AppError(401, 'UNAUTHORIZED', 'Turnstile verification failed', {
+          reason: verdict.reason,
+        });
+      }
+    }
+
+    // Phase 7: hash the bytes BEFORE writing to R2, so blocklist hits never
+    // create orphan objects. Stream-to-hash is not viable since `subtle.digest`
+    // requires the whole buffer; the 10 MiB ceiling keeps memory bounded well
+    // within the 128 MB Workers limit.
+    const buffer = await file.arrayBuffer();
+    const hash = deps.sha256 ?? sha256Hex;
+    const sha = await hash(buffer);
+
+    if (deps.blocklist && (await deps.blocklist.isBlocked(sha))) {
+      // Public message must not echo the hash; only the prefix lands in logs.
+      throw new AppError(422, 'UNPROCESSABLE_ENTITY', 'This image cannot be uploaded', {
+        sha256Prefix: sha.slice(0, 8),
+      });
+    }
+
     // Hash the password BEFORE writing the image — failure here must not leave
     // an orphan image in R2. PasswordService throws AppError(400) on bad input.
-    const auth = isProtectingPassword(password)
+    const auth = isProtectingPassword(opts.password)
       ? // biome-ignore lint/style/noNonNullAssertion: isProtectingPassword narrows
-        await deps.password.hash(password!)
+        await deps.password.hash(opts.password!)
       : undefined;
 
     const id = generateRoomId();
     const key = `rooms/${id}/image.${extOf(contentType)}`;
 
-    await deps.images.putImage(key, file.stream(), contentType);
+    await deps.images.putImage(key, buffer, contentType);
 
     const room: Room = {
       id,
       createdAt: deps.now(),
       ttlMs: deps.ttlMs,
-      image: { key, contentType, size: file.size },
+      image: { key, contentType, size: file.size, sha256: sha },
       ...(auth ? { auth } : {}),
     };
 
@@ -110,8 +169,15 @@ export const createRoomService = (deps: RoomServiceDeps): RoomService => ({
       throw metaErr;
     }
 
-    // Never log the auth payload itself — only a boolean flag.
-    logger.info('room created', { id, contentType, size: file.size, protected: !!auth });
+    // Never log the auth payload itself — only a boolean flag. SHA prefix is
+    // safe to log (truncated to 8 chars; not enough to reconstruct).
+    logger.info('room created', {
+      id,
+      contentType,
+      size: file.size,
+      protected: !!auth,
+      sha256Prefix: sha.slice(0, 8),
+    });
     return room;
   },
 

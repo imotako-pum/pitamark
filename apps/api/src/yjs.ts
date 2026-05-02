@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { YDurableObjects, yRoute } from 'y-durableobjects';
 import type { Bindings } from './lib/bindings';
 import { errorEnvelope } from './lib/error';
+import { extractClientIp, redactIp } from './lib/ip';
 import { logger } from './lib/logger';
 import { createPasswordService } from './services/password-service';
 import { createRoomService } from './services/room-service';
@@ -100,6 +101,26 @@ export const syncRoute = new Hono<{ Bindings: Bindings }>()
           tokenPresent: true,
         });
         return c.json(errorEnvelope('UNAUTHORIZED', 'Invalid token'), 401);
+      }
+    } else {
+      // Phase 7: protected rooms already pay PBKDF2 + token verify, which is
+      // an effective rate limit on its own. Unprotected rooms have no such
+      // pacing, so apply RL_SYNC keyed on the visitor IP. Fail open if the
+      // binding errors so a transient RL outage does not break collab.
+      const rl = c.env.RL_SYNC;
+      if (rl) {
+        const ip = extractClientIp(c.req.raw);
+        try {
+          const { success } = await rl.limit({ key: `sync:${ip}` });
+          if (!success) {
+            logger.warn('sync ws denied: rate limit', { id, ip: redactIp(ip) });
+            return c.json(errorEnvelope('RATE_LIMITED', 'Too many requests'), 429);
+          }
+        } catch (err: unknown) {
+          logger.error('sync rate limit binding error (fail-open)', {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
     }
     return next();

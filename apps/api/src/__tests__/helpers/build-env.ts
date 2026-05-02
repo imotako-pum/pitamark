@@ -1,9 +1,14 @@
 import type { Bindings } from '../../lib/bindings';
+import { createInMemoryKv } from './in-memory-kv';
 import { createInMemoryR2 } from './in-memory-r2';
+import { createStubRateLimit } from './in-memory-rl';
 
 export const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // Tests need a stable secret long enough to satisfy HS256 (>= 32 bytes).
 export const DEFAULT_ROOM_TOKEN_SECRET = 'test-secret-32-bytes-min-padding-aaa';
+// Cloudflare's documented "always passes" Turnstile dev secret. Safe to commit.
+export const DEFAULT_TURNSTILE_DEV_SECRET = '1x0000000000000000000000000000000AA';
+export const DEFAULT_TURNSTILE_DEV_SITE_KEY = '1x00000000000000000000AA';
 
 // Tests do not exercise the live DO — they only verify the validation
 // middleware in front of yRoute. yRoute itself is exercised by `wrangler dev`
@@ -24,5 +29,15 @@ export const buildEnv = (overrides: Partial<Bindings> = {}): Bindings => ({
   ROOM_TTL_MS: String(DEFAULT_TTL_MS),
   Y_ROOM: noopY_ROOM,
   ROOM_TOKEN_SECRET: DEFAULT_ROOM_TOKEN_SECRET,
+  // Phase 7 bindings. Defaults are permissive (no-block RL, empty blocklist,
+  // bypass Turnstile) so existing rooms/yjs/images tests stay focused on
+  // their own assertions; per-test overrides flip a single dimension.
+  RL_CREATE_ROOM: createStubRateLimit(),
+  RL_AUTH: createStubRateLimit(),
+  RL_SYNC: createStubRateLimit(),
+  IMAGE_BLOCKLIST: createInMemoryKv(),
+  TURNSTILE_SITE_KEY: DEFAULT_TURNSTILE_DEV_SITE_KEY,
+  TURNSTILE_SECRET_KEY: DEFAULT_TURNSTILE_DEV_SECRET,
+  BYPASS_TURNSTILE: 'true',
   ...overrides,
 });

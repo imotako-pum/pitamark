@@ -1,9 +1,22 @@
 # Local development secrets for `wrangler dev`. Copy this file to `.dev.vars`
-# and fill in the values. `.dev.vars` is gitignored; never commit it.
+# (gitignored) and fill in the values. Never commit `.dev.vars`.
 #
-# Production: inject via `wrangler secret put ROOM_TOKEN_SECRET` instead.
+# Production secrets MUST be injected via `wrangler secret put NAME` instead
+# of committing them anywhere.
 
 # HS256 JWT signing secret for password-protected room tokens.
 # Generate one with:  node -e "console.log(crypto.randomBytes(48).toString('base64url'))"
 # Minimum 32 bytes recommended.
 ROOM_TOKEN_SECRET="change-me-to-a-32-byte-or-longer-random-string"
+
+# Cloudflare Turnstile siteverify secret. Phase 7 introduces invisible
+# Turnstile on `POST /rooms`; the dev value below is the documented
+# "always passes" test key, safe to commit.
+# Production: `wrangler secret put TURNSTILE_SECRET_KEY` with the real
+# secret from the Cloudflare dashboard's Turnstile widget.
+TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
+
+# When "true", Turnstile siteverify is skipped. Use only in dev / CI to
+# avoid contacting the live endpoint. Production MUST stay "false"
+# (the wrangler.toml `[vars]` default).
+BYPASS_TURNSTILE="true"

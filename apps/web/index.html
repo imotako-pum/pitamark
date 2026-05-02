@@ -15,13 +15,29 @@
       property="og:description"
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
+    <meta property="og:url" content="%VITE_PUBLIC_URL%" />
+    <meta property="og:image" content="%VITE_PUBLIC_URL%/og-image.png" />
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <!-- Phase 7 で og:url / og:image を本番ドメイン確定後に追加。 -->
+    <!-- Phase 7: Cloudflare Turnstile loader. Site key is read at runtime by the React widget. -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Phase 7: Cloudflare Web Analytics (cookieless). Token replaced at build time
+         from VITE_CF_ANALYTICS_TOKEN; left blank in dev so no beacon ships. -->
+    <script>
+      (() => {
+        const t = "%VITE_CF_ANALYTICS_TOKEN%";
+        if (!t || t.startsWith("%")) return;
+        const s = document.createElement("script");
+        s.defer = true;
+        s.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        s.setAttribute("data-cf-beacon", JSON.stringify({ token: t }));
+        document.body.appendChild(s);
+      })();
+    </script>
   </body>
 </html>
