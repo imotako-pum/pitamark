@@ -29,3 +29,9 @@ TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 #   6. cd apps/api && pnpm wrangler deploy
 # See docs/observability.md for post-deploy validation.
 BYPASS_TURNSTILE="true"
+
+# `wrangler dev` 時に API を叩いてよいブラウザ origin の allowlist。
+# `.dev.vars` は wrangler.toml `[vars]` を**完全に置換**（マージしない）ので、
+# 本番ホスト + localhost の dev origin を両方ここに書く必要がある。
+# エントリ形式（完全オリジン / `*.suffix`）は `apps/api/src/lib/cors.ts` 参照。
+CORS_ALLOWED_ORIGINS="http://localhost:5173,http://localhost:4173,https://snap-share.pages.dev,*.snap-share.pages.dev"

@@ -76,6 +76,18 @@ TURNSTILE_SITE_KEY = "0x4AAAAAADHtSX4zIeH_vH_NJOJFTqQCS-A"
 # Phase 7.5: confirmed production keeps this `"false"`; local dev overrides via
 # `apps/api/.dev.vars` BYPASS_TURNSTILE=true (see .dev.vars.example).
 BYPASS_TURNSTILE = "false"
+# Phase 7.5: API を叩いてよいブラウザ origin の allowlist（カンマ区切り）。
+# 各エントリは以下のいずれか:
+#   - 完全オリジン       `https://snap-share.pages.dev`
+#   - ワイルドカード接尾辞 `*.snap-share.pages.dev`（https 限定 — Pages の
+#                          per-commit preview URL `<hash>.snap-share.pages.dev`
+#                          を吸収）
+# ローカル dev は `apps/api/.dev.vars` で `http://localhost:5173,4173` を
+# 追加上書き（`.dev.vars` は完全置換なので注意）。この `[vars]` は本番
+# allowlist のみ。空値は misconfiguration として初回リクエストで例外
+# （fail-closed）。fork して別 Pages プロジェクトに deploy する場合は両エントリ
+# を fork 側の `<project>.pages.dev` に書き換える。
+CORS_ALLOWED_ORIGINS = "https://snap-share.pages.dev,*.snap-share.pages.dev"
 
 # Secrets — set via `wrangler secret put NAME` (production) or
 # `apps/api/.dev.vars` (local dev; gitignored. See `.dev.vars.example`).

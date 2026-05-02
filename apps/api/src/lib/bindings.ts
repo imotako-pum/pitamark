@@ -56,4 +56,15 @@ export type Bindings = {
    * Defaults to `"false"` in production.
    */
   BYPASS_TURNSTILE: string;
+
+  /**
+   * Phase 7.5: API を叩いてよいブラウザ origin の allowlist（カンマ区切り）。
+   * 各エントリは完全オリジン（`https://snap-share.pages.dev`）か、
+   * ワイルドカード接尾辞（`*.snap-share.pages.dev`、https 限定 — Pages の
+   * preview URL を吸収）のいずれか。空 / パース不能な値は module load 時では
+   * なく初回リクエスト時に CORS middleware（`index.ts`）が例外を投げる
+   * （Worker のログ可観測性を残すための fail-closed 方針）。WebSocket `/sync`
+   * upgrade は CORS 対象外で、別経路の origin check に依存する。
+   */
+  CORS_ALLOWED_ORIGINS: string;
 };
