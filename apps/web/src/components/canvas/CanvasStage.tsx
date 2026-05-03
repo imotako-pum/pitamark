@@ -309,20 +309,34 @@ export const CanvasStage = ({
 
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
-      // macOS pinch zoom delivers wheel events with ctrlKey=true; Cmd+wheel on
-      // any platform zooms too. Plain wheel is intentionally ignored to avoid
-      // hijacking the page-scroll mental model (modless wheel = pan is out of
-      // scope for this phase).
-      const isZoomGesture = e.evt.ctrlKey || e.evt.metaKey;
-      if (!isZoomGesture) return;
+      // Modifier matrix:
+      //   - Cmd/Ctrl+wheel + macOS trackpad pinch (ctrlKey=true) → zoom
+      //   - Shift+wheel → horizontal pan (vertical wheel delta が deltaX に変換)
+      //   - modless wheel (mouse / trackpad 2-finger swipe) → pan (deltaX/Y そのまま)
+      // すべての wheel をアプリ側で扱うので preventDefault は無条件。
       e.evt.preventDefault();
       const stage = e.target.getStage();
-      const pointer = stage?.getPointerPosition();
-      if (!pointer) return;
-      const factor = e.evt.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
-      onZoom(pointer, factor);
+      if (!stage) return;
+
+      const isZoomGesture = e.evt.ctrlKey || e.evt.metaKey;
+      if (isZoomGesture) {
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
+        const factor = e.evt.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
+        onZoom(pointer, factor);
+        return;
+      }
+
+      // Pan: scroll delta は「コンテンツを動かしたい量の逆」 (下スクロール →
+      // 視点が下へ → Stage.y は減る)。よって onPan には符号反転して渡す。
+      if (e.evt.shiftKey) {
+        // Shift+wheel: 縦 wheel を横パンへ転写 (Figma / 多くのエディタの慣例)
+        onPan(-e.evt.deltaY, 0);
+        return;
+      }
+      onPan(-e.evt.deltaX, -e.evt.deltaY);
     },
-    [onZoom],
+    [onZoom, onPan],
   );
 
   const handleShapeClick = useCallback(

@@ -143,6 +143,43 @@ test.describe('Stage transform — fit / 100% / wheel zoom / Space pan', () => {
     expect(after.y).toBeGreaterThan(before.y);
   });
 
+  test('modless wheel で縦パン (transform.y が変化、scale 不変)', async ({ page }, testInfo) => {
+    skipNonChromium(testInfo);
+    await setupRoom(page);
+
+    const before = await readTransform(page);
+    const canvas = page.locator('.konvajs-content canvas').first();
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('Konva canvas bounding box が取得できなかった');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // Cmd/Ctrl 無しの wheel → 通常パン (deltaY → 縦パン)
+    await page.mouse.wheel(0, 100);
+
+    await expect.poll(() => readTransform(page).then((t) => t.y)).toBeLessThan(before.y);
+    const after = await readTransform(page);
+    expect(after.scale).toBeCloseTo(before.scale);
+    expect(after.x).toBeCloseTo(before.x);
+  });
+
+  test('Shift+wheel で横パン (transform.x が変化、y/scale 不変)', async ({ page }, testInfo) => {
+    skipNonChromium(testInfo);
+    await setupRoom(page);
+
+    const before = await readTransform(page);
+    const canvas = page.locator('.konvajs-content canvas').first();
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('Konva canvas bounding box が取得できなかった');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.down('Shift');
+    await page.mouse.wheel(0, 100);
+    await page.keyboard.up('Shift');
+
+    await expect.poll(() => readTransform(page).then((t) => t.x)).toBeLessThan(before.x);
+    const after = await readTransform(page);
+    expect(after.scale).toBeCloseTo(before.scale);
+    expect(after.y).toBeCloseTo(before.y);
+  });
+
   test('input フォーカス中に Space を打ってもツール切替や transform が反応しない', async ({
     page,
   }, testInfo) => {
