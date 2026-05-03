@@ -23,8 +23,14 @@ const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
     'Stage transform / wheel pinch / Space pan は chromium 1 プロジェクトで検証する',
   );
 
-const readTransform = (page: import('@playwright/test').Page): Promise<Transform> =>
-  page.evaluate((k) => (window as unknown as Record<string, Transform>)[k], TRANSFORM_KEY);
+const readTransform = async (page: import('@playwright/test').Page): Promise<Transform> => {
+  const t = await page.evaluate(
+    (k) => (window as unknown as Record<string, Transform>)[k],
+    TRANSFORM_KEY,
+  );
+  if (!t) throw new Error('__SNAP_SHARE_STAGE_TRANSFORM__ が window に未公開');
+  return t;
+};
 
 // 2000×1500: viewport (Playwright Desktop Chrome 1280×720) より大きく、かつ
 // clampPan の virtual 領域 (各辺 50% margin = 3000×2250) が viewport を完全に
@@ -86,12 +92,14 @@ test.describe('Stage transform — fit / 100% / wheel zoom / Space pan', () => {
 
     await page.evaluate((k) => {
       const actions = (window as unknown as Record<string, { setHundredPercent: () => void }>)[k];
+      if (!actions) throw new Error('transform actions not exposed yet');
       actions.setHundredPercent();
     }, ACTIONS_KEY);
     await expect.poll(() => readTransform(page).then((t) => t.scale)).toBe(1);
 
     await page.evaluate((k) => {
       const actions = (window as unknown as Record<string, { fitToViewport: () => void }>)[k];
+      if (!actions) throw new Error('transform actions not exposed yet');
       actions.fitToViewport();
     }, ACTIONS_KEY);
     await expect.poll(() => readTransform(page).then((t) => t.scale)).toBeCloseTo(initial.scale);
@@ -131,6 +139,7 @@ test.describe('Stage transform — fit / 100% / wheel zoom / Space pan', () => {
         const actions = (
           window as unknown as Record<string, { panBy: (dx: number, dy: number) => void }>
         )[k];
+        if (!actions) throw new Error('transform actions not exposed yet');
         actions.panBy(dx, dy);
       },
       { k: ACTIONS_KEY, dx: 100, dy: 50 },

@@ -29,6 +29,7 @@ const logicalToScreen = async (
     (k) => (window as unknown as Record<string, { scale: number; x: number; y: number }>)[k],
     TRANSFORM_KEY,
   );
+  if (!t) throw new Error('__SNAP_SHARE_STAGE_TRANSFORM__ が window に未公開');
   return { x: logical.x * t.scale + t.x, y: logical.y * t.scale + t.y };
 };
 
