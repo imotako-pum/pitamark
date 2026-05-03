@@ -123,6 +123,7 @@ A7 操作中に別ターミナルで `pnpm wrangler tail snap-share-api --format
 | 既知-1 | High | ✅ Fixed (本番未反映) | - | 公開ルーム × 受信側 PNG エクスポートで tainted canvas | `57bcc1a` | `apps/web/e2e/room-export-receiver.spec.ts` |
 | 既知-2 | High | ✅ Fixed (本番未反映) | - | password 保護パネルが Toolbar の下に隠れて click できない | (本 commit) | `apps/web/e2e/landing-password-toggle.spec.ts` + `room-protected.spec.ts` 経路復元 |
 | 既知-3 | Medium | ✅ Fixed (本番未反映) | - | 「画像をクリア」ボタンが注釈のみ削除（ラベルと挙動が不一致） | (本 commit) | `apps/web/e2e/room-clear-image.spec.ts` |
+| 既知-4 | High | ✅ Fixed (本番未反映) | - | password 設定時の画像 D&D が本番/preview で 500 INTERNAL（localhost は通る）。`NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported (requested 210000)` — Workers (workerd) の Web Crypto 実装の上限。ローカル `wrangler dev` (miniflare) は Node Web Crypto なのでこの制限が無く本番でだけ落ちた | (本 commit) | api unit test の assertion を `>= 210k` → `= 100k` に変更してロック。E2E は既存の `room-protected.spec.ts` がカバー（password 経路を真の本番条件で踏むのは Phase E1 後の clean run） |
 
 ### Decisions Log
 
@@ -152,6 +153,7 @@ A7 操作中に別ターミナルで `pnpm wrangler tail snap-share-api --format
 3. **`intercepted by another element` を flaky と誤診断する誘惑**: ほぼ常に本物の bug。キーボード迂回で隠蔽すると本番で発覚する（既知-2 の root cause）
 4. **chromium + mobile-chrome (Pixel 5) のみ**: Safari / Firefox / iOS Safari / Android Chrome 固有の挙動は catch できない（Task D2 で Firefox/WebKit 追加判断する根拠）
 5. **本番デプロイ後の smoke 経路が無い**: pages.dev 固有の CSP / CORS / Pages Build env の検証は手動。Phase 7.6 では Phase A (A1〜A4) として明示化
+6. **miniflare (wrangler dev) と本番 workerd の runtime divergence**: Web Crypto 上限（PBKDF2 100k）など、本番 workerd 固有の制限はローカル E2E では再現しない（既知-4 の root cause）。Phase 8 follow-up で「**production smoke spec**」(本番 URL を直接叩く E2E) の検討余地あり
 
 ---
 

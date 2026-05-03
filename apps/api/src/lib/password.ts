@@ -3,7 +3,15 @@
 // (`services/password-service.ts`) wraps these into a stateful API with
 // `RoomAuth` envelopes and `AppError` mapping.
 
-export const PBKDF2_ITERATIONS = 210_000;
+// Cloudflare Workers (workerd) の Web Crypto API は PBKDF2 iterations の上限が
+// 100,000 (>100k で `NotSupportedError: Pbkdf2 failed: iteration counts above
+// 100000 are not supported`)。OWASP 2023 推奨の 600k はもちろん、当初設定の
+// 210k も unhandled exception で 500 化していた (Phase 7.6 既知-4)。ローカル
+// `wrangler dev` (miniflare → Node Web Crypto) ではこの制限がないため、
+// 本番でだけ落ちる典型的な runtime divergence。verify は auth.iterations を
+// 個別に読むので、過去フェーズのテスト fixture (iterations: 210_000 等) と
+// backwards-compatible に保たれる。
+export const PBKDF2_ITERATIONS = 100_000;
 export const SALT_BYTES = 16;
 export const HASH_BITS = 256;
 
