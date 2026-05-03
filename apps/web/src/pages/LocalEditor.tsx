@@ -76,7 +76,11 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
   return (
     <>
       {source === null && (
-        <div className="pointer-events-none absolute top-4 left-1/2 z-10 -translate-x-1/2">
+        // Phase 7.6 既知-2 fix: Toolbar (header inset-x-0 top-0 z-10) と panel が
+        // 同じ z 帯で衝突し、pointer-events が遮断されてユーザーがチェックを
+        // 直接クリックできなかった。top-16 (= 4rem ≒ 64px) で Toolbar の
+        // 直下に逃がすことで z-index 競合自体を解消する。
+        <div className="pointer-events-none absolute top-16 left-1/2 z-10 -translate-x-1/2">
           <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
             <div className="flex items-center gap-2">
               <Checkbox

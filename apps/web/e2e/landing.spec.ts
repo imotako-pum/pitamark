@@ -20,7 +20,7 @@ test('toolbar tools are disabled until an image is loaded', async ({ page }) => 
   await page.goto('/');
 
   await expect(page.getByRole('button', { name: '矩形' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: '画像をクリア' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '注釈をすべて削除' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'PNG 保存' })).toBeDisabled();
 });
 

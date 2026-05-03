@@ -115,8 +115,8 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 80, y: 80 }, { x: 200, y: 200 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
-    // 削除ボタンが選択ありで enabled になる
-    const deleteBtn = page.getByRole('button', { name: '削除' });
+    // 削除ボタンが選択ありで enabled になる。exact: true で「注釈をすべて削除」(Eraser) と区別
+    const deleteBtn = page.getByRole('button', { name: '削除', exact: true });
     await expect(deleteBtn).toBeEnabled();
     await deleteBtn.click();
     await expect.poll(() => readAnnotationCount(page)).toBe(0);

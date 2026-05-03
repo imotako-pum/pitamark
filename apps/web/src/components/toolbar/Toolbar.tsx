@@ -1,8 +1,8 @@
 import {
   ArrowUpRight,
   Download,
+  Eraser,
   Highlighter,
-  ImageMinus,
   MousePointer2,
   Redo2,
   Square,
@@ -119,8 +119,8 @@ export const Toolbar = ({
           onClick={onExport}
         />
         <ToolButton
-          icon={ImageMinus}
-          label="画像をクリア"
+          icon={Eraser}
+          label="注釈をすべて削除"
           disabled={!imageLoaded}
           onClick={onClearImage}
         />

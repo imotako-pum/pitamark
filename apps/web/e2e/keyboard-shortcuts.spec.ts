@@ -69,7 +69,8 @@ test.describe('keyboard shortcuts', () => {
     await page.mouse.move(box.x + 200, box.y + 200, { steps: 5 });
     await page.mouse.up();
 
-    const deleteBtn = page.getByRole('button', { name: '削除' });
+    // exact: true で「注釈をすべて削除」(Eraser) と区別
+    const deleteBtn = page.getByRole('button', { name: '削除', exact: true });
     await expect(deleteBtn).toBeEnabled({ timeout: 5_000 });
 
     // Esc → 選択解除 → 削除ボタンが disabled に戻る

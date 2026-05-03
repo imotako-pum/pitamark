@@ -18,7 +18,7 @@ test.describe('room creation flow', () => {
     // 画像ロード後はツールバーのツールが enabled になる
     await expect(page.getByRole('button', { name: '矩形' })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'PNG 保存' })).toBeEnabled();
-    await expect(page.getByRole('button', { name: '画像をクリア' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: '注釈をすべて削除' })).toBeEnabled();
   });
 
   test('送信側で PNG 保存が成功し download が発火する (cross-origin 経路の sender 側)', async ({
