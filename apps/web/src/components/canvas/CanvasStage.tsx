@@ -6,6 +6,7 @@ import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
 import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
+import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../../lib/autoNextOffset';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
 import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from './colors';
@@ -21,7 +22,9 @@ type CanvasStageProps = Readonly<{
   store: AnnotationsStore;
   editingTextId: string | null;
   onTextDoubleClick: (id: string) => void;
-  onStartTextEditing: (id: string) => void;
+  /** Phase 7.8-1: `options.autoNext` が true のときは Auto-next-A 連鎖中であることを
+   *  EditorShell に伝え、text 編集確定/キャンセル後に tool=select に戻すフラグ管理に使う。 */
+  onStartTextEditing: (id: string, options?: { autoNext?: boolean }) => void;
   /** Stage-relative cursor position. Null when the pointer leaves the stage. */
   onCursorMove?: (point: { x: number; y: number } | null) => void;
   /** Extra Konva layers rendered on top of the annotation layer. */
@@ -299,12 +302,47 @@ export const CanvasStage = ({
       if (reachedThreshold && currentDraft) {
         dispatch({ type: 'annotation/add', annotation: currentDraft });
         dispatch({ type: 'select/set', id: currentDraft.id });
+
+        // Phase 7.8-1 Auto-next-A: 矢印確定直後に終端 +offset で空 text 注釈を
+        // 即時編集モードで起動する。既存の text ツール即時編集パターン
+        // (handleMouseDown の tool === 'text' 分岐, L207 周辺) と同じ shape を、
+        // 座標と tool 切替だけ差し替えて再利用する。EditorShell 側は autoNext=true
+        // を受けて「commit/cancel 後に tool=select に戻す」フラグを立てる。
+        if (currentDraft.type === 'arrow') {
+          // 矢印 add(直前の dispatch)と text add を独立 undo step に分けるための
+          // break point。Yjs UndoManager の captureTimeout(500ms)が原因で、
+          // これを呼ばないと連続操作が 1 step に merge され Cmd+Z 1 回で両方消える。
+          store.stopUndoCapture();
+
+          const offset = computeAutoNextTextOffset(
+            currentDraft.from,
+            currentDraft.to,
+            AUTO_NEXT_TEXT_OFFSET_PX,
+          );
+          const textId = generateId();
+          const textAnnotation: Annotation = {
+            id: textId,
+            type: 'text',
+            createdAt: Date.now(),
+            x: currentDraft.to.x + offset.x,
+            y: currentDraft.to.y + offset.y,
+            text: '',
+            fontSize: DEFAULT_FONT_SIZE,
+            color: activeColor,
+          };
+          dispatch({ type: 'annotation/add', annotation: textAnnotation });
+          dispatch({ type: 'tool/set', tool: 'text' });
+          dispatch({ type: 'select/set', id: textId });
+          onStartTextEditing(textId, { autoNext: true });
+        }
       }
       draftRef.current = null;
       dragStartRef.current = null;
       setDraft(null);
     },
-    [dispatch, setCursor],
+    // store 全体を依存させると毎レンダーで identity が変わって handleMouseUp が
+    // 再生成されるため、Auto-next-A で実際に使う stopUndoCapture のみを依存させる。
+    [dispatch, setCursor, activeColor, onStartTextEditing, store.stopUndoCapture],
   );
 
   const handleWheel = useCallback(

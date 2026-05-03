@@ -43,6 +43,14 @@ export const ArrowShape = ({
     <>
       <KonvaArrow
         points={points}
+        // Phase 7.8-1 修正: ユーザーは「鏃のほうから」矢印を引く感覚で操作するため、
+        // mousedown 位置 (= from = dragStart) に矢じりを描き、mouseup 位置 (= to) は
+        // 尾とする。Konva の default は pointerAtEnding=true (to 側に矢じり) なので、
+        // 反転して pointerAtBeginning=true / pointerAtEnding=false に切替。
+        // これで Auto-next-A の text 位置 (to + offset、to - from 方向の延長) が
+        // 自動的に「尾の側 = 鏃じゃないほう」となり、ユーザー要望と一致する。
+        pointerAtBeginning
+        pointerAtEnding={false}
         pointerLength={ARROW_POINTER_LENGTH}
         pointerWidth={ARROW_POINTER_WIDTH}
         stroke={stroke}

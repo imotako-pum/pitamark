@@ -46,7 +46,9 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     skipNonChromium(testInfo);
     await page.goto('/');
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
+      timeout: 10_000,
+    });
     await page.waitForFunction(
       (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
       ANNOTATIONS_KEY,
@@ -58,9 +60,12 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 60, y: 60 }, { x: 160, y: 160 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
-    // 矢印
+    // 矢印 — Phase 7.8-1 Auto-next-A で空 text + IME 起動が走るため、Esc で text を
+    // 破棄してから次の assert へ。矢印そのものが 1 件追加されることを確認する spec
+    // なので、Auto-next 経路を抜けた状態で count を見る。
     await page.getByRole('button', { name: '矢印' }).click();
     await dragOnStage(page, { x: 200, y: 60 }, { x: 300, y: 160 });
+    await page.keyboard.press('Escape');
     await expect.poll(() => readAnnotationCount(page)).toBe(2);
 
     // ハイライト
@@ -75,7 +80,9 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     skipNonChromium(testInfo);
     await page.goto('/');
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
+      timeout: 10_000,
+    });
     await page.waitForFunction(
       (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
       ANNOTATIONS_KEY,
@@ -103,7 +110,9 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     skipNonChromium(testInfo);
     await page.goto('/');
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
+      timeout: 10_000,
+    });
     await page.waitForFunction(
       (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
       ANNOTATIONS_KEY,
@@ -130,7 +139,9 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     // (yjs-annotations-context.ts:52)
     await page.goto('/');
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
+      timeout: 10_000,
+    });
     await page.waitForFunction(
       (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
       ANNOTATIONS_KEY,
@@ -145,9 +156,12 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     // captureTimeout を超える wait で undo group を分離
     await page.waitForTimeout(700);
 
-    // 2 個目: 矢印
+    // 2 個目: 矢印 — Phase 7.8-1 Auto-next-A で空 text + IME 起動が走るため、Esc で
+    // text を破棄してから次の assert へ。矢印確定が 1 step として undo に積まれる
+    // ことを確認したい spec なので、Auto-next 由来の text は履歴に残さない。
     await page.getByRole('button', { name: '矢印' }).click();
     await dragOnStage(page, { x: 200, y: 60 }, { x: 300, y: 160 });
+    await page.keyboard.press('Escape');
     await expect.poll(() => readAnnotationCount(page)).toBe(2);
 
     await page.waitForTimeout(700);

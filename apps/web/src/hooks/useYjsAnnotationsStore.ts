@@ -161,6 +161,13 @@ export const useYjsAnnotationsStore = (
     setSelectedId(null);
   }, [ctx, setSelectedId]);
 
+  // Phase 7.8-1: Auto-next-A で矢印 add と text add を独立 undo step に分割するため、
+  // Yjs UndoManager の captureTimeout(500ms) を中間でリセットする。これを呼ばないと
+  // 同 LOCAL_ORIGIN の連続操作が 1 step に merge され、Cmd+Z 1 回で両方が消える。
+  const stopUndoCapture = useCallback(() => {
+    ctx?.undoManager.stopCapturing();
+  }, [ctx]);
+
   const state: AnnotationsState = {
     annotations,
     selectedId,
@@ -180,6 +187,7 @@ export const useYjsAnnotationsStore = (
     undo,
     redo,
     reset,
+    stopUndoCapture,
     status,
     doc: ctx?.doc ?? PLACEHOLDER_DOC,
     awareness: awareness as AwarenessLike | null,

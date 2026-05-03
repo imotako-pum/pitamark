@@ -16,6 +16,15 @@ export type AnnotationsStore = Readonly<{
   undo: () => void;
   redo: () => void;
   reset: () => void;
+  /**
+   * Phase 7.8-1: 同 React event 内で連続する複数の committing dispatch を、
+   * 意図的に独立した undo step に分割するための break point。room モードの
+   * Yjs UndoManager は default captureTimeout=500ms で同 origin の連続操作を
+   * 1 step に merge してしまうため、Auto-next-A の「矢印 add → text add」を
+   * 別 step にしたい場合に間で呼ぶ。local モードの historyReducer は元から
+   * commit ごとに別 step なので no-op。
+   */
+  stopUndoCapture: () => void;
 }>;
 
 type StoreAction =
@@ -60,5 +69,10 @@ export const useAnnotationsStore = (): AnnotationsStore => {
     undo,
     redo,
     reset,
+    // local モードは historyReducer が commit ごとに別 step として past に積むため
+    // step 分離は元から達成されている。no-op で AnnotationsStore 型を満たす。
+    stopUndoCapture: noopStopUndoCapture,
   };
 };
+
+const noopStopUndoCapture = (): void => {};

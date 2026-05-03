@@ -69,6 +69,12 @@ export const EditorShell = ({
   const headerRef = useRef<HTMLElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const awarenessLayerRef = useRef<Konva.Layer>(null);
+  // Phase 7.8-1 Auto-next-A: CanvasStage が onStartTextEditing(id, { autoNext: true })
+  // で起動した text 編集が、commit / cancel どちらでも tool='select' に復帰するための
+  // フラグ。state ではなく ref で持つ理由は Phase 7.7-3 panActiveRef と同じ — 連続
+  // dispatch との同期参照が必要になり得るため。通常の text ツール経路 (autoNext 省略)
+  // では立たないので、連続 text 作成モードを壊さない。
+  const autoNextChainRef = useRef(false);
   const [stageRect, setStageRect] = useState<DOMRect | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState<number>(FALLBACK_HEADER_HEIGHT);
@@ -120,6 +126,13 @@ export const EditorShell = ({
     },
     [store],
   );
+
+  const handleStartTextEditing = useCallback((id: string, options?: { autoNext?: boolean }) => {
+    if (options?.autoNext) {
+      autoNextChainRef.current = true;
+    }
+    setEditingTextId(id);
+  }, []);
 
   const handleDelete = useCallback(() => {
     const id = store.state.selectedId;
@@ -183,6 +196,13 @@ export const EditorShell = ({
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_STAGE_TRANSFORM__ = stageTransform;
   }, [stageTransform]);
 
+  // Phase 7.8-1: Auto-next-A の検証で tool 状態を E2E から polling 確認するために
+  // 公開する。Toolbar の active 表示で代替できるが、E2E の安定度は window expose
+  // の方が高いため既存パターンに揃える。
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__SNAP_SHARE_TOOL__ = store.state.tool;
+  }, [store.state.tool]);
+
   // Expose transform actions for E2E. Playwright's keyboard.press cannot
   // reliably trigger Meta+0 / Meta+1 (Chromium intercepts these as browser
   // shortcuts before the page can preventDefault), so the E2E covers the
@@ -207,6 +227,12 @@ export const EditorShell = ({
         store.dispatch({ type: 'annotation/set-text', id: editingTextId, text });
       }
       setEditingTextId(null);
+      // Phase 7.8-1: Auto-next-A 連鎖中なら tool を select に戻す。通常の text ツール
+      // 経路では ref が立たないので、連続 text 作成モードは保たれる。
+      if (autoNextChainRef.current) {
+        autoNextChainRef.current = false;
+        store.dispatch({ type: 'tool/set', tool: 'select' });
+      }
     },
     [editingTextId, store],
   );
@@ -216,6 +242,10 @@ export const EditorShell = ({
       store.dispatch({ type: 'annotation/remove', id: editingTextId });
     }
     setEditingTextId(null);
+    if (autoNextChainRef.current) {
+      autoNextChainRef.current = false;
+      store.dispatch({ type: 'tool/set', tool: 'select' });
+    }
   }, [editingTextId, editingAnnotation, store]);
 
   const handleClearImage = useCallback(() => {
@@ -321,7 +351,7 @@ export const EditorShell = ({
             store={store}
             editingTextId={editingTextId}
             onTextDoubleClick={setEditingTextId}
-            onStartTextEditing={setEditingTextId}
+            onStartTextEditing={handleStartTextEditing}
             onCursorMove={onCursorMove}
             extraLayers={awarenessLayer?.(store.state.annotations, awarenessLayerRef) ?? null}
             stageRef={stageRef}
