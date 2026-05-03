@@ -5,6 +5,9 @@ import { OUTLINE_ACCENT } from './colors';
 type TextEditorOverlayProps = Readonly<{
   annotation: TextAnnotation;
   stageContainerRect: DOMRect;
+  /** Stage transform so the textarea overlays the matching Konva text under
+   *  zoom and pan. Identity when the canvas is not zoomed/panned. */
+  transform: { scale: number; x: number; y: number };
   onCommit: (text: string) => void;
   onCancel: () => void;
 }>;
@@ -14,6 +17,7 @@ const PADDING = 4;
 export const TextEditorOverlay = ({
   annotation,
   stageContainerRect,
+  transform,
   onCommit,
   onCancel,
 }: TextEditorOverlayProps) => {
@@ -40,15 +44,15 @@ export const TextEditorOverlay = ({
       aria-label="注釈テキストを編集"
       style={{
         position: 'absolute',
-        left: stageContainerRect.left + annotation.x - PADDING,
-        top: stageContainerRect.top + annotation.y - PADDING,
+        left: stageContainerRect.left + annotation.x * transform.scale + transform.x - PADDING,
+        top: stageContainerRect.top + annotation.y * transform.scale + transform.y - PADDING,
         minWidth: '6ch',
         padding: PADDING,
         margin: 0,
         border: `1px dashed ${OUTLINE_ACCENT}`,
         background: 'rgba(255, 255, 255, 0.95)',
-        color: annotation.fill,
-        fontSize: annotation.fontSize,
+        color: annotation.color,
+        fontSize: annotation.fontSize * transform.scale,
         fontFamily: 'inherit',
         lineHeight: 1.2,
         resize: 'both',

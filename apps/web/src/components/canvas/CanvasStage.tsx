@@ -1,20 +1,18 @@
-import type { Annotation } from '@snap-share/shared';
+import type { Annotation, Point } from '@snap-share/shared';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
+import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
+import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
-import {
-  DEFAULT_FONT_SIZE,
-  DEFAULT_STROKE_WIDTH,
-  FILL_HIGHLIGHT,
-  FILL_TEXT,
-  STROKE_ARROW,
-  STROKE_RECTANGLE,
-} from './colors';
+import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from './colors';
 import { ImageLayer } from './ImageLayer';
+import type { ArrowEndpointsPatch } from './shapes/ArrowShape';
+import type { HighlightResizePatch } from './shapes/HighlightShape';
+import type { RectangleResizePatch } from './shapes/RectangleShape';
 
 type CanvasStageProps = Readonly<{
   src: string;
@@ -30,13 +28,29 @@ type CanvasStageProps = Readonly<{
   extraLayers?: ReactNode;
   /** Ref to the underlying Konva.Stage (for PNG export). */
   stageRef?: Ref<Konva.Stage>;
+  /** Stage transform (scale + position). Identity when unset. */
+  transform: StageTransform;
+  /** Pinch / Cmd+wheel ズーム。pointer は Stage absolute 座標。*/
+  onZoom: (pointer: { x: number; y: number }, factor: number) => void;
+  /** Space+drag による pan。dx/dy は screen 座標の差分。*/
+  onPan: (dx: number, dy: number) => void;
+  /** ImageLayer から伝播される画像 natural サイズ。null は src 切替リセット。*/
+  onImageLoaded?: (size: { width: number; height: number } | null) => void;
 }>;
 
 const MIN_DRAG_PIXELS = 4;
 
 type DragStart = Readonly<{ x: number; y: number; id: string; createdAt: number }>;
 
-const buildDraftRectangle = (start: DragStart, x: number, y: number): Annotation => ({
+// All draft builders take the active color so the new annotation is born with
+// it. Phase 7.7-2 split this into sync/highlight lanes; we collapsed it back to
+// one because the lane indicator discontinuity bothered users.
+const buildDraftRectangle = (
+  start: DragStart,
+  x: number,
+  y: number,
+  color: string,
+): Annotation => ({
   id: start.id,
   type: 'rectangle',
   createdAt: start.createdAt,
@@ -44,11 +58,16 @@ const buildDraftRectangle = (start: DragStart, x: number, y: number): Annotation
   y: Math.min(start.y, y),
   width: Math.max(Math.abs(x - start.x), 1),
   height: Math.max(Math.abs(y - start.y), 1),
-  stroke: STROKE_RECTANGLE,
+  color,
   strokeWidth: DEFAULT_STROKE_WIDTH,
 });
 
-const buildDraftHighlight = (start: DragStart, x: number, y: number): Annotation => ({
+const buildDraftHighlight = (
+  start: DragStart,
+  x: number,
+  y: number,
+  color: string,
+): Annotation => ({
   id: start.id,
   type: 'highlight',
   createdAt: start.createdAt,
@@ -56,16 +75,16 @@ const buildDraftHighlight = (start: DragStart, x: number, y: number): Annotation
   y: Math.min(start.y, y),
   width: Math.max(Math.abs(x - start.x), 1),
   height: Math.max(Math.abs(y - start.y), 1),
-  fill: FILL_HIGHLIGHT,
+  color,
 });
 
-const buildDraftArrow = (start: DragStart, x: number, y: number): Annotation => ({
+const buildDraftArrow = (start: DragStart, x: number, y: number, color: string): Annotation => ({
   id: start.id,
   type: 'arrow',
   createdAt: start.createdAt,
   from: { x: start.x, y: start.y },
   to: { x, y },
-  stroke: STROKE_ARROW,
+  color,
   strokeWidth: DEFAULT_STROKE_WIDTH,
 });
 
@@ -82,9 +101,13 @@ export const CanvasStage = ({
   onCursorMove,
   extraLayers,
   stageRef,
+  transform,
+  onZoom,
+  onPan,
+  onImageLoaded,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
-  const { tool, selectedId, annotations } = state;
+  const { tool, selectedId, annotations, activeColor } = state;
   // draft and dragStart live in refs so consecutive mouse events within a single
   // React render cycle (mousedown -> mousemove -> mouseup) always observe the
   // latest values without waiting for state flush. The state mirror keeps the
@@ -92,18 +115,92 @@ export const CanvasStage = ({
   const dragStartRef = useRef<DragStart | null>(null);
   const draftRef = useRef<Annotation | null>(null);
   const [draft, setDraft] = useState<Annotation | null>(null);
+  // Pan-mode bookkeeping. Space turns mousedown/move/up into pan instead of
+  // the active tool. spaceDownRef arms the next mousedown; panActiveRef
+  // tracks the in-flight pan and survives Space release while the mouse is
+  // still down, mirroring Figma/Photoshop behavior.
+  const spaceDownRef = useRef(false);
+  const panActiveRef = useRef(false);
+  const panLastRef = useRef<{ x: number; y: number } | null>(null);
+  const internalStageRef = useRef<Konva.Stage | null>(null);
+
+  // Cursor feedback for Space-pan. We tweak the underlying canvas container's
+  // CSS cursor directly because react-konva does not surface a className prop
+  // on Stage and the wrapping div is owned by react-konva internals.
+  const setCursor = useCallback((cursor: string) => {
+    const stage = internalStageRef.current;
+    if (!stage) return;
+    stage.container().style.cursor = cursor;
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      if (isEditableTarget(e.target)) return;
+      if (spaceDownRef.current) return;
+      spaceDownRef.current = true;
+      setCursor('grab');
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      spaceDownRef.current = false;
+      // If a pan is mid-flight (mouse still down), let mouseup finish it.
+      if (!panActiveRef.current) {
+        setCursor('');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [setCursor]);
+
+  const composedStageRef = useCallback(
+    (node: Konva.Stage | null) => {
+      internalStageRef.current = node;
+      if (typeof stageRef === 'function') {
+        stageRef(node);
+      } else if (stageRef) {
+        // Mutating a Ref<T> requires the cast — React types ref as readonly.
+        (stageRef as { current: Konva.Stage | null }).current = node;
+      }
+    },
+    [stageRef],
+  );
 
   const handleMouseDown = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
-      if (tool === 'select') {
-        if (e.target === e.target.getStage()) {
-          dispatch({ type: 'select/set', id: null });
-        }
-        return;
-      }
       const stage = e.target.getStage();
       if (!stage) return;
-      const pos = stage.getPointerPosition();
+
+      // Space + drag → pan, regardless of the active tool. We use absolute
+      // pointer position so the delta math is in screen pixels (matches
+      // Stage.x/y which are also in screen space).
+      if (spaceDownRef.current) {
+        const pos = stage.getPointerPosition();
+        if (!pos) return;
+        panActiveRef.current = true;
+        panLastRef.current = pos;
+        setCursor('grabbing');
+        return;
+      }
+
+      const isStageClick = e.target === stage;
+
+      // Universal deselect rule: empty-stage click clears selection regardless
+      // of tool. Without this, drawing tools left the previous selection
+      // hanging until a new annotation got created.
+      if (isStageClick && selectedId) {
+        dispatch({ type: 'select/set', id: null });
+      }
+
+      if (tool === 'select') return;
+
+      // Hit-test in logical coords so Stage transform (scale/pan) does not
+      // throw off where the new annotation lands.
+      const pos = stage.getRelativePointerPosition();
       if (!pos) return;
       if (e.target !== stage) return;
 
@@ -117,7 +214,7 @@ export const CanvasStage = ({
           y: pos.y,
           text: '',
           fontSize: DEFAULT_FONT_SIZE,
-          fill: FILL_TEXT,
+          color: activeColor,
         };
         dispatch({ type: 'annotation/add', annotation });
         dispatch({ type: 'select/set', id });
@@ -133,15 +230,29 @@ export const CanvasStage = ({
       };
       dragStartRef.current = start;
     },
-    [tool, dispatch, onStartTextEditing],
+    [tool, dispatch, onStartTextEditing, activeColor, selectedId, setCursor],
   );
 
   const handleMouseMove = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
       const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition() ?? null;
+      if (!stage) return;
 
-      // Broadcast the raw pointer position so presence can throttle and emit.
+      // Active pan: stream screen-space deltas to the parent.
+      if (panActiveRef.current) {
+        const screen = stage.getPointerPosition();
+        const last = panLastRef.current;
+        if (!screen || !last) return;
+        onPan(screen.x - last.x, screen.y - last.y);
+        panLastRef.current = screen;
+        return;
+      }
+
+      const pos = stage.getRelativePointerPosition();
+
+      // Broadcast the logical pointer position so presence can throttle and
+      // emit. Logical coords keep peers' cursor render aligned regardless of
+      // local zoom.
       if (onCursorMove) {
         onCursorMove(pos ? { x: pos.x, y: pos.y } : null);
       }
@@ -150,15 +261,16 @@ export const CanvasStage = ({
       if (!dragStart || !pos) return;
 
       let next: Annotation | null = null;
-      if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y);
-      else if (tool === 'highlight') next = buildDraftHighlight(dragStart, pos.x, pos.y);
-      else if (tool === 'arrow') next = buildDraftArrow(dragStart, pos.x, pos.y);
+      if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y, activeColor);
+      else if (tool === 'highlight')
+        next = buildDraftHighlight(dragStart, pos.x, pos.y, activeColor);
+      else if (tool === 'arrow') next = buildDraftArrow(dragStart, pos.x, pos.y, activeColor);
       if (next) {
         draftRef.current = next;
         setDraft(next);
       }
     },
-    [tool, onCursorMove],
+    [tool, onCursorMove, activeColor, onPan],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -170,11 +282,18 @@ export const CanvasStage = ({
 
   const handleMouseUp = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      if (panActiveRef.current) {
+        panActiveRef.current = false;
+        panLastRef.current = null;
+        setCursor(spaceDownRef.current ? 'grab' : '');
+        return;
+      }
+
       const dragStart = dragStartRef.current;
       const currentDraft = draftRef.current;
       if (!dragStart) return;
       const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition() ?? null;
+      const pos = stage?.getRelativePointerPosition() ?? null;
       const reachedThreshold = pos && distance(dragStart, pos.x, pos.y) >= MIN_DRAG_PIXELS;
 
       if (reachedThreshold && currentDraft) {
@@ -185,7 +304,42 @@ export const CanvasStage = ({
       dragStartRef.current = null;
       setDraft(null);
     },
-    [dispatch],
+    [dispatch, setCursor],
+  );
+
+  const handleWheel = useCallback(
+    (e: KonvaEventObject<WheelEvent>) => {
+      // Modifier matrix:
+      //   - Cmd/Ctrl+wheel + macOS trackpad pinch (ctrlKey=true) → zoom
+      //   - Shift+wheel → horizontal pan (vertical wheel delta が deltaX に変換)
+      //   - modless wheel (mouse / trackpad 2-finger swipe) → pan (deltaX/Y そのまま)
+      // すべての wheel をアプリ側で扱うので preventDefault は無条件。
+      e.evt.preventDefault();
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      const isZoomGesture = e.evt.ctrlKey || e.evt.metaKey;
+      if (isZoomGesture) {
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
+        const factor = e.evt.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
+        onZoom(pointer, factor);
+        return;
+      }
+
+      // Pan: scroll delta は「コンテンツを動かしたい量の逆」 (下スクロール →
+      // 視点が下へ → Stage.y は減る)。よって onPan には符号反転して渡す。
+      if (e.evt.shiftKey) {
+        // Shift+wheel = 横パン。プラットフォームによって delta の乗る軸が違う:
+        //   - 物理マウスホイール + Shift (Chrome/macOS): deltaY が乗る、deltaX=0
+        //   - macOS トラックパッド 2 本指 + Shift: OS が deltaY→deltaX 変換済み
+        // 両方をカバーするために deltaX + deltaY を合算 (片方は常に 0 の前提)。
+        onPan(-(e.evt.deltaX + e.evt.deltaY), 0);
+        return;
+      }
+      onPan(-e.evt.deltaX, -e.evt.deltaY);
+    },
+    [onZoom, onPan],
   );
 
   const handleShapeClick = useCallback(
@@ -201,21 +355,63 @@ export const CanvasStage = ({
     [dispatch],
   );
 
+  const handleResizeRectangle = useCallback(
+    (id: string, patch: RectangleResizePatch) => {
+      dispatch({
+        type: 'annotation/resize-rect',
+        id,
+        x: patch.x,
+        y: patch.y,
+        width: patch.width,
+        height: patch.height,
+      });
+    },
+    [dispatch],
+  );
+
+  const handleResizeHighlight = useCallback(
+    (id: string, patch: HighlightResizePatch) => {
+      dispatch({
+        type: 'annotation/resize-highlight',
+        id,
+        x: patch.x,
+        y: patch.y,
+        width: patch.width,
+        height: patch.height,
+      });
+    },
+    [dispatch],
+  );
+
+  const handleArrowEndpoints = useCallback(
+    (id: string, endpoints: ArrowEndpointsPatch) => {
+      const from: Point = { x: endpoints.from.x, y: endpoints.from.y };
+      const to: Point = { x: endpoints.to.x, y: endpoints.to.y };
+      dispatch({ type: 'annotation/set-arrow-endpoints', id, from, to });
+    },
+    [dispatch],
+  );
+
   const visibleAnnotations: ReadonlyArray<Annotation> = draft
     ? [...annotations, draft]
     : annotations;
 
   return (
     <Stage
-      ref={stageRef}
+      ref={composedStageRef}
       width={width}
       height={height}
+      scaleX={transform.scale}
+      scaleY={transform.scale}
+      x={transform.x}
+      y={transform.y}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onWheel={handleWheel}
     >
-      <ImageLayer src={src} />
+      <ImageLayer src={src} onImageLoaded={onImageLoaded} />
       <AnnotationLayer
         annotations={visibleAnnotations}
         selectedId={selectedId}
@@ -223,6 +419,9 @@ export const CanvasStage = ({
         onShapeClick={handleShapeClick}
         onShapeMove={handleShapeMove}
         onTextDoubleClick={onTextDoubleClick}
+        onResizeRectangle={handleResizeRectangle}
+        onResizeHighlight={handleResizeHighlight}
+        onArrowEndpoints={handleArrowEndpoints}
       />
       {extraLayers}
     </Stage>

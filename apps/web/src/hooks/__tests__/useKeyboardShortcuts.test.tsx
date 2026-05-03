@@ -125,4 +125,71 @@ describe('useKeyboardShortcuts', () => {
     press({ key: 'v' });
     expect(onSetTool).toHaveBeenCalledWith('select');
   });
+
+  it('? (Shift+/) fires onShowHelp and prevents default when provided', () => {
+    const onShowHelp = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onShowHelp })} />);
+    const { prevented } = press({ key: '?', shiftKey: true });
+    expect(onShowHelp).toHaveBeenCalledOnce();
+    expect(prevented).toBe(true);
+  });
+
+  it('? does NOT preventDefault when onShowHelp is undefined', () => {
+    mount.render(<Harness shortcuts={baseShortcuts()} />);
+    const { prevented } = press({ key: '?', shiftKey: true });
+    expect(prevented).toBe(false);
+  });
+
+  it('C (no shift) fires onCycleColorNext, not Prev', () => {
+    const onCycleColorNext = vi.fn();
+    const onCycleColorPrev = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onCycleColorNext, onCycleColorPrev })} />);
+    const { prevented } = press({ key: 'c' });
+    expect(onCycleColorNext).toHaveBeenCalledOnce();
+    expect(onCycleColorPrev).not.toHaveBeenCalled();
+    expect(prevented).toBe(true);
+  });
+
+  it('Shift+C fires onCycleColorPrev, not Next', () => {
+    const onCycleColorNext = vi.fn();
+    const onCycleColorPrev = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onCycleColorNext, onCycleColorPrev })} />);
+    // Browsers raise key to upper-case when Shift is down; useKeyboardShortcuts
+    // lower-cases internally so 'C' is matched as 'c'.
+    const { prevented } = press({ key: 'C', shiftKey: true });
+    expect(onCycleColorPrev).toHaveBeenCalledOnce();
+    expect(onCycleColorNext).not.toHaveBeenCalled();
+    expect(prevented).toBe(true);
+  });
+
+  it('Cmd+C does NOT trigger color cycle (browser copy must be preserved)', () => {
+    const onCycleColorNext = vi.fn();
+    const onCycleColorPrev = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onCycleColorNext, onCycleColorPrev })} />);
+    press({ key: 'c', metaKey: true });
+    expect(onCycleColorNext).not.toHaveBeenCalled();
+    expect(onCycleColorPrev).not.toHaveBeenCalled();
+  });
+
+  it('does not fire ? or C when focus is in an input', () => {
+    const onShowHelp = vi.fn();
+    const onCycleColorNext = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onShowHelp, onCycleColorNext })} />);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    const helpEv = new KeyboardEvent('keydown', {
+      key: '?',
+      shiftKey: true,
+      bubbles: true,
+    });
+    Object.defineProperty(helpEv, 'target', { value: input, writable: false });
+    window.dispatchEvent(helpEv);
+    const cEv = new KeyboardEvent('keydown', { key: 'c', bubbles: true });
+    Object.defineProperty(cEv, 'target', { value: input, writable: false });
+    window.dispatchEvent(cEv);
+    expect(onShowHelp).not.toHaveBeenCalled();
+    expect(onCycleColorNext).not.toHaveBeenCalled();
+    input.remove();
+  });
 });

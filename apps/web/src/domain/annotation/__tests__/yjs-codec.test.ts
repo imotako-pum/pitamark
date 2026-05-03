@@ -11,7 +11,7 @@ const rectangle = (id: string, createdAt = 1): Annotation => ({
   y: 20,
   width: 100,
   height: 50,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 });
 
@@ -21,7 +21,7 @@ const arrow = (id: string, createdAt = 1): Annotation => ({
   createdAt,
   from: { x: 0, y: 0 },
   to: { x: 200, y: 100 },
-  stroke: '#e74c3c',
+  color: '#e74c3c',
   strokeWidth: 3,
 });
 
@@ -33,7 +33,7 @@ const text = (id: string, createdAt = 1): Annotation => ({
   y: 5,
   text: 'こんにちは',
   fontSize: 16,
-  fill: '#000000',
+  color: '#000000',
 });
 
 const highlight = (id: string, createdAt = 1): Annotation => ({
@@ -44,7 +44,7 @@ const highlight = (id: string, createdAt = 1): Annotation => ({
   y: 2,
   width: 30,
   height: 40,
-  fill: '#ffeb3b',
+  color: '#ffeb3b',
 });
 
 // Yjs requires Y.Map values to be integrated into a Y.Doc before reads work.
@@ -102,7 +102,7 @@ describe('annotationToYMap / yMapToAnnotation', () => {
   it('returns null when fields fail Zod validation (invalid color)', () => {
     const a = rectangle('r2');
     const { entry } = attach(a);
-    entry.set('stroke', 'not-a-color');
+    entry.set('color', 'not-a-color');
     expect(yMapToAnnotation(entry)).toBeNull();
   });
 

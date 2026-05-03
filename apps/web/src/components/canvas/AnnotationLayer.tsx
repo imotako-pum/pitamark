@@ -1,8 +1,8 @@
 import type { Annotation } from '@snap-share/shared';
 import { Layer } from 'react-konva';
-import { ArrowShape } from './shapes/ArrowShape';
-import { HighlightShape } from './shapes/HighlightShape';
-import { RectangleShape } from './shapes/RectangleShape';
+import { type ArrowEndpointsPatch, ArrowShape } from './shapes/ArrowShape';
+import { type HighlightResizePatch, HighlightShape } from './shapes/HighlightShape';
+import { type RectangleResizePatch, RectangleShape } from './shapes/RectangleShape';
 import { TextShape } from './shapes/TextShape';
 
 type AnnotationLayerProps = Readonly<{
@@ -12,6 +12,9 @@ type AnnotationLayerProps = Readonly<{
   onShapeClick: (id: string) => void;
   onShapeMove: (id: string, dx: number, dy: number) => void;
   onTextDoubleClick: (id: string) => void;
+  onResizeRectangle: (id: string, patch: RectangleResizePatch) => void;
+  onResizeHighlight: (id: string, patch: HighlightResizePatch) => void;
+  onArrowEndpoints: (id: string, endpoints: ArrowEndpointsPatch) => void;
 }>;
 
 export const AnnotationLayer = ({
@@ -21,6 +24,9 @@ export const AnnotationLayer = ({
   onShapeClick,
   onShapeMove,
   onTextDoubleClick,
+  onResizeRectangle,
+  onResizeHighlight,
+  onArrowEndpoints,
 }: AnnotationLayerProps) => (
   <Layer>
     {annotations.map((a) => {
@@ -34,6 +40,7 @@ export const AnnotationLayer = ({
               isSelected={isSelected}
               onClick={onShapeClick}
               onDragEnd={(id, x, y) => onShapeMove(id, x - a.x, y - a.y)}
+              onResize={onResizeRectangle}
             />
           );
         case 'arrow':
@@ -44,6 +51,7 @@ export const AnnotationLayer = ({
               isSelected={isSelected}
               onClick={onShapeClick}
               onDragEnd={onShapeMove}
+              onArrowEndpoints={onArrowEndpoints}
             />
           );
         case 'text':
@@ -66,6 +74,7 @@ export const AnnotationLayer = ({
               isSelected={isSelected}
               onClick={onShapeClick}
               onDragEnd={(id, x, y) => onShapeMove(id, x - a.x, y - a.y)}
+              onResize={onResizeHighlight}
             />
           );
         default: {

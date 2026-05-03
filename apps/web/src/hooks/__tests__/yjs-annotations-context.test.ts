@@ -52,7 +52,7 @@ const rect = (id: string, createdAt = 1): Annotation => ({
   y: 20,
   width: 100,
   height: 50,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 });
 
@@ -94,20 +94,22 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
     ctx.applyDataAction({
       type: 'annotation/resize-rect',
       id: 'r1',
+      x: 25,
+      y: 35,
       width: 200,
       height: 80,
     });
     unsub();
 
     expect(ctx.snapshot()[0]).toMatchObject({
-      x: 15,
-      y: 27,
+      x: 25,
+      y: 35,
       width: 200,
       height: 80,
     });
   });
 
-  it('ignores client-only actions (tool/set, select/set) without mutating Y.Doc', () => {
+  it('ignores client-only actions (tool/set, select/set, active-color/set) without mutating Y.Doc', () => {
     const { factory } = makeProviderFactory();
     const ctx = createYjsAnnotationsContext(factory);
     const unsub = ctx.subscribe(() => {});
@@ -116,9 +118,22 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
 
     ctx.applyDataAction({ type: 'tool/set', tool: 'rectangle' });
     ctx.applyDataAction({ type: 'select/set', id: 'r1' });
+    ctx.applyDataAction({ type: 'active-color/set', color: '#3a86ff' });
     unsub();
 
     expect(ctx.snapshot()).toEqual(before);
+  });
+
+  it('annotation/set-color updates the color field in Yjs (any annotation type)', () => {
+    const { factory } = makeProviderFactory();
+    const ctx = createYjsAnnotationsContext(factory);
+    const unsub = ctx.subscribe(() => {});
+    ctx.applyDataAction({ type: 'annotation/add', annotation: rect('r1') });
+
+    ctx.applyDataAction({ type: 'annotation/set-color', id: 'r1', color: '#abcdef' });
+    unsub();
+
+    expect(ctx.snapshot()[0]).toMatchObject({ color: '#abcdef' });
   });
 });
 

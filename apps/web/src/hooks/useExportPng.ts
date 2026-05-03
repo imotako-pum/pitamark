@@ -9,14 +9,20 @@ export type UseExportPngParams = Readonly<{
   awarenessLayerRef?: RefObject<Konva.Layer | null>;
   roomId: string | null;
   pixelRatio?: number;
+  /** Image natural dimensions. When provided, the export captures only the
+   *  image region at native resolution (regardless of the user's zoom/pan)
+   *  by temporarily resetting the stage transform during toCanvas.
+   *  When null, falls back to the legacy "whole stage" capture. */
+  imageSize?: { width: number; height: number } | null;
 }>;
 
 /**
  * Returns a memoized async exporter that:
  *   1. Hides the awareness layer (so peer cursors are not baked in).
- *   2. Renders the stage to a PNG Blob via `stage.toCanvas`.
- *   3. Triggers a download with `snap-share-{roomId}-{timestamp}.png`.
- *   4. Restores the awareness layer in `finally`, even on failure.
+ *   2. Temporarily resets stage transform so zoom/pan don't affect output.
+ *   3. Renders the (image-bounded) region to a PNG Blob via `stage.toCanvas`.
+ *   4. Triggers a download with `snap-share-{roomId}-{timestamp}.png`.
+ *   5. Restores transform and the awareness layer in `finally`.
  *
  * Failures are surfaced through `sonner` toasts and `logger.warn`; the caller
  * should not need to catch them.
@@ -26,17 +32,37 @@ export const useExportPng = ({
   awarenessLayerRef,
   roomId,
   pixelRatio = 2,
+  imageSize = null,
 }: UseExportPngParams): (() => Promise<void>) => {
   return useCallback(async () => {
     const stage = stageRef.current;
     if (!stage) return;
     const awareness = awarenessLayerRef?.current ?? null;
 
+    const savedScaleX = stage.scaleX();
+    const savedScaleY = stage.scaleY();
+    const savedX = stage.x();
+    const savedY = stage.y();
+
     let hidden = false;
+    let mutated = false;
     try {
       awareness?.hide();
       hidden = true;
-      const blob = await stageToBlob(stage, pixelRatio);
+      if (imageSize) {
+        // Set the flag BEFORE the setters so a partial mutation (any of these
+        // throwing) still triggers the restore branch in `finally`. Konva
+        // setters don't throw in practice, but the ordering removes the cliff.
+        mutated = true;
+        stage.scaleX(1);
+        stage.scaleY(1);
+        stage.x(0);
+        stage.y(0);
+      }
+      const bounds = imageSize
+        ? { x: 0, y: 0, width: imageSize.width, height: imageSize.height }
+        : undefined;
+      const blob = await stageToBlob(stage, pixelRatio, bounds);
       triggerDownload(blob, buildExportFilename(new Date(), roomId));
       toast.success('PNG を保存しました');
     } catch (e: unknown) {
@@ -45,7 +71,14 @@ export const useExportPng = ({
       });
       toast.error('PNG の保存に失敗しました');
     } finally {
+      if (mutated) {
+        stage.scaleX(savedScaleX);
+        stage.scaleY(savedScaleY);
+        stage.x(savedX);
+        stage.y(savedY);
+        stage.batchDraw();
+      }
       if (hidden) awareness?.show();
     }
-  }, [stageRef, awarenessLayerRef, roomId, pixelRatio]);
+  }, [stageRef, awarenessLayerRef, roomId, pixelRatio, imageSize]);
 };

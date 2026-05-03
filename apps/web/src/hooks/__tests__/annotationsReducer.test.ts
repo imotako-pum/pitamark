@@ -4,6 +4,7 @@ import {
   type AnnotationsState,
   annotationsReducer,
   initialAnnotationsState,
+  isCommittingAction,
 } from '../annotationsReducer';
 
 const rect: RectangleAnnotation = {
@@ -14,7 +15,7 @@ const rect: RectangleAnnotation = {
   y: 0,
   width: 10,
   height: 10,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 };
 
@@ -108,14 +109,18 @@ describe('annotationsReducer.annotation/move', () => {
 });
 
 describe('annotationsReducer.annotation/resize-rect', () => {
-  it('updates width/height of a rectangle', () => {
+  it('updates x/y/width/height of a rectangle', () => {
     const next = annotationsReducer(seedWith([rect]), {
       type: 'annotation/resize-rect',
       id: 'r1',
+      x: 12,
+      y: 18,
       width: 100,
       height: 50,
     });
 
+    expect((next.annotations[0] as RectangleAnnotation).x).toBe(12);
+    expect((next.annotations[0] as RectangleAnnotation).y).toBe(18);
     expect((next.annotations[0] as RectangleAnnotation).width).toBe(100);
     expect((next.annotations[0] as RectangleAnnotation).height).toBe(50);
   });
@@ -143,5 +148,62 @@ describe('annotationsReducer.annotation/set-arrow-endpoints', () => {
     });
 
     expect(next.annotations[0]).toBe(rect);
+  });
+});
+
+describe('annotationsReducer.active-color/set', () => {
+  it('updates state.activeColor', () => {
+    const next = annotationsReducer(initialAnnotationsState, {
+      type: 'active-color/set',
+      color: '#3a86ff',
+    });
+
+    expect(next.activeColor).toBe('#3a86ff');
+  });
+
+  it('does not touch annotations or selection', () => {
+    const seeded: AnnotationsState = { ...seedWith([rect]), selectedId: 'r1' };
+    const next = annotationsReducer(seeded, {
+      type: 'active-color/set',
+      color: '#3a86ff',
+    });
+
+    expect(next.annotations).toBe(seeded.annotations);
+    expect(next.selectedId).toBe('r1');
+  });
+});
+
+describe('annotationsReducer.annotation/set-color', () => {
+  it('updates color of the matching annotation', () => {
+    const next = annotationsReducer(seedWith([rect]), {
+      type: 'annotation/set-color',
+      id: 'r1',
+      color: '#abcdef',
+    });
+
+    expect((next.annotations[0] as RectangleAnnotation).color).toBe('#abcdef');
+  });
+
+  it('is a no-op for unknown id', () => {
+    const seeded = seedWith([rect]);
+    const next = annotationsReducer(seeded, {
+      type: 'annotation/set-color',
+      id: 'zzz',
+      color: '#abcdef',
+    });
+
+    expect(next.annotations[0]).toBe(rect);
+  });
+});
+
+describe('isCommittingAction', () => {
+  it('treats annotation/set-color as a committing action (Undo target)', () => {
+    expect(isCommittingAction({ type: 'annotation/set-color', id: 'r1', color: '#abcdef' })).toBe(
+      true,
+    );
+  });
+
+  it('treats active-color/set as UI-only (not committed)', () => {
+    expect(isCommittingAction({ type: 'active-color/set', color: '#abcdef' })).toBe(false);
   });
 });

@@ -12,7 +12,7 @@ export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {
       m.set('y', annotation.y);
       m.set('width', annotation.width);
       m.set('height', annotation.height);
-      m.set('stroke', annotation.stroke);
+      m.set('color', annotation.color);
       m.set('strokeWidth', annotation.strokeWidth);
       break;
     case 'arrow':
@@ -21,7 +21,7 @@ export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {
       m.set('fromY', annotation.from.y);
       m.set('toX', annotation.to.x);
       m.set('toY', annotation.to.y);
-      m.set('stroke', annotation.stroke);
+      m.set('color', annotation.color);
       m.set('strokeWidth', annotation.strokeWidth);
       break;
     case 'text':
@@ -29,14 +29,14 @@ export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {
       m.set('y', annotation.y);
       m.set('text', annotation.text);
       m.set('fontSize', annotation.fontSize);
-      m.set('fill', annotation.fill);
+      m.set('color', annotation.color);
       break;
     case 'highlight':
       m.set('x', annotation.x);
       m.set('y', annotation.y);
       m.set('width', annotation.width);
       m.set('height', annotation.height);
-      m.set('fill', annotation.fill);
+      m.set('color', annotation.color);
       break;
     default: {
       const _exhaustive: never = annotation;
@@ -56,7 +56,7 @@ export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
       createdAt: m.get('createdAt'),
       from: { x: m.get('fromX'), y: m.get('fromY') },
       to: { x: m.get('toX'), y: m.get('toY') },
-      stroke: m.get('stroke'),
+      color: m.get('color'),
       strokeWidth: m.get('strokeWidth'),
     };
   } else if (type === 'rectangle') {
@@ -68,7 +68,7 @@ export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
       y: m.get('y'),
       width: m.get('width'),
       height: m.get('height'),
-      stroke: m.get('stroke'),
+      color: m.get('color'),
       strokeWidth: m.get('strokeWidth'),
     };
   } else if (type === 'text') {
@@ -80,7 +80,7 @@ export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
       y: m.get('y'),
       text: m.get('text'),
       fontSize: m.get('fontSize'),
-      fill: m.get('fill'),
+      color: m.get('color'),
     };
   } else if (type === 'highlight') {
     candidate = {
@@ -91,7 +91,7 @@ export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
       y: m.get('y'),
       width: m.get('width'),
       height: m.get('height'),
-      fill: m.get('fill'),
+      color: m.get('color'),
     };
   } else {
     return null;

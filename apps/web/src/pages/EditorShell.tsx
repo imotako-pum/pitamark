@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { CanvasStage } from '../components/canvas/CanvasStage';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
+import { HelpModal } from '../components/dialogs/HelpModal';
 import { DropZone } from '../components/empty-state/DropZone';
 import { Toolbar } from '../components/toolbar/Toolbar';
 import type { Tool } from '../hooks/annotationsReducer';
@@ -18,6 +19,8 @@ import type { AnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
+import { useStageTransform } from '../hooks/useStageTransform';
+import { nextColor, prevColor } from '../lib/colorCycle';
 
 const MIN_STAGE_HEIGHT = 200;
 const FALLBACK_HEADER_HEIGHT = 56;
@@ -69,6 +72,11 @@ export const EditorShell = ({
   const [stageRect, setStageRect] = useState<DOMRect | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState<number>(FALLBACK_HEADER_HEIGHT);
+  const [imageNaturalSize, setImageNaturalSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const [helpOpen, setHelpOpen] = useState<boolean>(false);
 
   // ResizeObserver replaces the previous TOOLBAR_HEIGHT constant so the stage
   // tracks the real header height when it wraps to two rows on small screens.
@@ -132,7 +140,34 @@ export const EditorShell = ({
     }
   }, [editingTextId, store]);
 
-  const exportPng = useExportPng({ stageRef, awarenessLayerRef, roomId });
+  const stageHeight = Math.max(stageSize.height - headerHeight, MIN_STAGE_HEIGHT);
+  // Destructure once so each handler / effect depends on a stable function
+  // reference rather than `transformApi.X` (a fresh property access per
+  // render). This mirrors the same fragility class as the `[viewport]`
+  // identity bug fixed inside useStageTransform.
+  const {
+    transform: stageTransform,
+    setImageSize: setStageImageSize,
+    fitToViewport,
+    setHundredPercent,
+    zoomBy,
+    panBy,
+  } = useStageTransform({ width: stageSize.width, height: stageHeight });
+
+  const handleImageLoaded = useCallback(
+    (size: { width: number; height: number } | null) => {
+      setStageImageSize(size);
+      setImageNaturalSize(size);
+    },
+    [setStageImageSize],
+  );
+
+  const exportPng = useExportPng({
+    stageRef,
+    awarenessLayerRef,
+    roomId,
+    imageSize: imageNaturalSize,
+  });
   const canExport = source !== null;
   const handleExport = useCallback(() => {
     if (!canExport) return;
@@ -142,14 +177,26 @@ export const EditorShell = ({
     void exportPng();
   }, [canExport, exportPng]);
 
-  useKeyboardShortcuts({
-    onUndo: store.undo,
-    onRedo: store.redo,
-    onDelete: handleDelete,
-    onSetTool: handleSetTool,
-    onEscape: handleEscape,
-    onExport: canExport ? handleExport : undefined,
-  });
+  // Expose the transform on window so E2E can poll it without coupling to the
+  // canvas DOM. Mirrors the existing __SNAP_SHARE_ANNOTATIONS__ pattern.
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__SNAP_SHARE_STAGE_TRANSFORM__ = stageTransform;
+  }, [stageTransform]);
+
+  // Expose transform actions for E2E. Playwright's keyboard.press cannot
+  // reliably trigger Meta+0 / Meta+1 (Chromium intercepts these as browser
+  // shortcuts before the page can preventDefault), so the E2E covers the
+  // transform pipeline by calling these directly. The keyboard binding
+  // itself is small and covered by the existing keyboard-shortcuts.spec.ts
+  // pattern (V / R / A / T / H + Cmd+S).
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__SNAP_SHARE_TRANSFORM_ACTIONS__ = {
+      fitToViewport,
+      setHundredPercent,
+      zoomBy,
+      panBy,
+    };
+  }, [fitToViewport, setHundredPercent, zoomBy, panBy]);
 
   const handleTextCommit = useCallback(
     (text: string) => {
@@ -172,16 +219,64 @@ export const EditorShell = ({
   }, [editingTextId, editingAnnotation, store]);
 
   const handleClearImage = useCallback(() => {
+    setStageImageSize(null);
+    setImageNaturalSize(null);
     onClearImage();
     setEditingTextId(null);
-  }, [onClearImage]);
+  }, [onClearImage, setStageImageSize]);
+
+  // Single click handler: always update active color (drives next draws),
+  // and if a selection exists, also apply the new color to it. Replaced the
+  // earlier "pick + 2 apply buttons" UX after dogfood feedback that the 2-step
+  // flow felt heavy and the sync/highlight lane separation produced an
+  // indicator discontinuity on tool switches.
+  const handlePickColor = useCallback(
+    (color: string) => {
+      store.dispatch({ type: 'active-color/set', color });
+      const id = store.state.selectedId;
+      if (id) {
+        store.dispatch({ type: 'annotation/set-color', id, color });
+      }
+    },
+    [store],
+  );
+
+  // C / ⇧C — palette を巡回。selectedId があれば同じ color をその注釈にも適用
+  // (handlePickColor と同じ規約)。実装重複は最小化のため、純関数で next/prev
+  // を計算したうえで handlePickColor に委譲する。
+  const handleCycleColorNext = useCallback(() => {
+    handlePickColor(nextColor(store.state.activeColor));
+  }, [handlePickColor, store.state.activeColor]);
+
+  const handleCycleColorPrev = useCallback(() => {
+    handlePickColor(prevColor(store.state.activeColor));
+  }, [handlePickColor, store.state.activeColor]);
+
+  // ? — Help cheatsheet を toggle。同キーで反転 (Excalidraw 互換) のため、
+  // 引数なしの単純な setter で setState 関数形式を使う。
+  const handleShowHelp = useCallback(() => {
+    setHelpOpen((prev) => !prev);
+  }, []);
+
+  useKeyboardShortcuts({
+    onUndo: store.undo,
+    onRedo: store.redo,
+    onDelete: handleDelete,
+    onSetTool: handleSetTool,
+    onEscape: handleEscape,
+    onExport: canExport ? handleExport : undefined,
+    onFitToViewport: source ? fitToViewport : undefined,
+    onSetHundredPercent: source ? setHundredPercent : undefined,
+    // Help は画像未投入時も発火させる (キーボード discoverability の担保)。
+    onShowHelp: handleShowHelp,
+    onCycleColorNext: source ? handleCycleColorNext : undefined,
+    onCycleColorPrev: source ? handleCycleColorPrev : undefined,
+  });
 
   const selectedId = store.state.selectedId;
   useLayoutEffect(() => {
     onSelectedIdChange?.(selectedId);
   }, [onSelectedIdChange, selectedId]);
-
-  const stageHeight = Math.max(stageSize.height - headerHeight, MIN_STAGE_HEIGHT);
 
   return (
     <main className="relative h-dvh w-dvw overflow-hidden bg-(--color-surface) text-(--color-text)">
@@ -199,12 +294,15 @@ export const EditorShell = ({
           hasSelection={store.state.selectedId !== null}
           imageLoaded={source !== null}
           canExport={canExport}
+          activeColor={store.state.activeColor}
           onSetTool={handleSetTool}
           onUndo={store.undo}
           onRedo={store.redo}
           onDelete={handleDelete}
           onClearImage={handleClearImage}
           onExport={handleExport}
+          onPickColor={handlePickColor}
+          onShowHelp={handleShowHelp}
         />
         <div className="pointer-events-auto flex min-w-0 justify-end self-center md:w-30">
           {toolbarRight ?? <div aria-hidden="true" />}
@@ -227,6 +325,10 @@ export const EditorShell = ({
             onCursorMove={onCursorMove}
             extraLayers={awarenessLayer?.(store.state.annotations, awarenessLayerRef) ?? null}
             stageRef={stageRef}
+            transform={stageTransform}
+            onZoom={zoomBy}
+            onPan={panBy}
+            onImageLoaded={handleImageLoaded}
           />
         ) : onLoadFile ? (
           <DropZone onFile={onLoadFile} error={imageError} />
@@ -240,11 +342,13 @@ export const EditorShell = ({
         <TextEditorOverlay
           annotation={editingAnnotation}
           stageContainerRect={stageRect}
+          transform={stageTransform}
           onCommit={handleTextCommit}
           onCancel={handleTextCancel}
         />
       )}
       {floatingExtras}
+      <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </main>
   );
 };

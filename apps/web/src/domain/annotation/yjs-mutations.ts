@@ -55,12 +55,16 @@ export const resizeRectangleY = (
   doc: Y.Doc,
   ya: YAnnotations,
   id: string,
+  x: number,
+  y: number,
   width: number,
   height: number,
 ): void => {
   const m = ya.get(id);
   if (!m || m.get('type') !== 'rectangle') return;
   tx(doc, () => {
+    m.set('x', x);
+    m.set('y', y);
     m.set('width', width);
     m.set('height', height);
   });
@@ -70,12 +74,16 @@ export const resizeHighlightY = (
   doc: Y.Doc,
   ya: YAnnotations,
   id: string,
+  x: number,
+  y: number,
   width: number,
   height: number,
 ): void => {
   const m = ya.get(id);
   if (!m || m.get('type') !== 'highlight') return;
   tx(doc, () => {
+    m.set('x', x);
+    m.set('y', y);
     m.set('width', width);
     m.set('height', height);
   });
@@ -103,6 +111,21 @@ export const setTextY = (doc: Y.Doc, ya: YAnnotations, id: string, text: string)
   if (!m || m.get('type') !== 'text') return;
   tx(doc, () => {
     m.set('text', text);
+  });
+};
+
+// All four annotation types share the same `color` field, so this mutation
+// is type-agnostic. We still no-op on missing id to mirror the other helpers.
+export const setAnnotationColorY = (
+  doc: Y.Doc,
+  ya: YAnnotations,
+  id: string,
+  color: string,
+): void => {
+  const m = ya.get(id);
+  if (!m) return;
+  tx(doc, () => {
+    m.set('color', color);
   });
 };
 

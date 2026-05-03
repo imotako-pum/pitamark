@@ -8,6 +8,7 @@ import {
   removeAnnotationY,
   resizeHighlightY,
   resizeRectangleY,
+  setAnnotationColorY,
   setArrowEndpointsY,
   setTextY,
 } from '../domain/annotation/yjs-mutations';
@@ -69,6 +70,8 @@ export const createYjsAnnotationsContext = (
     switch (action.type) {
       case 'tool/set':
       case 'select/set':
+      case 'active-color/set':
+        // UI-only state; never persisted to Yjs.
         return;
       case 'annotation/add':
         addAnnotationY(doc, yAnnotations, action.annotation);
@@ -80,16 +83,35 @@ export const createYjsAnnotationsContext = (
         moveAnnotationY(doc, yAnnotations, action.id, action.dx, action.dy);
         return;
       case 'annotation/resize-rect':
-        resizeRectangleY(doc, yAnnotations, action.id, action.width, action.height);
+        resizeRectangleY(
+          doc,
+          yAnnotations,
+          action.id,
+          action.x,
+          action.y,
+          action.width,
+          action.height,
+        );
         return;
       case 'annotation/resize-highlight':
-        resizeHighlightY(doc, yAnnotations, action.id, action.width, action.height);
+        resizeHighlightY(
+          doc,
+          yAnnotations,
+          action.id,
+          action.x,
+          action.y,
+          action.width,
+          action.height,
+        );
         return;
       case 'annotation/set-arrow-endpoints':
         setArrowEndpointsY(doc, yAnnotations, action.id, action.from, action.to);
         return;
       case 'annotation/set-text':
         setTextY(doc, yAnnotations, action.id, action.text);
+        return;
+      case 'annotation/set-color':
+        setAnnotationColorY(doc, yAnnotations, action.id, action.color);
         return;
       default: {
         // Exhaustiveness check — compile-time via `never`, runtime via throw

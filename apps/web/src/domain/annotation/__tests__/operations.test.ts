@@ -13,8 +13,7 @@ import {
   resizeHighlight,
   resizeRectangle,
   setArrowEndpoints,
-  setFill,
-  setStroke,
+  setColor,
   setText,
 } from '../operations';
 
@@ -26,7 +25,7 @@ const rect: RectangleAnnotation = {
   y: 20,
   width: 100,
   height: 50,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 };
 
@@ -36,7 +35,7 @@ const arrow: ArrowAnnotation = {
   createdAt: 2,
   from: { x: 0, y: 0 },
   to: { x: 50, y: 50 },
-  stroke: '#ff5544',
+  color: '#ff5544',
   strokeWidth: 2,
 };
 
@@ -48,7 +47,7 @@ const text: TextAnnotation = {
   y: 5,
   text: 'hello',
   fontSize: 16,
-  fill: '#202020',
+  color: '#202020',
 };
 
 const highlight: HighlightAnnotation = {
@@ -59,7 +58,7 @@ const highlight: HighlightAnnotation = {
   y: 0,
   width: 80,
   height: 30,
-  fill: '#f5d142',
+  color: '#f5d142',
 };
 
 describe('addAnnotation', () => {
@@ -147,43 +146,47 @@ describe('moveAnnotation', () => {
 });
 
 describe('resizeRectangle', () => {
-  it('updates only when target type is rectangle', () => {
+  it('updates x/y/width/height only when target type is rectangle', () => {
     const before: ReadonlyArray<Annotation> = [rect, arrow];
-    const next = resizeRectangle(before, 'r1', 200, 150);
+    const next = resizeRectangle(before, 'r1', 30, 40, 200, 150);
     const updated = next[0] as RectangleAnnotation;
 
+    expect(updated.x).toBe(30);
+    expect(updated.y).toBe(40);
     expect(updated.width).toBe(200);
     expect(updated.height).toBe(150);
     expect(next[1]).toBe(arrow);
   });
 
   it('is a no-op when id matches a non-rectangle annotation', () => {
-    const next = resizeRectangle([arrow], 'a1', 200, 150);
+    const next = resizeRectangle([arrow], 'a1', 0, 0, 200, 150);
     expect(next[0]).toBe(arrow);
   });
 
   it('is a no-op for unknown id', () => {
-    const next = resizeRectangle([rect], 'zzz', 1, 1);
+    const next = resizeRectangle([rect], 'zzz', 0, 0, 1, 1);
     expect(next[0]).toBe(rect);
   });
 });
 
 describe('resizeHighlight', () => {
-  it('updates only when target type is highlight', () => {
-    const next = resizeHighlight([highlight], 'h1', 300, 60);
+  it('updates x/y/width/height only when target type is highlight', () => {
+    const next = resizeHighlight([highlight], 'h1', 7, 8, 300, 60);
     const updated = next[0] as HighlightAnnotation;
 
+    expect(updated.x).toBe(7);
+    expect(updated.y).toBe(8);
     expect(updated.width).toBe(300);
     expect(updated.height).toBe(60);
   });
 
   it('is a no-op when id matches a non-highlight annotation', () => {
-    const next = resizeHighlight([rect], 'r1', 1, 1);
+    const next = resizeHighlight([rect], 'r1', 0, 0, 1, 1);
     expect(next[0]).toBe(rect);
   });
 
   it('is a no-op for unknown id', () => {
-    const next = resizeHighlight([highlight], 'zzz', 1, 1);
+    const next = resizeHighlight([highlight], 'zzz', 0, 0, 1, 1);
     expect(next[0]).toBe(highlight);
   });
 });
@@ -229,36 +232,30 @@ describe('setText', () => {
   });
 });
 
-describe('setStroke', () => {
-  it('updates stroke on a rectangle', () => {
-    const next = setStroke([rect], 'r1', '#abcdef');
-    expect((next[0] as RectangleAnnotation).stroke).toBe('#abcdef');
+describe('setColor', () => {
+  it('updates color on a rectangle', () => {
+    const next = setColor([rect], 'r1', '#abcdef');
+    expect((next[0] as RectangleAnnotation).color).toBe('#abcdef');
   });
 
-  it('updates stroke on an arrow', () => {
-    const next = setStroke([arrow], 'a1', '#abcdef');
-    expect((next[0] as ArrowAnnotation).stroke).toBe('#abcdef');
+  it('updates color on an arrow', () => {
+    const next = setColor([arrow], 'a1', '#abcdef');
+    expect((next[0] as ArrowAnnotation).color).toBe('#abcdef');
   });
 
-  it('is a no-op when id matches a text annotation (no stroke)', () => {
-    const next = setStroke([text], 't1', '#abcdef');
-    expect(next[0]).toBe(text);
-  });
-});
-
-describe('setFill', () => {
-  it('updates fill on a text annotation', () => {
-    const next = setFill([text], 't1', '#abcdef');
-    expect((next[0] as TextAnnotation).fill).toBe('#abcdef');
+  it('updates color on a text annotation', () => {
+    const next = setColor([text], 't1', '#abcdef');
+    expect((next[0] as TextAnnotation).color).toBe('#abcdef');
   });
 
-  it('updates fill on a highlight annotation', () => {
-    const next = setFill([highlight], 'h1', '#abcdef');
-    expect((next[0] as HighlightAnnotation).fill).toBe('#abcdef');
+  it('updates color on a highlight annotation', () => {
+    const next = setColor([highlight], 'h1', '#abcdef');
+    expect((next[0] as HighlightAnnotation).color).toBe('#abcdef');
   });
 
-  it('is a no-op when id matches a rectangle annotation (no fill)', () => {
-    const next = setFill([rect], 'r1', '#abcdef');
+  it('is a no-op for unknown id', () => {
+    const next = setColor([rect, arrow], 'zzz', '#abcdef');
     expect(next[0]).toBe(rect);
+    expect(next[1]).toBe(arrow);
   });
 });

@@ -1,5 +1,6 @@
 import {
   ArrowUpRight,
+  CircleHelp,
   Download,
   Eraser,
   Highlighter,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Tool } from '../../hooks/annotationsReducer';
+import { ColorPalette } from './ColorPalette';
 import { ToolButton } from './ToolButton';
 
 type ToolbarProps = Readonly<{
@@ -21,12 +23,15 @@ type ToolbarProps = Readonly<{
   hasSelection: boolean;
   imageLoaded: boolean;
   canExport: boolean;
+  activeColor: string;
   onSetTool: (tool: Tool) => void;
   onUndo: () => void;
   onRedo: () => void;
   onDelete: () => void;
   onClearImage: () => void;
   onExport: () => void;
+  onPickColor: (color: string) => void;
+  onShowHelp: () => void;
 }>;
 
 type ToolDef = Readonly<{
@@ -55,12 +60,15 @@ export const Toolbar = ({
   hasSelection,
   imageLoaded,
   canExport,
+  activeColor,
   onSetTool,
   onUndo,
   onRedo,
   onDelete,
   onClearImage,
   onExport,
+  onPickColor,
+  onShowHelp,
 }: ToolbarProps) => (
   <TooltipProvider delay={150}>
     <div
@@ -110,6 +118,8 @@ export const Toolbar = ({
         />
       </div>
       <Divider />
+      <ColorPalette activeColor={activeColor} disabled={!imageLoaded} onPickColor={onPickColor} />
+      <Divider />
       <div className="flex items-center gap-1">
         <ToolButton
           icon={Download}
@@ -125,6 +135,8 @@ export const Toolbar = ({
           onClick={onClearImage}
         />
       </div>
+      <Divider />
+      <ToolButton icon={CircleHelp} label="ショートカット一覧" shortcut="?" onClick={onShowHelp} />
     </div>
   </TooltipProvider>
 );
