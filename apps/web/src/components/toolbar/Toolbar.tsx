@@ -1,5 +1,6 @@
 import {
   ArrowUpRight,
+  CircleHelp,
   Download,
   Eraser,
   Highlighter,
@@ -30,6 +31,7 @@ type ToolbarProps = Readonly<{
   onClearImage: () => void;
   onExport: () => void;
   onPickColor: (color: string) => void;
+  onShowHelp: () => void;
 }>;
 
 type ToolDef = Readonly<{
@@ -66,6 +68,7 @@ export const Toolbar = ({
   onClearImage,
   onExport,
   onPickColor,
+  onShowHelp,
 }: ToolbarProps) => (
   <TooltipProvider delay={150}>
     <div
@@ -132,6 +135,8 @@ export const Toolbar = ({
           onClick={onClearImage}
         />
       </div>
+      <Divider />
+      <ToolButton icon={CircleHelp} label="ショートカット一覧" shortcut="?" onClick={onShowHelp} />
     </div>
   </TooltipProvider>
 );

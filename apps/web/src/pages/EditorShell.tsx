@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { CanvasStage } from '../components/canvas/CanvasStage';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
+import { HelpModal } from '../components/dialogs/HelpModal';
 import { DropZone } from '../components/empty-state/DropZone';
 import { Toolbar } from '../components/toolbar/Toolbar';
 import type { Tool } from '../hooks/annotationsReducer';
@@ -19,6 +20,7 @@ import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
 import { useStageTransform } from '../hooks/useStageTransform';
+import { nextColor, prevColor } from '../lib/colorCycle';
 
 const MIN_STAGE_HEIGHT = 200;
 const FALLBACK_HEADER_HEIGHT = 56;
@@ -74,6 +76,7 @@ export const EditorShell = ({
     width: number;
     height: number;
   } | null>(null);
+  const [helpOpen, setHelpOpen] = useState<boolean>(false);
 
   // ResizeObserver replaces the previous TOOLBAR_HEIGHT constant so the stage
   // tracks the real header height when it wraps to two rows on small screens.
@@ -174,17 +177,6 @@ export const EditorShell = ({
     void exportPng();
   }, [canExport, exportPng]);
 
-  useKeyboardShortcuts({
-    onUndo: store.undo,
-    onRedo: store.redo,
-    onDelete: handleDelete,
-    onSetTool: handleSetTool,
-    onEscape: handleEscape,
-    onExport: canExport ? handleExport : undefined,
-    onFitToViewport: source ? fitToViewport : undefined,
-    onSetHundredPercent: source ? setHundredPercent : undefined,
-  });
-
   // Expose the transform on window so E2E can poll it without coupling to the
   // canvas DOM. Mirrors the existing __SNAP_SHARE_ANNOTATIONS__ pattern.
   useEffect(() => {
@@ -249,6 +241,38 @@ export const EditorShell = ({
     [store],
   );
 
+  // C / ⇧C — palette を巡回。selectedId があれば同じ color をその注釈にも適用
+  // (handlePickColor と同じ規約)。実装重複は最小化のため、純関数で next/prev
+  // を計算したうえで handlePickColor に委譲する。
+  const handleCycleColorNext = useCallback(() => {
+    handlePickColor(nextColor(store.state.activeColor));
+  }, [handlePickColor, store.state.activeColor]);
+
+  const handleCycleColorPrev = useCallback(() => {
+    handlePickColor(prevColor(store.state.activeColor));
+  }, [handlePickColor, store.state.activeColor]);
+
+  // ? — Help cheatsheet を toggle。同キーで反転 (Excalidraw 互換) のため、
+  // 引数なしの単純な setter で setState 関数形式を使う。
+  const handleShowHelp = useCallback(() => {
+    setHelpOpen((prev) => !prev);
+  }, []);
+
+  useKeyboardShortcuts({
+    onUndo: store.undo,
+    onRedo: store.redo,
+    onDelete: handleDelete,
+    onSetTool: handleSetTool,
+    onEscape: handleEscape,
+    onExport: canExport ? handleExport : undefined,
+    onFitToViewport: source ? fitToViewport : undefined,
+    onSetHundredPercent: source ? setHundredPercent : undefined,
+    // Help は画像未投入時も発火させる (キーボード discoverability の担保)。
+    onShowHelp: handleShowHelp,
+    onCycleColorNext: source ? handleCycleColorNext : undefined,
+    onCycleColorPrev: source ? handleCycleColorPrev : undefined,
+  });
+
   const selectedId = store.state.selectedId;
   useLayoutEffect(() => {
     onSelectedIdChange?.(selectedId);
@@ -278,6 +302,7 @@ export const EditorShell = ({
           onClearImage={handleClearImage}
           onExport={handleExport}
           onPickColor={handlePickColor}
+          onShowHelp={handleShowHelp}
         />
         <div className="pointer-events-auto flex min-w-0 justify-end self-center md:w-30">
           {toolbarRight ?? <div aria-hidden="true" />}
@@ -323,6 +348,7 @@ export const EditorShell = ({
         />
       )}
       {floatingExtras}
+      <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </main>
   );
 };

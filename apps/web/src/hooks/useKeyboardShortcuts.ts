@@ -17,6 +17,13 @@ export type KeyboardShortcuts = Readonly<{
   /** Optional. ⌘1/Ctrl+1 → 100% scale. preventDefault only when provided so
    *  we don't steal the browser's "go to tab 1" before an image is loaded. */
   onSetHundredPercent?: () => void;
+  /** Optional. `?` (Shift+/) → toggle the help cheatsheet. preventDefault only
+   *  when provided so the browser keeps `?` for non-app contexts otherwise. */
+  onShowHelp?: () => void;
+  /** Optional. `C` → cycle to the next palette color. */
+  onCycleColorNext?: () => void;
+  /** Optional. `⇧C` → cycle to the previous palette color. */
+  onCycleColorPrev?: () => void;
 }>;
 
 const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
@@ -84,6 +91,27 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
       }
       if (e.key === 'Escape') {
         ref.current.onEscape();
+        return;
+      }
+      // `?` (Shift+/) — toggle help. JIS/US keyboards both produce `e.key === '?'`
+      // when Shift+/ is pressed. Place this before the mod-only early return so
+      // a no-modifier `?` never falls through to the tool-key branch.
+      if (!mod && e.key === '?') {
+        const cb = ref.current.onShowHelp;
+        if (cb) {
+          e.preventDefault();
+          cb();
+        }
+        return;
+      }
+      // `C` / `⇧C` — palette cycle. Shift reverses direction. `c` is reserved
+      // exclusively for color cycling (intentionally not in TOOL_KEY_MAP).
+      if (!mod && key === 'c') {
+        const cb = e.shiftKey ? ref.current.onCycleColorPrev : ref.current.onCycleColorNext;
+        if (cb) {
+          e.preventDefault();
+          cb();
+        }
         return;
       }
       if (mod) return;

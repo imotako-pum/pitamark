@@ -152,7 +152,7 @@ snap-share は本番リリース後の dogfood 段階(Phase 7.6 完了)で、自
 | 1 | A1: 注釈リサイズ | Konva Transformer 統合(矩形/ハイライト)+ 矢印は端点 Circle ハンドル、Shift/Alt 修飾子、Yjs mutation 接続 | complete | with 2, 3 | - | [plan](../plans/completed/phase-7.7-1-annotation-resize.plan.md) / [report](../reports/phase-7.7-1-annotation-resize-report.md) |
 | 2 | A2: 色変更 UI + Schema 拡張 | stroke/fill → color に統一、Toolbar に色パレット 7 色 + 2 適用ボタン、デフォルト赤(sync) / 黄(highlight 独立) | complete | with 1, 3 | - | [plan](../plans/completed/phase-7.7-2-color-palette.plan.md) / [report](../reports/phase-7.7-2-color-palette-report.md) |
 | 3 | B1: ズーム/パン + fit-to-viewport | Stage scale/position 制御、Cmd+0/1, Space+drag, Cmd+wheel、初期 fit ロジック、座標変換整合 | complete | with 1, 2 | - | [plan](../plans/completed/phase-7.7-3-zoom-pan-fit.plan.md) / [report](../reports/phase-7.7-3-zoom-pan-fit-report.md) |
-| 4 | B2: ショートカット網羅 + チートシート | `?` キーで Help モーダル、Phase 1-3 で追加されたショートカット網羅、キーボード完結検証 | pending | - | 1, 2, 3 | - |
+| 4 | B2: ショートカット網羅 + チートシート | `?` キーで Help モーダル、Phase 1-3 で追加されたショートカット網羅、キーボード完結検証 | complete | - | 1, 2, 3 | [plan](../plans/completed/phase-7.7-4-shortcut-cheatsheet.plan.md) / [report](../reports/phase-7.7-4-shortcut-cheatsheet-report.md) |
 
 ### Phase Details
 
