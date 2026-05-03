@@ -330,8 +330,11 @@ export const CanvasStage = ({
       // Pan: scroll delta は「コンテンツを動かしたい量の逆」 (下スクロール →
       // 視点が下へ → Stage.y は減る)。よって onPan には符号反転して渡す。
       if (e.evt.shiftKey) {
-        // Shift+wheel: 縦 wheel を横パンへ転写 (Figma / 多くのエディタの慣例)
-        onPan(-e.evt.deltaY, 0);
+        // Shift+wheel = 横パン。プラットフォームによって delta の乗る軸が違う:
+        //   - 物理マウスホイール + Shift (Chrome/macOS): deltaY が乗る、deltaX=0
+        //   - macOS トラックパッド 2 本指 + Shift: OS が deltaY→deltaX 変換済み
+        // 両方をカバーするために deltaX + deltaY を合算 (片方は常に 0 の前提)。
+        onPan(-(e.evt.deltaX + e.evt.deltaY), 0);
         return;
       }
       onPan(-e.evt.deltaX, -e.evt.deltaY);
