@@ -21,7 +21,9 @@ const waitForRoom = async (page: import('@playwright/test').Page) => {
 };
 
 const isPressed = async (page: import('@playwright/test').Page, label: string): Promise<boolean> =>
-  (await page.getByRole('button', { name: label }).getAttribute('aria-pressed')) === 'true';
+  // exact: true keeps "選択" from also matching "選択中の注釈に色を適用".
+  (await page.getByRole('button', { name: label, exact: true }).getAttribute('aria-pressed')) ===
+  'true';
 
 const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
   test.skip(

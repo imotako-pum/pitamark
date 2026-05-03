@@ -56,7 +56,7 @@ const annotation: HighlightAnnotation = {
   y: 0,
   width: 80,
   height: 30,
-  fill: '#f5d142',
+  color: '#f5d142',
 };
 
 const renderShape = (props: {

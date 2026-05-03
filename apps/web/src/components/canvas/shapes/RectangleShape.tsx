@@ -47,7 +47,7 @@ export const RectangleShape = ({
         y={annotation.y}
         width={annotation.width}
         height={annotation.height}
-        stroke={isSelected ? OUTLINE_ACCENT : annotation.stroke}
+        stroke={isSelected ? OUTLINE_ACCENT : annotation.color}
         strokeWidth={
           isSelected ? annotation.strokeWidth + SELECTED_STROKE_BOOST : annotation.strokeWidth
         }

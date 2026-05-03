@@ -6,14 +6,7 @@ import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
-import {
-  DEFAULT_FONT_SIZE,
-  DEFAULT_STROKE_WIDTH,
-  FILL_HIGHLIGHT,
-  FILL_TEXT,
-  STROKE_ARROW,
-  STROKE_RECTANGLE,
-} from './colors';
+import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from './colors';
 import { ImageLayer } from './ImageLayer';
 import type { ArrowEndpointsPatch } from './shapes/ArrowShape';
 import type { HighlightResizePatch } from './shapes/HighlightShape';
@@ -39,7 +32,12 @@ const MIN_DRAG_PIXELS = 4;
 
 type DragStart = Readonly<{ x: number; y: number; id: string; createdAt: number }>;
 
-const buildDraftRectangle = (start: DragStart, x: number, y: number): Annotation => ({
+const buildDraftRectangle = (
+  start: DragStart,
+  x: number,
+  y: number,
+  color: string,
+): Annotation => ({
   id: start.id,
   type: 'rectangle',
   createdAt: start.createdAt,
@@ -47,11 +45,16 @@ const buildDraftRectangle = (start: DragStart, x: number, y: number): Annotation
   y: Math.min(start.y, y),
   width: Math.max(Math.abs(x - start.x), 1),
   height: Math.max(Math.abs(y - start.y), 1),
-  stroke: STROKE_RECTANGLE,
+  color,
   strokeWidth: DEFAULT_STROKE_WIDTH,
 });
 
-const buildDraftHighlight = (start: DragStart, x: number, y: number): Annotation => ({
+const buildDraftHighlight = (
+  start: DragStart,
+  x: number,
+  y: number,
+  color: string,
+): Annotation => ({
   id: start.id,
   type: 'highlight',
   createdAt: start.createdAt,
@@ -59,16 +62,16 @@ const buildDraftHighlight = (start: DragStart, x: number, y: number): Annotation
   y: Math.min(start.y, y),
   width: Math.max(Math.abs(x - start.x), 1),
   height: Math.max(Math.abs(y - start.y), 1),
-  fill: FILL_HIGHLIGHT,
+  color,
 });
 
-const buildDraftArrow = (start: DragStart, x: number, y: number): Annotation => ({
+const buildDraftArrow = (start: DragStart, x: number, y: number, color: string): Annotation => ({
   id: start.id,
   type: 'arrow',
   createdAt: start.createdAt,
   from: { x: start.x, y: start.y },
   to: { x, y },
-  stroke: STROKE_ARROW,
+  color,
   strokeWidth: DEFAULT_STROKE_WIDTH,
 });
 
@@ -87,7 +90,7 @@ export const CanvasStage = ({
   stageRef,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
-  const { tool, selectedId, annotations } = state;
+  const { tool, selectedId, annotations, defaultColors } = state;
   // draft and dragStart live in refs so consecutive mouse events within a single
   // React render cycle (mousedown -> mousemove -> mouseup) always observe the
   // latest values without waiting for state flush. The state mirror keeps the
@@ -120,7 +123,7 @@ export const CanvasStage = ({
           y: pos.y,
           text: '',
           fontSize: DEFAULT_FONT_SIZE,
-          fill: FILL_TEXT,
+          color: defaultColors.sync,
         };
         dispatch({ type: 'annotation/add', annotation });
         dispatch({ type: 'select/set', id });
@@ -136,7 +139,7 @@ export const CanvasStage = ({
       };
       dragStartRef.current = start;
     },
-    [tool, dispatch, onStartTextEditing],
+    [tool, dispatch, onStartTextEditing, defaultColors.sync],
   );
 
   const handleMouseMove = useCallback(
@@ -153,15 +156,18 @@ export const CanvasStage = ({
       if (!dragStart || !pos) return;
 
       let next: Annotation | null = null;
-      if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y);
-      else if (tool === 'highlight') next = buildDraftHighlight(dragStart, pos.x, pos.y);
-      else if (tool === 'arrow') next = buildDraftArrow(dragStart, pos.x, pos.y);
+      if (tool === 'rectangle')
+        next = buildDraftRectangle(dragStart, pos.x, pos.y, defaultColors.sync);
+      else if (tool === 'highlight')
+        next = buildDraftHighlight(dragStart, pos.x, pos.y, defaultColors.highlight);
+      else if (tool === 'arrow')
+        next = buildDraftArrow(dragStart, pos.x, pos.y, defaultColors.sync);
       if (next) {
         draftRef.current = next;
         setDraft(next);
       }
     },
-    [tool, onCursorMove],
+    [tool, onCursorMove, defaultColors.sync, defaultColors.highlight],
   );
 
   const handleMouseLeave = useCallback(() => {

@@ -31,7 +31,7 @@ const annotation: ArrowAnnotation = {
   createdAt: 1,
   from: { x: 0, y: 0 },
   to: { x: 100, y: 100 },
-  stroke: '#e74c3c',
+  color: '#e74c3c',
   strokeWidth: 2,
 };
 

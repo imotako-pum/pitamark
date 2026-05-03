@@ -8,6 +8,7 @@ import {
   removeAnnotationY,
   resizeHighlightY,
   resizeRectangleY,
+  setAnnotationColorY,
   setArrowEndpointsY,
   setTextY,
 } from '../domain/annotation/yjs-mutations';
@@ -69,6 +70,9 @@ export const createYjsAnnotationsContext = (
     switch (action.type) {
       case 'tool/set':
       case 'select/set':
+      case 'default-color/set-sync':
+      case 'default-color/set-highlight':
+        // UI-only state; never persisted to Yjs.
         return;
       case 'annotation/add':
         addAnnotationY(doc, yAnnotations, action.annotation);
@@ -106,6 +110,9 @@ export const createYjsAnnotationsContext = (
         return;
       case 'annotation/set-text':
         setTextY(doc, yAnnotations, action.id, action.text);
+        return;
+      case 'annotation/set-color':
+        setAnnotationColorY(doc, yAnnotations, action.id, action.color);
         return;
       default: {
         // Exhaustiveness check — compile-time via `never`, runtime via throw

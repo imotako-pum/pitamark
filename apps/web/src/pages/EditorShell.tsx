@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { CanvasStage } from '../components/canvas/CanvasStage';
+import { DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
 import { DropZone } from '../components/empty-state/DropZone';
 import { Toolbar } from '../components/toolbar/Toolbar';
@@ -176,6 +177,40 @@ export const EditorShell = ({
     setEditingTextId(null);
   }, [onClearImage]);
 
+  // Picked color is local UI state — only the two apply buttons reach into the
+  // store. Initial pick mirrors the default sync color so the palette has a
+  // visible indicator from first render.
+  const [pickedColor, setPickedColor] = useState<string>(DEFAULT_SYNC_COLOR);
+  const handlePickColor = useCallback((color: string) => {
+    setPickedColor(color);
+  }, []);
+
+  const handleApplyDefaultColor = useCallback(
+    (color: string) => {
+      // Highlight has its own default lane because the marker color is
+      // semantically different from stroke colors. When the user is currently
+      // wielding the highlight tool, "set as default" applies to the highlight
+      // lane; otherwise it applies to the synchronized rectangle/arrow/text
+      // lane.
+      const lane = store.state.tool === 'highlight' ? 'highlight' : 'sync';
+      store.dispatch(
+        lane === 'highlight'
+          ? { type: 'default-color/set-highlight', color }
+          : { type: 'default-color/set-sync', color },
+      );
+    },
+    [store],
+  );
+
+  const handleApplyColorToSelected = useCallback(
+    (color: string) => {
+      const id = store.state.selectedId;
+      if (!id) return;
+      store.dispatch({ type: 'annotation/set-color', id, color });
+    },
+    [store],
+  );
+
   const selectedId = store.state.selectedId;
   useLayoutEffect(() => {
     onSelectedIdChange?.(selectedId);
@@ -199,12 +234,16 @@ export const EditorShell = ({
           hasSelection={store.state.selectedId !== null}
           imageLoaded={source !== null}
           canExport={canExport}
+          pickedColor={pickedColor}
           onSetTool={handleSetTool}
           onUndo={store.undo}
           onRedo={store.redo}
           onDelete={handleDelete}
           onClearImage={handleClearImage}
           onExport={handleExport}
+          onPickColor={handlePickColor}
+          onApplyDefaultColor={handleApplyDefaultColor}
+          onApplyColorToSelected={handleApplyColorToSelected}
         />
         <div className="pointer-events-auto flex min-w-0 justify-end self-center md:w-30">
           {toolbarRight ?? <div aria-hidden="true" />}

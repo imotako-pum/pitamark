@@ -4,6 +4,7 @@ import {
   type AnnotationsState,
   annotationsReducer,
   initialAnnotationsState,
+  isCommittingAction,
 } from '../annotationsReducer';
 
 const rect: RectangleAnnotation = {
@@ -14,7 +15,7 @@ const rect: RectangleAnnotation = {
   y: 0,
   width: 10,
   height: 10,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 };
 
@@ -147,5 +148,67 @@ describe('annotationsReducer.annotation/set-arrow-endpoints', () => {
     });
 
     expect(next.annotations[0]).toBe(rect);
+  });
+});
+
+describe('annotationsReducer.default-color/set-sync', () => {
+  it('updates state.defaultColors.sync without touching highlight', () => {
+    const next = annotationsReducer(initialAnnotationsState, {
+      type: 'default-color/set-sync',
+      color: '#3a86ff',
+    });
+
+    expect(next.defaultColors.sync).toBe('#3a86ff');
+    expect(next.defaultColors.highlight).toBe(initialAnnotationsState.defaultColors.highlight);
+  });
+});
+
+describe('annotationsReducer.default-color/set-highlight', () => {
+  it('updates state.defaultColors.highlight without touching sync', () => {
+    const next = annotationsReducer(initialAnnotationsState, {
+      type: 'default-color/set-highlight',
+      color: '#ff8c42',
+    });
+
+    expect(next.defaultColors.highlight).toBe('#ff8c42');
+    expect(next.defaultColors.sync).toBe(initialAnnotationsState.defaultColors.sync);
+  });
+});
+
+describe('annotationsReducer.annotation/set-color', () => {
+  it('updates color of the matching annotation', () => {
+    const next = annotationsReducer(seedWith([rect]), {
+      type: 'annotation/set-color',
+      id: 'r1',
+      color: '#abcdef',
+    });
+
+    expect((next.annotations[0] as RectangleAnnotation).color).toBe('#abcdef');
+  });
+
+  it('is a no-op for unknown id', () => {
+    const seeded = seedWith([rect]);
+    const next = annotationsReducer(seeded, {
+      type: 'annotation/set-color',
+      id: 'zzz',
+      color: '#abcdef',
+    });
+
+    expect(next.annotations[0]).toBe(rect);
+  });
+});
+
+describe('isCommittingAction', () => {
+  it('treats annotation/set-color as a committing action (Undo target)', () => {
+    expect(isCommittingAction({ type: 'annotation/set-color', id: 'r1', color: '#abcdef' })).toBe(
+      true,
+    );
+  });
+
+  it('treats default-color/* as UI-only (not committed)', () => {
+    expect(isCommittingAction({ type: 'default-color/set-sync', color: '#abcdef' })).toBe(false);
+    expect(isCommittingAction({ type: 'default-color/set-highlight', color: '#abcdef' })).toBe(
+      false,
+    );
   });
 });

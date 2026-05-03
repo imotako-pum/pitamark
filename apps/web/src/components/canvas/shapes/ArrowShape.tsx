@@ -34,7 +34,7 @@ export const ArrowShape = ({
     annotation.to.x,
     annotation.to.y,
   ];
-  const stroke = isSelected ? OUTLINE_ACCENT : annotation.stroke;
+  const stroke = isSelected ? OUTLINE_ACCENT : annotation.color;
   const strokeWidth = isSelected
     ? annotation.strokeWidth + SELECTED_STROKE_BOOST
     : annotation.strokeWidth;

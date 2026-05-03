@@ -2,10 +2,25 @@
 // and are kept physically in sync with apps/web/src/styles/tokens.css.
 
 export const OUTLINE_ACCENT = '#5b6dff';
-export const STROKE_RECTANGLE = '#5b6dff';
-export const STROKE_ARROW = '#e74c3c';
-export const FILL_TEXT = '#202020';
-export const FILL_HIGHLIGHT = '#f5d142';
+
+// Default annotation color for the synchronized trio (rectangle / arrow /
+// text). Highlight has its own default because semi-transparent markers do
+// not share a meaningful color space with strokes.
+export const DEFAULT_SYNC_COLOR = '#e74c3c';
+export const DEFAULT_HIGHLIGHT_COLOR = '#f5d142';
+
+// Fixed 7-color palette shown in the toolbar. Order is intentional: red is
+// the default sync color, yellow the default highlight color, both are
+// visually weight-balanced near the start of the row.
+export const COLOR_PALETTE: ReadonlyArray<string> = [
+  DEFAULT_SYNC_COLOR, // red
+  '#ff8c42', // orange
+  DEFAULT_HIGHLIGHT_COLOR, // yellow
+  '#2ecc71', // green
+  '#3a86ff', // blue
+  '#9b59b6', // purple
+  '#202020', // black
+];
 
 export const SELECTED_STROKE_BOOST = 1;
 export const HIGHLIGHT_OPACITY = 0.35;

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Tool } from '../../hooks/annotationsReducer';
+import { ColorPalette } from './ColorPalette';
 import { ToolButton } from './ToolButton';
 
 type ToolbarProps = Readonly<{
@@ -21,12 +22,16 @@ type ToolbarProps = Readonly<{
   hasSelection: boolean;
   imageLoaded: boolean;
   canExport: boolean;
+  pickedColor: string;
   onSetTool: (tool: Tool) => void;
   onUndo: () => void;
   onRedo: () => void;
   onDelete: () => void;
   onClearImage: () => void;
   onExport: () => void;
+  onPickColor: (color: string) => void;
+  onApplyDefaultColor: (color: string) => void;
+  onApplyColorToSelected: (color: string) => void;
 }>;
 
 type ToolDef = Readonly<{
@@ -55,12 +60,16 @@ export const Toolbar = ({
   hasSelection,
   imageLoaded,
   canExport,
+  pickedColor,
   onSetTool,
   onUndo,
   onRedo,
   onDelete,
   onClearImage,
   onExport,
+  onPickColor,
+  onApplyDefaultColor,
+  onApplyColorToSelected,
 }: ToolbarProps) => (
   <TooltipProvider delay={150}>
     <div
@@ -109,6 +118,15 @@ export const Toolbar = ({
           onClick={onDelete}
         />
       </div>
+      <Divider />
+      <ColorPalette
+        pickedColor={pickedColor}
+        hasSelection={hasSelection}
+        disabled={!imageLoaded}
+        onPickColor={onPickColor}
+        onApplyAsDefault={onApplyDefaultColor}
+        onApplyToSelected={onApplyColorToSelected}
+      />
       <Divider />
       <div className="flex items-center gap-1">
         <ToolButton

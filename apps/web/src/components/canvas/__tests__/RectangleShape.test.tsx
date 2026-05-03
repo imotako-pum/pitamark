@@ -59,7 +59,7 @@ const annotation: RectangleAnnotation = {
   y: 20,
   width: 100,
   height: 50,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 };
 

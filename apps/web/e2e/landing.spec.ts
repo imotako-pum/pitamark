@@ -12,7 +12,9 @@ test('landing page renders the editor toolbar with all five tools', async ({ pag
   await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible();
 
   for (const label of ['選択', '矩形', '矢印', 'テキスト', 'ハイライト']) {
-    await expect(page.getByRole('button', { name: label })).toBeVisible();
+    // exact: true is required because the color palette adds a
+    // "選択中の注釈に色を適用" button that would otherwise also match "選択".
+    await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
   }
 });
 

@@ -32,7 +32,7 @@ export const RectangleAnnotationSchema = z
     y: z.number().finite(),
     width: z.number().positive(),
     height: z.number().positive(),
-    stroke: ColorSchema,
+    color: ColorSchema,
     strokeWidth: z.number().positive().max(MAX_STROKE_WIDTH),
   })
   .readonly();
@@ -44,7 +44,7 @@ export const ArrowAnnotationSchema = z
     type: z.literal('arrow'),
     from: PointSchema,
     to: PointSchema,
-    stroke: ColorSchema,
+    color: ColorSchema,
     strokeWidth: z.number().positive().max(MAX_STROKE_WIDTH),
   })
   .readonly();
@@ -58,7 +58,7 @@ export const TextAnnotationSchema = z
     y: z.number().finite(),
     text: z.string().max(MAX_TEXT_LENGTH),
     fontSize: z.number().positive().max(MAX_FONT_SIZE),
-    fill: ColorSchema,
+    color: ColorSchema,
   })
   .readonly();
 export type TextAnnotation = z.infer<typeof TextAnnotationSchema>;
@@ -71,7 +71,7 @@ export const HighlightAnnotationSchema = z
     y: z.number().finite(),
     width: z.number().positive(),
     height: z.number().positive(),
-    fill: ColorSchema,
+    color: ColorSchema,
   })
   .readonly();
 export type HighlightAnnotation = z.infer<typeof HighlightAnnotationSchema>;

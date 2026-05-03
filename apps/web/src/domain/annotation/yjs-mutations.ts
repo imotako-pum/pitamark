@@ -114,6 +114,21 @@ export const setTextY = (doc: Y.Doc, ya: YAnnotations, id: string, text: string)
   });
 };
 
+// All four annotation types share the same `color` field, so this mutation
+// is type-agnostic. We still no-op on missing id to mirror the other helpers.
+export const setAnnotationColorY = (
+  doc: Y.Doc,
+  ya: YAnnotations,
+  id: string,
+  color: string,
+): void => {
+  const m = ya.get(id);
+  if (!m) return;
+  tx(doc, () => {
+    m.set('color', color);
+  });
+};
+
 export const clearAllY = (doc: Y.Doc, ya: YAnnotations): void => {
   tx(doc, () => {
     ya.clear();

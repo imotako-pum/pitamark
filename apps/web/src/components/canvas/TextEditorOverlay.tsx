@@ -47,7 +47,7 @@ export const TextEditorOverlay = ({
         margin: 0,
         border: `1px dashed ${OUTLINE_ACCENT}`,
         background: 'rgba(255, 255, 255, 0.95)',
-        color: annotation.fill,
+        color: annotation.color,
         fontSize: annotation.fontSize,
         fontFamily: 'inherit',
         lineHeight: 1.2,

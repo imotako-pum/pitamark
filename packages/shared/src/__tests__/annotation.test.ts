@@ -27,7 +27,7 @@ const validRect: RectangleAnnotation = {
   y: 20,
   width: 100,
   height: 80,
-  stroke: '#5b6dff',
+  color: '#5b6dff',
   strokeWidth: 2,
 };
 
@@ -37,7 +37,7 @@ const validArrow: ArrowAnnotation = {
   createdAt: 1_714_435_200_000,
   from: { x: 0, y: 0 },
   to: { x: 100, y: 100 },
-  stroke: '#ff5566',
+  color: '#ff5566',
   strokeWidth: 3,
 };
 
@@ -49,7 +49,7 @@ const validText: TextAnnotation = {
   y: 6,
   text: 'こんにちは',
   fontSize: 18,
-  fill: '#101010',
+  color: '#101010',
 };
 
 const validHighlight: HighlightAnnotation = {
@@ -60,7 +60,7 @@ const validHighlight: HighlightAnnotation = {
   y: 0,
   width: 50,
   height: 30,
-  fill: '#ffe066',
+  color: '#ffe066',
 };
 
 describe('ANNOTATION_TYPES', () => {
@@ -116,8 +116,8 @@ describe('RectangleAnnotationSchema', () => {
     expect(() => RectangleAnnotationSchema.parse({ ...validRect, height: -1 })).toThrow();
   });
 
-  it('rejects malformed stroke color', () => {
-    expect(() => RectangleAnnotationSchema.parse({ ...validRect, stroke: '#fff' })).toThrow();
+  it('rejects malformed color', () => {
+    expect(() => RectangleAnnotationSchema.parse({ ...validRect, color: '#fff' })).toThrow();
   });
 
   it('rejects strokeWidth above the cap', () => {

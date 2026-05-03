@@ -63,7 +63,7 @@ export const TextShape = ({
         visible={!isEditing}
         text={annotation.text}
         fontSize={annotation.fontSize}
-        fill={annotation.fill}
+        fill={annotation.color}
         padding={0}
         lineHeight={1.2}
       />
