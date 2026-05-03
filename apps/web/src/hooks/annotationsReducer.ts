@@ -1,5 +1,5 @@
 import type { Annotation, Point } from '@snap-share/shared';
-import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
+import { DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import {
   addAnnotation,
   moveAnnotation,
@@ -14,23 +14,22 @@ import {
 export const TOOLS = ['select', 'rectangle', 'arrow', 'text', 'highlight'] as const;
 export type Tool = (typeof TOOLS)[number];
 
-// `sync` is shared by rectangle / arrow / text. `highlight` is independent
-// because highlight color carries semantic meaning (semi-transparent marker)
-// and changing it together with stroke colors would be confusing.
-export type DefaultColors = Readonly<{ sync: string; highlight: string }>;
-
 export type AnnotationsState = Readonly<{
   annotations: ReadonlyArray<Annotation>;
   selectedId: string | null;
   tool: Tool;
-  defaultColors: DefaultColors;
+  // Single active color shared across all annotation types. Picking a swatch
+  // updates this; subsequent draws use it regardless of tool. The previous
+  // sync/highlight lane separation produced an indicator discontinuity when
+  // switching tools (the swatch ring jumped to a different color), so we
+  // collapsed it to one source of truth.
+  activeColor: string;
 }>;
 
 export type AnnotationsAction =
   | { type: 'tool/set'; tool: Tool }
   | { type: 'select/set'; id: string | null }
-  | { type: 'default-color/set-sync'; color: string }
-  | { type: 'default-color/set-highlight'; color: string }
+  | { type: 'active-color/set'; color: string }
   | { type: 'annotation/add'; annotation: Annotation }
   | { type: 'annotation/remove'; id: string }
   | { type: 'annotation/move'; id: string; dx: number; dy: number }
@@ -58,10 +57,7 @@ export const initialAnnotationsState: AnnotationsState = {
   annotations: [],
   selectedId: null,
   tool: 'select',
-  defaultColors: {
-    sync: DEFAULT_SYNC_COLOR,
-    highlight: DEFAULT_HIGHLIGHT_COLOR,
-  },
+  activeColor: DEFAULT_SYNC_COLOR,
 };
 
 export const annotationsReducer = (
@@ -73,16 +69,8 @@ export const annotationsReducer = (
       return { ...state, tool: action.tool };
     case 'select/set':
       return { ...state, selectedId: action.id };
-    case 'default-color/set-sync':
-      return {
-        ...state,
-        defaultColors: { ...state.defaultColors, sync: action.color },
-      };
-    case 'default-color/set-highlight':
-      return {
-        ...state,
-        defaultColors: { ...state.defaultColors, highlight: action.color },
-      };
+    case 'active-color/set':
+      return { ...state, activeColor: action.color };
     case 'annotation/add':
       return { ...state, annotations: addAnnotation(state.annotations, action.annotation) };
     case 'annotation/remove':

@@ -3,15 +3,10 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import type { Awareness } from 'y-protocols/awareness';
 import { WebsocketProvider } from 'y-websocket';
 import * as Y from 'yjs';
-import { DEFAULT_HIGHLIGHT_COLOR, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
+import { DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import { logger } from '../lib/logger';
 import { resolveWsBaseUrl } from '../lib/yjs-config';
-import type {
-  AnnotationsAction,
-  AnnotationsState,
-  DefaultColors,
-  Tool,
-} from './annotationsReducer';
+import type { AnnotationsAction, AnnotationsState, Tool } from './annotationsReducer';
 import type { AwarenessLike } from './presence-context';
 import type { AnnotationsStore } from './useAnnotationsStore';
 import { useStateRef } from './useStateRef';
@@ -81,13 +76,10 @@ export const useYjsAnnotationsStore = (
     };
   }, [factory]);
 
-  // Tool / selectedId / defaultColors are client-local — do NOT persist via CRDT.
+  // Tool / selectedId / activeColor are client-local — do NOT persist via CRDT.
   const [tool, setTool] = useStateRef<Tool>('select');
   const [selectedId, setSelectedId, selectedIdRef] = useStateRef<string | null>(null);
-  const [defaultColors, setDefaultColors, defaultColorsRef] = useStateRef<DefaultColors>({
-    sync: DEFAULT_SYNC_COLOR,
-    highlight: DEFAULT_HIGHLIGHT_COLOR,
-  });
+  const [activeColor, setActiveColor] = useStateRef<string>(DEFAULT_SYNC_COLOR);
 
   const subscribe = useCallback((cb: () => void) => (ctx ? ctx.subscribe(cb) : () => {}), [ctx]);
   const getSnapshot = useCallback(() => (ctx ? ctx.snapshot() : EMPTY_ANNOTATIONS), [ctx]);
@@ -144,11 +136,8 @@ export const useYjsAnnotationsStore = (
         case 'select/set':
           setSelectedId(action.id);
           return;
-        case 'default-color/set-sync':
-          setDefaultColors({ ...defaultColorsRef.current, sync: action.color });
-          return;
-        case 'default-color/set-highlight':
-          setDefaultColors({ ...defaultColorsRef.current, highlight: action.color });
+        case 'active-color/set':
+          setActiveColor(action.color);
           return;
         case 'annotation/remove':
           if (selectedIdRef.current === action.id) setSelectedId(null);
@@ -158,7 +147,7 @@ export const useYjsAnnotationsStore = (
           ctx?.applyDataAction(action);
       }
     },
-    [ctx, setSelectedId, setTool, setDefaultColors, defaultColorsRef, selectedIdRef],
+    [ctx, setSelectedId, setTool, setActiveColor, selectedIdRef],
   );
 
   const undo = useCallback(() => {
@@ -176,7 +165,7 @@ export const useYjsAnnotationsStore = (
     annotations,
     selectedId,
     tool,
-    defaultColors,
+    activeColor,
   };
 
   // y-websocket exposes `awareness` on its provider; tests use a stub that

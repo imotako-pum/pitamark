@@ -70,8 +70,7 @@ export const createYjsAnnotationsContext = (
     switch (action.type) {
       case 'tool/set':
       case 'select/set':
-      case 'default-color/set-sync':
-      case 'default-color/set-highlight':
+      case 'active-color/set':
         // UI-only state; never persisted to Yjs.
         return;
       case 'annotation/add':

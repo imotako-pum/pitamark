@@ -22,7 +22,7 @@ type ToolbarProps = Readonly<{
   hasSelection: boolean;
   imageLoaded: boolean;
   canExport: boolean;
-  pickedColor: string;
+  activeColor: string;
   onSetTool: (tool: Tool) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -30,8 +30,6 @@ type ToolbarProps = Readonly<{
   onClearImage: () => void;
   onExport: () => void;
   onPickColor: (color: string) => void;
-  onApplyDefaultColor: (color: string) => void;
-  onApplyColorToSelected: (color: string) => void;
 }>;
 
 type ToolDef = Readonly<{
@@ -60,7 +58,7 @@ export const Toolbar = ({
   hasSelection,
   imageLoaded,
   canExport,
-  pickedColor,
+  activeColor,
   onSetTool,
   onUndo,
   onRedo,
@@ -68,8 +66,6 @@ export const Toolbar = ({
   onClearImage,
   onExport,
   onPickColor,
-  onApplyDefaultColor,
-  onApplyColorToSelected,
 }: ToolbarProps) => (
   <TooltipProvider delay={150}>
     <div
@@ -119,14 +115,7 @@ export const Toolbar = ({
         />
       </div>
       <Divider />
-      <ColorPalette
-        pickedColor={pickedColor}
-        hasSelection={hasSelection}
-        disabled={!imageLoaded}
-        onPickColor={onPickColor}
-        onApplyAsDefault={onApplyDefaultColor}
-        onApplyToSelected={onApplyColorToSelected}
-      />
+      <ColorPalette activeColor={activeColor} disabled={!imageLoaded} onPickColor={onPickColor} />
       <Divider />
       <div className="flex items-center gap-1">
         <ToolButton

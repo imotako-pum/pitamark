@@ -109,7 +109,7 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
     });
   });
 
-  it('ignores client-only actions (tool/set, select/set, default-color/*) without mutating Y.Doc', () => {
+  it('ignores client-only actions (tool/set, select/set, active-color/set) without mutating Y.Doc', () => {
     const { factory } = makeProviderFactory();
     const ctx = createYjsAnnotationsContext(factory);
     const unsub = ctx.subscribe(() => {});
@@ -118,8 +118,7 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
 
     ctx.applyDataAction({ type: 'tool/set', tool: 'rectangle' });
     ctx.applyDataAction({ type: 'select/set', id: 'r1' });
-    ctx.applyDataAction({ type: 'default-color/set-sync', color: '#3a86ff' });
-    ctx.applyDataAction({ type: 'default-color/set-highlight', color: '#ff8c42' });
+    ctx.applyDataAction({ type: 'active-color/set', color: '#3a86ff' });
     unsub();
 
     expect(ctx.snapshot()).toEqual(before);

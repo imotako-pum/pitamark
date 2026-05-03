@@ -151,27 +151,25 @@ describe('annotationsReducer.annotation/set-arrow-endpoints', () => {
   });
 });
 
-describe('annotationsReducer.default-color/set-sync', () => {
-  it('updates state.defaultColors.sync without touching highlight', () => {
+describe('annotationsReducer.active-color/set', () => {
+  it('updates state.activeColor', () => {
     const next = annotationsReducer(initialAnnotationsState, {
-      type: 'default-color/set-sync',
+      type: 'active-color/set',
       color: '#3a86ff',
     });
 
-    expect(next.defaultColors.sync).toBe('#3a86ff');
-    expect(next.defaultColors.highlight).toBe(initialAnnotationsState.defaultColors.highlight);
+    expect(next.activeColor).toBe('#3a86ff');
   });
-});
 
-describe('annotationsReducer.default-color/set-highlight', () => {
-  it('updates state.defaultColors.highlight without touching sync', () => {
-    const next = annotationsReducer(initialAnnotationsState, {
-      type: 'default-color/set-highlight',
-      color: '#ff8c42',
+  it('does not touch annotations or selection', () => {
+    const seeded: AnnotationsState = { ...seedWith([rect]), selectedId: 'r1' };
+    const next = annotationsReducer(seeded, {
+      type: 'active-color/set',
+      color: '#3a86ff',
     });
 
-    expect(next.defaultColors.highlight).toBe('#ff8c42');
-    expect(next.defaultColors.sync).toBe(initialAnnotationsState.defaultColors.sync);
+    expect(next.annotations).toBe(seeded.annotations);
+    expect(next.selectedId).toBe('r1');
   });
 });
 
@@ -205,10 +203,7 @@ describe('isCommittingAction', () => {
     );
   });
 
-  it('treats default-color/* as UI-only (not committed)', () => {
-    expect(isCommittingAction({ type: 'default-color/set-sync', color: '#abcdef' })).toBe(false);
-    expect(isCommittingAction({ type: 'default-color/set-highlight', color: '#abcdef' })).toBe(
-      false,
-    );
+  it('treats active-color/set as UI-only (not committed)', () => {
+    expect(isCommittingAction({ type: 'active-color/set', color: '#abcdef' })).toBe(false);
   });
 });

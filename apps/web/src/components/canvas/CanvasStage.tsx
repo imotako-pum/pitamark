@@ -32,6 +32,9 @@ const MIN_DRAG_PIXELS = 4;
 
 type DragStart = Readonly<{ x: number; y: number; id: string; createdAt: number }>;
 
+// All draft builders take the active color so the new annotation is born with
+// it. Phase 7.7-2 split this into sync/highlight lanes; we collapsed it back to
+// one because the lane indicator discontinuity bothered users.
 const buildDraftRectangle = (
   start: DragStart,
   x: number,
@@ -90,7 +93,7 @@ export const CanvasStage = ({
   stageRef,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
-  const { tool, selectedId, annotations, defaultColors } = state;
+  const { tool, selectedId, annotations, activeColor } = state;
   // draft and dragStart live in refs so consecutive mouse events within a single
   // React render cycle (mousedown -> mousemove -> mouseup) always observe the
   // latest values without waiting for state flush. The state mirror keeps the
@@ -101,12 +104,17 @@ export const CanvasStage = ({
 
   const handleMouseDown = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
-      if (tool === 'select') {
-        if (e.target === e.target.getStage()) {
-          dispatch({ type: 'select/set', id: null });
-        }
-        return;
+      const isStageClick = e.target === e.target.getStage();
+
+      // Universal deselect rule: empty-stage click clears selection regardless
+      // of tool. Without this, drawing tools left the previous selection
+      // hanging until a new annotation got created.
+      if (isStageClick && selectedId) {
+        dispatch({ type: 'select/set', id: null });
       }
+
+      if (tool === 'select') return;
+
       const stage = e.target.getStage();
       if (!stage) return;
       const pos = stage.getPointerPosition();
@@ -123,7 +131,7 @@ export const CanvasStage = ({
           y: pos.y,
           text: '',
           fontSize: DEFAULT_FONT_SIZE,
-          color: defaultColors.sync,
+          color: activeColor,
         };
         dispatch({ type: 'annotation/add', annotation });
         dispatch({ type: 'select/set', id });
@@ -139,7 +147,7 @@ export const CanvasStage = ({
       };
       dragStartRef.current = start;
     },
-    [tool, dispatch, onStartTextEditing, defaultColors.sync],
+    [tool, dispatch, onStartTextEditing, activeColor, selectedId],
   );
 
   const handleMouseMove = useCallback(
@@ -156,18 +164,16 @@ export const CanvasStage = ({
       if (!dragStart || !pos) return;
 
       let next: Annotation | null = null;
-      if (tool === 'rectangle')
-        next = buildDraftRectangle(dragStart, pos.x, pos.y, defaultColors.sync);
+      if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y, activeColor);
       else if (tool === 'highlight')
-        next = buildDraftHighlight(dragStart, pos.x, pos.y, defaultColors.highlight);
-      else if (tool === 'arrow')
-        next = buildDraftArrow(dragStart, pos.x, pos.y, defaultColors.sync);
+        next = buildDraftHighlight(dragStart, pos.x, pos.y, activeColor);
+      else if (tool === 'arrow') next = buildDraftArrow(dragStart, pos.x, pos.y, activeColor);
       if (next) {
         draftRef.current = next;
         setDraft(next);
       }
     },
-    [tool, onCursorMove, defaultColors.sync, defaultColors.highlight],
+    [tool, onCursorMove, activeColor],
   );
 
   const handleMouseLeave = useCallback(() => {
