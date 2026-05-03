@@ -9,12 +9,7 @@ import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../../lib/autoNextOffset';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
-import {
-  ARROW_POINTER_LENGTH,
-  ARROW_POINTER_WIDTH,
-  DEFAULT_FONT_SIZE,
-  DEFAULT_STROKE_WIDTH,
-} from './colors';
+import { ARROW_POINTER_LENGTH, ARROW_POINTER_WIDTH, DEFAULT_STROKE_WIDTH } from './colors';
 import { ImageLayer } from './ImageLayer';
 import type { ArrowEndpointsPatch } from './shapes/ArrowShape';
 import type { HighlightResizePatch } from './shapes/HighlightShape';
@@ -128,7 +123,7 @@ export const CanvasStage = ({
   onCancelAutoArrowIfAny,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
-  const { tool, selectedId, annotations, activeColor } = state;
+  const { tool, selectedId, annotations, activeColor, activeFontSize } = state;
   // draft and dragStart live in refs so consecutive mouse events within a single
   // React render cycle (mousedown -> mousemove -> mouseup) always observe the
   // latest values without waiting for state flush. The state mirror keeps the
@@ -240,7 +235,7 @@ export const CanvasStage = ({
           x: pos.x,
           y: pos.y,
           text: '',
-          fontSize: DEFAULT_FONT_SIZE,
+          fontSize: activeFontSize,
           color: activeColor,
         };
         dispatch({ type: 'annotation/add', annotation });
@@ -262,6 +257,7 @@ export const CanvasStage = ({
       dispatch,
       onStartTextEditing,
       activeColor,
+      activeFontSize,
       selectedId,
       setCursor,
       onCancelAutoArrowIfAny,
@@ -372,7 +368,7 @@ export const CanvasStage = ({
             x: currentDraft.to.x + offset.x,
             y: currentDraft.to.y + offset.y,
             text: '',
-            fontSize: DEFAULT_FONT_SIZE,
+            fontSize: activeFontSize,
             color: activeColor,
           };
           dispatch({ type: 'annotation/add', annotation: textAnnotation });
@@ -391,6 +387,7 @@ export const CanvasStage = ({
       dispatch,
       setCursor,
       activeColor,
+      activeFontSize,
       onStartTextEditing,
       store.stopUndoCapture,
       onAutoNextRectangle,

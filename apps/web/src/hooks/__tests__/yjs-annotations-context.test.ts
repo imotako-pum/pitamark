@@ -109,7 +109,7 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
     });
   });
 
-  it('ignores client-only actions (tool/set, select/set, active-color/set) without mutating Y.Doc', () => {
+  it('ignores client-only actions (tool/set, select/set, active-color/set, active-font-size/set) without mutating Y.Doc', () => {
     const { factory } = makeProviderFactory();
     const ctx = createYjsAnnotationsContext(factory);
     const unsub = ctx.subscribe(() => {});
@@ -119,6 +119,7 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
     ctx.applyDataAction({ type: 'tool/set', tool: 'rectangle' });
     ctx.applyDataAction({ type: 'select/set', id: 'r1' });
     ctx.applyDataAction({ type: 'active-color/set', color: '#3a86ff' });
+    ctx.applyDataAction({ type: 'active-font-size/set', fontSize: 24 });
     unsub();
 
     expect(ctx.snapshot()).toEqual(before);
@@ -134,6 +135,40 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
     unsub();
 
     expect(ctx.snapshot()[0]).toMatchObject({ color: '#abcdef' });
+  });
+
+  it('annotation/set-font-size updates the fontSize of a text annotation in Yjs', () => {
+    const { factory } = makeProviderFactory();
+    const ctx = createYjsAnnotationsContext(factory);
+    const unsub = ctx.subscribe(() => {});
+    const text: Annotation = {
+      id: 't1',
+      type: 'text',
+      createdAt: 1,
+      x: 0,
+      y: 0,
+      text: 'hello',
+      fontSize: 18,
+      color: '#202020',
+    };
+    ctx.applyDataAction({ type: 'annotation/add', annotation: text });
+
+    ctx.applyDataAction({ type: 'annotation/set-font-size', id: 't1', fontSize: 24 });
+    unsub();
+
+    expect(ctx.snapshot()[0]).toMatchObject({ fontSize: 24 });
+  });
+
+  it('annotation/set-font-size is a no-op when targeting a non-text annotation', () => {
+    const { factory } = makeProviderFactory();
+    const ctx = createYjsAnnotationsContext(factory);
+    const unsub = ctx.subscribe(() => {});
+    ctx.applyDataAction({ type: 'annotation/add', annotation: rect('r1') });
+
+    ctx.applyDataAction({ type: 'annotation/set-font-size', id: 'r1', fontSize: 24 });
+    unsub();
+
+    expect(ctx.snapshot()[0]).toEqual(rect('r1'));
   });
 });
 

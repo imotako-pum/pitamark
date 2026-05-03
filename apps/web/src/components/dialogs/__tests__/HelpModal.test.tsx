@@ -56,4 +56,15 @@ describe('HelpModal', () => {
     expect(kbds).toContain('C');
     m.unmount();
   });
+
+  it('lists the [ and ] shortcuts under "テキスト" section', () => {
+    const m = renderModal({ open: true });
+    expect(document.body.textContent).toContain('テキスト');
+    expect(document.body.textContent).toContain('フォントサイズ +2');
+    expect(document.body.textContent).toContain('フォントサイズ -2');
+    const kbds = Array.from(document.body.querySelectorAll('kbd')).map((k) => k.textContent);
+    expect(kbds).toContain(']');
+    expect(kbds).toContain('[');
+    m.unmount();
+  });
 });

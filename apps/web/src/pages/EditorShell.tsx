@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { CanvasStage } from '../components/canvas/CanvasStage';
-import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from '../components/canvas/colors';
+import { DEFAULT_STROKE_WIDTH } from '../components/canvas/colors';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
 import { HelpModal } from '../components/dialogs/HelpModal';
 import { DropZone } from '../components/empty-state/DropZone';
@@ -24,6 +24,7 @@ import { useStageTransform } from '../hooks/useStageTransform';
 import { computeAutoArrowDefault } from '../lib/autoArrowDefault';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../lib/autoNextOffset';
 import { nextColor, prevColor } from '../lib/colorCycle';
+import { clampFontSize, decrementFontSize, incrementFontSize } from '../lib/fontSize';
 import { generateId } from '../lib/id';
 
 // Phase 7.8-2 Auto-next-B: 矩形確定直後の既定矢印プレビューの pending 状態。
@@ -338,6 +339,36 @@ export const EditorShell = ({
     handlePickColor(prevColor(store.state.activeColor));
   }, [handlePickColor, store.state.activeColor]);
 
+  // フォントサイズも color と同じく「常に active 更新 + 選択中 text なら適用」の
+  // 1 操作モデル。Yjs / reducer 双方の setFontSize は text 以外を type guard で
+  // 弾くが、local reducer は内部で `annotations.map(...)` を呼んで毎回新しい配列
+  // を返すため、空の undo step が past stack に積まれてしまう (storeReducer の
+  // `next === state.present` チェックが state object identity 比較で通過する)。
+  // 視覚的変化のない 1 step が Cmd+Z で消費される UX 不整合を防ぐため、
+  // handler 側で「選択中が text の時だけ dispatch する」ガードを置く。
+  const handleSetFontSize = useCallback(
+    (size: number) => {
+      const next = clampFontSize(size);
+      store.dispatch({ type: 'active-font-size/set', fontSize: next });
+      const id = store.state.selectedId;
+      if (!id) return;
+      const selected = store.state.annotations.find((a) => a.id === id);
+      if (selected?.type !== 'text') return;
+      store.dispatch({ type: 'annotation/set-font-size', id, fontSize: next });
+    },
+    [store],
+  );
+
+  // [/] shortcut + Toolbar A-/A+ ボタン共通の経路。active から ±STEP したクランプ値で
+  // handleSetFontSize に委譲し、選択中 text への適用ロジックを 1 か所に閉じる。
+  const handleIncrementFontSize = useCallback(() => {
+    handleSetFontSize(incrementFontSize(store.state.activeFontSize));
+  }, [handleSetFontSize, store.state.activeFontSize]);
+
+  const handleDecrementFontSize = useCallback(() => {
+    handleSetFontSize(decrementFontSize(store.state.activeFontSize));
+  }, [handleSetFontSize, store.state.activeFontSize]);
+
   // ? — Help cheatsheet を toggle。同キーで反転 (Excalidraw 互換) のため、
   // 引数なしの単純な setter で setState 関数形式を使う。
   const handleShowHelp = useCallback(() => {
@@ -391,7 +422,7 @@ export const EditorShell = ({
       x: p.to.x + offset.x,
       y: p.to.y + offset.y,
       text: '',
-      fontSize: DEFAULT_FONT_SIZE,
+      fontSize: store.state.activeFontSize,
       color: p.color,
     };
     store.dispatch({ type: 'annotation/add', annotation: textAnnotation });
@@ -417,6 +448,8 @@ export const EditorShell = ({
     onShowHelp: handleShowHelp,
     onCycleColorNext: source ? handleCycleColorNext : undefined,
     onCycleColorPrev: source ? handleCycleColorPrev : undefined,
+    onIncrementFontSize: source ? handleIncrementFontSize : undefined,
+    onDecrementFontSize: source ? handleDecrementFontSize : undefined,
     // Phase 7.8-2: pending Auto-arrow があるときだけ Enter binding を provide。
     // pending なし時は browser default の Enter (button focus 等) を温存。
     onConfirmAutoArrow: pendingAutoArrow ? handleConfirmAutoArrow : undefined,
@@ -444,6 +477,7 @@ export const EditorShell = ({
           imageLoaded={source !== null}
           canExport={canExport}
           activeColor={store.state.activeColor}
+          activeFontSize={store.state.activeFontSize}
           onSetTool={handleSetTool}
           onUndo={store.undo}
           onRedo={store.redo}
@@ -451,6 +485,8 @@ export const EditorShell = ({
           onClearImage={handleClearImage}
           onExport={handleExport}
           onPickColor={handlePickColor}
+          onIncrementFontSize={handleIncrementFontSize}
+          onDecrementFontSize={handleDecrementFontSize}
           onShowHelp={handleShowHelp}
         />
         <div className="pointer-events-auto flex min-w-0 justify-end self-center md:w-30">

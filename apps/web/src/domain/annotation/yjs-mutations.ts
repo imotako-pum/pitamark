@@ -114,6 +114,22 @@ export const setTextY = (doc: Y.Doc, ya: YAnnotations, id: string, text: string)
   });
 };
 
+// text 専用 — fontSize は TextAnnotation のみ持つフィールド。type guard なしに
+// 走らせると非 text の Y.Map に fontSize を載せてしまい、Schema parse 不整合の
+// 元になる。setTextY と同様 m.get('type') !== 'text' で no-op。
+export const setTextFontSizeY = (
+  doc: Y.Doc,
+  ya: YAnnotations,
+  id: string,
+  fontSize: number,
+): void => {
+  const m = ya.get(id);
+  if (!m || m.get('type') !== 'text') return;
+  tx(doc, () => {
+    m.set('fontSize', fontSize);
+  });
+};
+
 // All four annotation types share the same `color` field, so this mutation
 // is type-agnostic. We still no-op on missing id to mirror the other helpers.
 export const setAnnotationColorY = (

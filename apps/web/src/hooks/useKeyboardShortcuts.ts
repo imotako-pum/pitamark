@@ -28,6 +28,11 @@ export type KeyboardShortcuts = Readonly<{
    *  preventDefault only when provided so Enter keeps its default elsewhere
    *  (e.g. button focus, form submit) when there is no pending arrow. */
   onConfirmAutoArrow?: () => void;
+  /** Optional. `]` → activeFontSize + STEP / 選択中 text にも適用。
+   *  preventDefault only when provided so `]` keeps its default elsewhere. */
+  onIncrementFontSize?: () => void;
+  /** Optional. `[` → activeFontSize - STEP / 選択中 text にも適用。 */
+  onDecrementFontSize?: () => void;
 }>;
 
 const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
@@ -124,6 +129,25 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
       // exclusively for color cycling (intentionally not in TOOL_KEY_MAP).
       if (!mod && key === 'c') {
         const cb = e.shiftKey ? ref.current.onCycleColorPrev : ref.current.onCycleColorNext;
+        if (cb) {
+          e.preventDefault();
+          cb();
+        }
+        return;
+      }
+      // `[` / `]` — フォントサイズ ±STEP (Photoshop 流)。`e.key` 文字判定なので
+      // JIS/US 両配列で同じ挙動。Shift+] は `}` に化けるため誤発火しない。
+      // `isEditableTarget` ガードは関数冒頭で効くので text 編集中は素通し。
+      if (!mod && e.key === ']') {
+        const cb = ref.current.onIncrementFontSize;
+        if (cb) {
+          e.preventDefault();
+          cb();
+        }
+        return;
+      }
+      if (!mod && e.key === '[') {
+        const cb = ref.current.onDecrementFontSize;
         if (cb) {
           e.preventDefault();
           cb();

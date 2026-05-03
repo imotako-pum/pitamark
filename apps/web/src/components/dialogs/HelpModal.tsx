@@ -27,6 +27,11 @@ const COLOR_ROWS: ReadonlyArray<Row> = [
   { label: '前の色', keys: ['⇧', 'C'] },
 ];
 
+const TEXT_ROWS: ReadonlyArray<Row> = [
+  { label: 'フォントサイズ +2', keys: [']'] },
+  { label: 'フォントサイズ -2', keys: ['['] },
+];
+
 const EDIT_ROWS: ReadonlyArray<Row> = [
   { label: '元に戻す', keys: ['⌘', 'Z'] },
   { label: 'やり直し', keys: ['⌘', '⇧', 'Z'] },
@@ -48,6 +53,7 @@ const HELP_ROWS: ReadonlyArray<Row> = [{ label: 'このパネル', keys: ['?'] }
 const SECTIONS: ReadonlyArray<Section> = [
   { title: 'ツール', rows: TOOL_ROWS },
   { title: '色', rows: COLOR_ROWS },
+  { title: 'テキスト', rows: TEXT_ROWS },
   { title: '編集', rows: EDIT_ROWS },
   { title: 'ズーム', rows: ZOOM_ROWS },
   { title: '出力', rows: EXPORT_ROWS },
