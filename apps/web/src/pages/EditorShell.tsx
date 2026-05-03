@@ -18,6 +18,7 @@ import type { AnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
+import { useStageTransform } from '../hooks/useStageTransform';
 
 const MIN_STAGE_HEIGHT = 200;
 const FALLBACK_HEADER_HEIGHT = 56;
@@ -69,6 +70,10 @@ export const EditorShell = ({
   const [stageRect, setStageRect] = useState<DOMRect | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState<number>(FALLBACK_HEADER_HEIGHT);
+  const [imageNaturalSize, setImageNaturalSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   // ResizeObserver replaces the previous TOOLBAR_HEIGHT constant so the stage
   // tracks the real header height when it wraps to two rows on small screens.
@@ -132,7 +137,34 @@ export const EditorShell = ({
     }
   }, [editingTextId, store]);
 
-  const exportPng = useExportPng({ stageRef, awarenessLayerRef, roomId });
+  const stageHeight = Math.max(stageSize.height - headerHeight, MIN_STAGE_HEIGHT);
+  // Destructure once so each handler / effect depends on a stable function
+  // reference rather than `transformApi.X` (a fresh property access per
+  // render). This mirrors the same fragility class as the `[viewport]`
+  // identity bug fixed inside useStageTransform.
+  const {
+    transform: stageTransform,
+    setImageSize: setStageImageSize,
+    fitToViewport,
+    setHundredPercent,
+    zoomBy,
+    panBy,
+  } = useStageTransform({ width: stageSize.width, height: stageHeight });
+
+  const handleImageLoaded = useCallback(
+    (size: { width: number; height: number } | null) => {
+      setStageImageSize(size);
+      setImageNaturalSize(size);
+    },
+    [setStageImageSize],
+  );
+
+  const exportPng = useExportPng({
+    stageRef,
+    awarenessLayerRef,
+    roomId,
+    imageSize: imageNaturalSize,
+  });
   const canExport = source !== null;
   const handleExport = useCallback(() => {
     if (!canExport) return;
@@ -149,7 +181,30 @@ export const EditorShell = ({
     onSetTool: handleSetTool,
     onEscape: handleEscape,
     onExport: canExport ? handleExport : undefined,
+    onFitToViewport: source ? fitToViewport : undefined,
+    onSetHundredPercent: source ? setHundredPercent : undefined,
   });
+
+  // Expose the transform on window so E2E can poll it without coupling to the
+  // canvas DOM. Mirrors the existing __SNAP_SHARE_ANNOTATIONS__ pattern.
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__SNAP_SHARE_STAGE_TRANSFORM__ = stageTransform;
+  }, [stageTransform]);
+
+  // Expose transform actions for E2E. Playwright's keyboard.press cannot
+  // reliably trigger Meta+0 / Meta+1 (Chromium intercepts these as browser
+  // shortcuts before the page can preventDefault), so the E2E covers the
+  // transform pipeline by calling these directly. The keyboard binding
+  // itself is small and covered by the existing keyboard-shortcuts.spec.ts
+  // pattern (V / R / A / T / H + Cmd+S).
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__SNAP_SHARE_TRANSFORM_ACTIONS__ = {
+      fitToViewport,
+      setHundredPercent,
+      zoomBy,
+      panBy,
+    };
+  }, [fitToViewport, setHundredPercent, zoomBy, panBy]);
 
   const handleTextCommit = useCallback(
     (text: string) => {
@@ -172,9 +227,11 @@ export const EditorShell = ({
   }, [editingTextId, editingAnnotation, store]);
 
   const handleClearImage = useCallback(() => {
+    setStageImageSize(null);
+    setImageNaturalSize(null);
     onClearImage();
     setEditingTextId(null);
-  }, [onClearImage]);
+  }, [onClearImage, setStageImageSize]);
 
   // Single click handler: always update active color (drives next draws),
   // and if a selection exists, also apply the new color to it. Replaced the
@@ -196,8 +253,6 @@ export const EditorShell = ({
   useLayoutEffect(() => {
     onSelectedIdChange?.(selectedId);
   }, [onSelectedIdChange, selectedId]);
-
-  const stageHeight = Math.max(stageSize.height - headerHeight, MIN_STAGE_HEIGHT);
 
   return (
     <main className="relative h-dvh w-dvw overflow-hidden bg-(--color-surface) text-(--color-text)">
@@ -245,6 +300,10 @@ export const EditorShell = ({
             onCursorMove={onCursorMove}
             extraLayers={awarenessLayer?.(store.state.annotations, awarenessLayerRef) ?? null}
             stageRef={stageRef}
+            transform={stageTransform}
+            onZoom={zoomBy}
+            onPan={panBy}
+            onImageLoaded={handleImageLoaded}
           />
         ) : onLoadFile ? (
           <DropZone onFile={onLoadFile} error={imageError} />
@@ -258,6 +317,7 @@ export const EditorShell = ({
         <TextEditorOverlay
           annotation={editingAnnotation}
           stageContainerRect={stageRect}
+          transform={stageTransform}
           onCommit={handleTextCommit}
           onCancel={handleTextCancel}
         />

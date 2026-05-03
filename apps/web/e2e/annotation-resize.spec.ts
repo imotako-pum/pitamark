@@ -7,6 +7,7 @@ import { dropImage } from './fixtures/upload';
 // store snapshot に反映されるかを検証する。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
+const TRANSFORM_KEY = '__SNAP_SHARE_STAGE_TRANSFORM__';
 
 type AnnotationSnapshot = ReadonlyArray<Record<string, unknown>>;
 
@@ -16,6 +17,20 @@ const readAnnotations = async (page: import('@playwright/test').Page) =>
       ((window as unknown as Record<string, AnnotationSnapshot>)[k] ?? []) as AnnotationSnapshot,
     ANNOTATIONS_KEY,
   );
+
+// Phase 7.7-3: getRelativePointerPosition / Stage transform 導入により、注釈の
+// x/y は logical 座標になった。ドラッグハンドルを掴むには screen 座標に変換
+// する必要がある。fit-to-viewport が走る画像ではこの変換無しに座標がズレる。
+const logicalToScreen = async (
+  page: import('@playwright/test').Page,
+  logical: { x: number; y: number },
+) => {
+  const t = await page.evaluate(
+    (k) => (window as unknown as Record<string, { scale: number; x: number; y: number }>)[k],
+    TRANSFORM_KEY,
+  );
+  return { x: logical.x * t.scale + t.x, y: logical.y * t.scale + t.y };
+};
 
 const dragOnStage = async (
   page: import('@playwright/test').Page,
@@ -73,15 +88,19 @@ test.describe('annotation resize — Transformer (rect / highlight) と Arrow en
 
     // 矩形作成直後は selectedId が当該注釈になっており Transformer がアタッチ
     // 済み。Konva の Transformer は Shape の bounding box の各角・辺中央に
-    // ハンドルを描く。右下角(画面座標)を 50,50 px 引っ張る。
+    // ハンドルを描く。右下角(画面座標)を引っ張るため logical→screen 変換が必須。
     const stage = await stageOrigin(page);
-    const cornerStageX = before.x + before.width;
-    const cornerStageY = before.y + before.height;
-    const targetStageX = cornerStageX + 60;
-    const targetStageY = cornerStageY + 40;
-    await page.mouse.move(stage.x + cornerStageX, stage.y + cornerStageY);
+    const corner = await logicalToScreen(page, {
+      x: before.x + before.width,
+      y: before.y + before.height,
+    });
+    const target = await logicalToScreen(page, {
+      x: before.x + before.width + 60,
+      y: before.y + before.height + 40,
+    });
+    await page.mouse.move(stage.x + corner.x, stage.y + corner.y);
     await page.mouse.down();
-    await page.mouse.move(stage.x + targetStageX, stage.y + targetStageY, { steps: 8 });
+    await page.mouse.move(stage.x + target.x, stage.y + target.y, { steps: 8 });
     await page.mouse.up();
 
     await expect
@@ -108,13 +127,17 @@ test.describe('annotation resize — Transformer (rect / highlight) と Arrow en
     };
 
     const stage = await stageOrigin(page);
-    const cornerStageX = before.x + before.width;
-    const cornerStageY = before.y + before.height;
-    await page.mouse.move(stage.x + cornerStageX, stage.y + cornerStageY);
-    await page.mouse.down();
-    await page.mouse.move(stage.x + cornerStageX + 60, stage.y + cornerStageY + 30, {
-      steps: 8,
+    const corner = await logicalToScreen(page, {
+      x: before.x + before.width,
+      y: before.y + before.height,
     });
+    const target = await logicalToScreen(page, {
+      x: before.x + before.width + 60,
+      y: before.y + before.height + 30,
+    });
+    await page.mouse.move(stage.x + corner.x, stage.y + corner.y);
+    await page.mouse.down();
+    await page.mouse.move(stage.x + target.x, stage.y + target.y, { steps: 8 });
     await page.mouse.up();
 
     await expect
@@ -138,13 +161,16 @@ test.describe('annotation resize — Transformer (rect / highlight) と Arrow en
       to: { x: number; y: number };
     };
 
-    // to 端点(画面座標で from の位置からドラッグした到達点)を別位置にドラッグ
+    // to 端点 (画面座標) を別位置にドラッグ。logical→screen 変換が必要。
     const stage = await stageOrigin(page);
-    await page.mouse.move(stage.x + before.to.x, stage.y + before.to.y);
-    await page.mouse.down();
-    await page.mouse.move(stage.x + before.to.x + 80, stage.y + before.to.y - 50, {
-      steps: 8,
+    const fromScreen = await logicalToScreen(page, before.to);
+    const toScreen = await logicalToScreen(page, {
+      x: before.to.x + 80,
+      y: before.to.y - 50,
     });
+    await page.mouse.move(stage.x + fromScreen.x, stage.y + fromScreen.y);
+    await page.mouse.down();
+    await page.mouse.move(stage.x + toScreen.x, stage.y + toScreen.y, { steps: 8 });
     await page.mouse.up();
 
     await expect

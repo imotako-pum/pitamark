@@ -13,8 +13,21 @@ export const buildExportFilename = (now: Date, roomId: string | null): string =>
   return roomId ? `snap-share-${roomId}-${ts}.png` : `snap-share-${ts}.png`;
 };
 
-export const stageToBlob = async (stage: Konva.Stage, pixelRatio = 2): Promise<Blob> => {
-  const canvas = stage.toCanvas({ pixelRatio });
+export type StageBounds = Readonly<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}>;
+
+export const stageToBlob = async (
+  stage: Konva.Stage,
+  pixelRatio = 2,
+  bounds?: StageBounds,
+): Promise<Blob> => {
+  const canvas = bounds
+    ? stage.toCanvas({ ...bounds, pixelRatio })
+    : stage.toCanvas({ pixelRatio });
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('toBlob returned null'))),

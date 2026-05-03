@@ -22,7 +22,12 @@ import { ImageLayer } from '../ImageLayer';
 
 const useImageMock = vi.mocked(useImage);
 
-const renderImageLayer = (src: string) => {
+type RenderProps = {
+  src: string;
+  onImageLoaded?: (size: { width: number; height: number } | null) => void;
+};
+
+const renderImageLayer = (props: RenderProps) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
   let root: Root | undefined;
@@ -30,9 +35,14 @@ const renderImageLayer = (src: string) => {
     root = createRoot(container);
   });
   act(() => {
-    root?.render(<ImageLayer src={src} />);
+    root?.render(<ImageLayer src={props.src} onImageLoaded={props.onImageLoaded} />);
   });
   return {
+    rerender: (next: RenderProps) => {
+      act(() => {
+        root?.render(<ImageLayer src={next.src} onImageLoaded={next.onImageLoaded} />);
+      });
+    },
     unmount: () => {
       act(() => {
         root?.unmount();
@@ -54,9 +64,31 @@ describe('ImageLayer', () => {
 
   it('passes crossOrigin="anonymous" to use-image so cross-origin API images do not taint the export canvas', () => {
     const src = 'https://api.example.test/rooms/abc123/image';
-    const m = renderImageLayer(src);
+    const m = renderImageLayer({ src });
 
     expect(useImageMock).toHaveBeenCalledWith(src, 'anonymous');
+
+    m.unmount();
+  });
+
+  it('notifies onImageLoaded(null) on the initial render to reset downstream transform state', () => {
+    const onImageLoaded = vi.fn();
+    const m = renderImageLayer({ src: '/a.png', onImageLoaded });
+
+    // First effect: src-change effect runs and emits null.
+    expect(onImageLoaded).toHaveBeenCalledWith(null);
+
+    m.unmount();
+  });
+
+  it('notifies onImageLoaded with natural dimensions once use-image resolves', () => {
+    const onImageLoaded = vi.fn();
+    const fakeImage = { naturalWidth: 1920, naturalHeight: 1080 } as HTMLImageElement;
+    useImageMock.mockReturnValue([fakeImage, 'loaded']);
+
+    const m = renderImageLayer({ src: '/a.png', onImageLoaded });
+
+    expect(onImageLoaded).toHaveBeenCalledWith({ width: 1920, height: 1080 });
 
     m.unmount();
   });

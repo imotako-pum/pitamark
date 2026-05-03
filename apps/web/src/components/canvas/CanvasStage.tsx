@@ -1,9 +1,11 @@
 import type { Annotation, Point } from '@snap-share/shared';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
+import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
+import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
 import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from './colors';
@@ -26,6 +28,14 @@ type CanvasStageProps = Readonly<{
   extraLayers?: ReactNode;
   /** Ref to the underlying Konva.Stage (for PNG export). */
   stageRef?: Ref<Konva.Stage>;
+  /** Stage transform (scale + position). Identity when unset. */
+  transform: StageTransform;
+  /** Pinch / Cmd+wheel ズーム。pointer は Stage absolute 座標。*/
+  onZoom: (pointer: { x: number; y: number }, factor: number) => void;
+  /** Space+drag による pan。dx/dy は screen 座標の差分。*/
+  onPan: (dx: number, dy: number) => void;
+  /** ImageLayer から伝播される画像 natural サイズ。null は src 切替リセット。*/
+  onImageLoaded?: (size: { width: number; height: number } | null) => void;
 }>;
 
 const MIN_DRAG_PIXELS = 4;
@@ -91,6 +101,10 @@ export const CanvasStage = ({
   onCursorMove,
   extraLayers,
   stageRef,
+  transform,
+  onZoom,
+  onPan,
+  onImageLoaded,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations, activeColor } = state;
@@ -101,10 +115,79 @@ export const CanvasStage = ({
   const dragStartRef = useRef<DragStart | null>(null);
   const draftRef = useRef<Annotation | null>(null);
   const [draft, setDraft] = useState<Annotation | null>(null);
+  // Pan-mode bookkeeping. Space turns mousedown/move/up into pan instead of
+  // the active tool. spaceDownRef arms the next mousedown; panActiveRef
+  // tracks the in-flight pan and survives Space release while the mouse is
+  // still down, mirroring Figma/Photoshop behavior.
+  const spaceDownRef = useRef(false);
+  const panActiveRef = useRef(false);
+  const panLastRef = useRef<{ x: number; y: number } | null>(null);
+  const internalStageRef = useRef<Konva.Stage | null>(null);
+
+  // Cursor feedback for Space-pan. We tweak the underlying canvas container's
+  // CSS cursor directly because react-konva does not surface a className prop
+  // on Stage and the wrapping div is owned by react-konva internals.
+  const setCursor = useCallback((cursor: string) => {
+    const stage = internalStageRef.current;
+    if (!stage) return;
+    stage.container().style.cursor = cursor;
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      if (isEditableTarget(e.target)) return;
+      if (spaceDownRef.current) return;
+      spaceDownRef.current = true;
+      setCursor('grab');
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      spaceDownRef.current = false;
+      // If a pan is mid-flight (mouse still down), let mouseup finish it.
+      if (!panActiveRef.current) {
+        setCursor('');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [setCursor]);
+
+  const composedStageRef = useCallback(
+    (node: Konva.Stage | null) => {
+      internalStageRef.current = node;
+      if (typeof stageRef === 'function') {
+        stageRef(node);
+      } else if (stageRef) {
+        // Mutating a Ref<T> requires the cast — React types ref as readonly.
+        (stageRef as { current: Konva.Stage | null }).current = node;
+      }
+    },
+    [stageRef],
+  );
 
   const handleMouseDown = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
-      const isStageClick = e.target === e.target.getStage();
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      // Space + drag → pan, regardless of the active tool. We use absolute
+      // pointer position so the delta math is in screen pixels (matches
+      // Stage.x/y which are also in screen space).
+      if (spaceDownRef.current) {
+        const pos = stage.getPointerPosition();
+        if (!pos) return;
+        panActiveRef.current = true;
+        panLastRef.current = pos;
+        setCursor('grabbing');
+        return;
+      }
+
+      const isStageClick = e.target === stage;
 
       // Universal deselect rule: empty-stage click clears selection regardless
       // of tool. Without this, drawing tools left the previous selection
@@ -115,9 +198,9 @@ export const CanvasStage = ({
 
       if (tool === 'select') return;
 
-      const stage = e.target.getStage();
-      if (!stage) return;
-      const pos = stage.getPointerPosition();
+      // Hit-test in logical coords so Stage transform (scale/pan) does not
+      // throw off where the new annotation lands.
+      const pos = stage.getRelativePointerPosition();
       if (!pos) return;
       if (e.target !== stage) return;
 
@@ -147,15 +230,29 @@ export const CanvasStage = ({
       };
       dragStartRef.current = start;
     },
-    [tool, dispatch, onStartTextEditing, activeColor, selectedId],
+    [tool, dispatch, onStartTextEditing, activeColor, selectedId, setCursor],
   );
 
   const handleMouseMove = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
       const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition() ?? null;
+      if (!stage) return;
 
-      // Broadcast the raw pointer position so presence can throttle and emit.
+      // Active pan: stream screen-space deltas to the parent.
+      if (panActiveRef.current) {
+        const screen = stage.getPointerPosition();
+        const last = panLastRef.current;
+        if (!screen || !last) return;
+        onPan(screen.x - last.x, screen.y - last.y);
+        panLastRef.current = screen;
+        return;
+      }
+
+      const pos = stage.getRelativePointerPosition();
+
+      // Broadcast the logical pointer position so presence can throttle and
+      // emit. Logical coords keep peers' cursor render aligned regardless of
+      // local zoom.
       if (onCursorMove) {
         onCursorMove(pos ? { x: pos.x, y: pos.y } : null);
       }
@@ -173,7 +270,7 @@ export const CanvasStage = ({
         setDraft(next);
       }
     },
-    [tool, onCursorMove, activeColor],
+    [tool, onCursorMove, activeColor, onPan],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -185,11 +282,18 @@ export const CanvasStage = ({
 
   const handleMouseUp = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      if (panActiveRef.current) {
+        panActiveRef.current = false;
+        panLastRef.current = null;
+        setCursor(spaceDownRef.current ? 'grab' : '');
+        return;
+      }
+
       const dragStart = dragStartRef.current;
       const currentDraft = draftRef.current;
       if (!dragStart) return;
       const stage = e.target.getStage();
-      const pos = stage?.getPointerPosition() ?? null;
+      const pos = stage?.getRelativePointerPosition() ?? null;
       const reachedThreshold = pos && distance(dragStart, pos.x, pos.y) >= MIN_DRAG_PIXELS;
 
       if (reachedThreshold && currentDraft) {
@@ -200,7 +304,25 @@ export const CanvasStage = ({
       dragStartRef.current = null;
       setDraft(null);
     },
-    [dispatch],
+    [dispatch, setCursor],
+  );
+
+  const handleWheel = useCallback(
+    (e: KonvaEventObject<WheelEvent>) => {
+      // macOS pinch zoom delivers wheel events with ctrlKey=true; Cmd+wheel on
+      // any platform zooms too. Plain wheel is intentionally ignored to avoid
+      // hijacking the page-scroll mental model (modless wheel = pan is out of
+      // scope for this phase).
+      const isZoomGesture = e.evt.ctrlKey || e.evt.metaKey;
+      if (!isZoomGesture) return;
+      e.evt.preventDefault();
+      const stage = e.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (!pointer) return;
+      const factor = e.evt.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
+      onZoom(pointer, factor);
+    },
+    [onZoom],
   );
 
   const handleShapeClick = useCallback(
@@ -259,15 +381,20 @@ export const CanvasStage = ({
 
   return (
     <Stage
-      ref={stageRef}
+      ref={composedStageRef}
       width={width}
       height={height}
+      scaleX={transform.scale}
+      scaleY={transform.scale}
+      x={transform.x}
+      y={transform.y}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onWheel={handleWheel}
     >
-      <ImageLayer src={src} />
+      <ImageLayer src={src} onImageLoaded={onImageLoaded} />
       <AnnotationLayer
         annotations={visibleAnnotations}
         selectedId={selectedId}

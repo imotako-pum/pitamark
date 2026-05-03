@@ -11,6 +11,12 @@ export type KeyboardShortcuts = Readonly<{
    *  this is provided, so the browser's "Save Page" dialog is never blocked
    *  for users who haven't loaded an image yet. */
   onExport?: () => void;
+  /** Optional. ⌘0/Ctrl+0 → fit-to-viewport. preventDefault only when provided
+   *  so we don't steal the browser's "reset zoom" before an image is loaded. */
+  onFitToViewport?: () => void;
+  /** Optional. ⌘1/Ctrl+1 → 100% scale. preventDefault only when provided so
+   *  we don't steal the browser's "go to tab 1" before an image is loaded. */
+  onSetHundredPercent?: () => void;
 }>;
 
 const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
@@ -21,7 +27,7 @@ const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
   h: 'highlight',
 };
 
-const isEditableTarget = (target: EventTarget | null): boolean => {
+export const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return true;
   return target.isContentEditable;
@@ -43,6 +49,22 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
         if (onExport) {
           e.preventDefault();
           onExport();
+        }
+        return;
+      }
+      if (mod && key === '0' && !e.shiftKey) {
+        const cb = ref.current.onFitToViewport;
+        if (cb) {
+          e.preventDefault();
+          cb();
+        }
+        return;
+      }
+      if (mod && key === '1' && !e.shiftKey) {
+        const cb = ref.current.onSetHundredPercent;
+        if (cb) {
+          e.preventDefault();
+          cb();
         }
         return;
       }
