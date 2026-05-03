@@ -143,4 +143,17 @@ describe('GET /sync/:id (Phase 7 — sync rate limit on unprotected rooms)', () 
     const res = await app.request(`/sync/${created.id}`, undefined, env);
     expect(res.status).not.toBe(429);
   });
+
+  // Phase 7.6: dev/E2E 用エスケープハッチ。`withRateLimit` middleware と
+  // 同じ挙動を sync route の inline RL でも提供する。CI Linux の Playwright
+  // で room-share spec が 3 retry 全敗していた死角の fix。
+  it('passes through (no 429) when BYPASS_RATE_LIMIT="true" even if RL_SYNC would block', async () => {
+    const env = buildEnv({
+      RL_SYNC: createStubRateLimit({ alwaysBlock: true }),
+      BYPASS_RATE_LIMIT: 'true',
+    });
+    const created = await createUnprotectedRoom(env);
+    const res = await app.request(`/sync/${created.id}`, undefined, env);
+    expect(res.status).not.toBe(429);
+  });
 });
