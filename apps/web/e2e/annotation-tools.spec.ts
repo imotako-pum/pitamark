@@ -124,6 +124,12 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 80, y: 80 }, { x: 200, y: 200 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
+    // Phase 7.8-2: 矩形 mouseup 直後に Auto-next-B の pending Auto-arrow が立つ。
+    // 本 spec は「Delete ボタン → 選択中の矩形が消える」のロックインなので、
+    // 先に Escape で pending を消してから Delete に進む。pending が立っている間は
+    // BS / Delete が pending クリア優先で吸収される設計。
+    await page.keyboard.press('Escape');
+
     // 削除ボタンが選択ありで enabled になる。exact: true で「注釈をすべて削除」(Eraser) と区別
     const deleteBtn = page.getByRole('button', { name: '削除', exact: true });
     await expect(deleteBtn).toBeEnabled();

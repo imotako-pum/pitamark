@@ -24,6 +24,10 @@ export type KeyboardShortcuts = Readonly<{
   onCycleColorNext?: () => void;
   /** Optional. `⇧C` → cycle to the previous palette color. */
   onCycleColorPrev?: () => void;
+  /** Optional. Enter (no modifier, no shift) → confirm pending auto-arrow.
+   *  preventDefault only when provided so Enter keeps its default elsewhere
+   *  (e.g. button focus, form submit) when there is no pending arrow. */
+  onConfirmAutoArrow?: () => void;
 }>;
 
 const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
@@ -98,6 +102,18 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
       // a no-modifier `?` never falls through to the tool-key branch.
       if (!mod && e.key === '?') {
         const cb = ref.current.onShowHelp;
+        if (cb) {
+          e.preventDefault();
+          cb();
+        }
+        return;
+      }
+      // Enter — confirm pending auto-arrow (Phase 7.8-2). text 編集中は textarea が
+      // stopPropagation するためここに届かない。pending != null のときだけ
+      // EditorShell が provide する経路で発火し、それ以外は browser default の
+      // Enter (ボタン focus 等) を温存。Shift+Enter / Cmd+Enter は除外。
+      if (!mod && e.key === 'Enter' && !e.shiftKey) {
+        const cb = ref.current.onConfirmAutoArrow;
         if (cb) {
           e.preventDefault();
           cb();

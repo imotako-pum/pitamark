@@ -1,4 +1,4 @@
-import type { Annotation, TextAnnotation } from '@snap-share/shared';
+import type { Annotation, Point, TextAnnotation } from '@snap-share/shared';
 import type Konva from 'konva';
 import {
   type ReactNode,
@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { CanvasStage } from '../components/canvas/CanvasStage';
+import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from '../components/canvas/colors';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
 import { HelpModal } from '../components/dialogs/HelpModal';
 import { DropZone } from '../components/empty-state/DropZone';
@@ -20,7 +21,21 @@ import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
 import { useStageTransform } from '../hooks/useStageTransform';
+import { computeAutoArrowDefault } from '../lib/autoArrowDefault';
+import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../lib/autoNextOffset';
 import { nextColor, prevColor } from '../lib/colorCycle';
+import { generateId } from '../lib/id';
+
+// Phase 7.8-2 Auto-next-B: 矩形確定直後の既定矢印プレビューの pending 状態。
+// CanvasStage の Layer 描画と useKeyboardShortcuts (Enter binding) 両方が touch する
+// ため EditorShell に置く。ref + state の二重管理 — ref は同 React event 内で同期参照
+// (Enter 確定 callback が ref.current で最新を見る)、state は Konva 再レンダーをトリガする。
+type PendingAutoArrow = Readonly<{
+  from: Point;
+  to: Point;
+  color: string;
+  strokeWidth: number;
+}>;
 
 const MIN_STAGE_HEIGHT = 200;
 const FALLBACK_HEADER_HEIGHT = 56;
@@ -75,6 +90,15 @@ export const EditorShell = ({
   // dispatch との同期参照が必要になり得るため。通常の text ツール経路 (autoNext 省略)
   // では立たないので、連続 text 作成モードを壊さない。
   const autoNextChainRef = useRef(false);
+  // Phase 7.8-2 Auto-next-B: pending 矢印の ref + state 二重管理 (詳細は型宣言の上の
+  // コメント参照)。setPendingAutoArrow を経由してのみ書き換えるため、ref と state
+  // が乖離しない。
+  const pendingAutoArrowRef = useRef<PendingAutoArrow | null>(null);
+  const [pendingAutoArrow, setPendingAutoArrowState] = useState<PendingAutoArrow | null>(null);
+  const setPendingAutoArrow = useCallback((p: PendingAutoArrow | null) => {
+    pendingAutoArrowRef.current = p;
+    setPendingAutoArrowState(p);
+  }, []);
   const [stageRect, setStageRect] = useState<DOMRect | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState<number>(FALLBACK_HEADER_HEIGHT);
@@ -122,9 +146,13 @@ export const EditorShell = ({
 
   const handleSetTool = useCallback(
     (tool: Tool) => {
+      // Phase 7.8-2: pending Auto-arrow があれば、別ツールキー押下でキャンセル。
+      if (pendingAutoArrowRef.current) {
+        setPendingAutoArrow(null);
+      }
       store.dispatch({ type: 'tool/set', tool });
     },
-    [store],
+    [store, setPendingAutoArrow],
   );
 
   const handleStartTextEditing = useCallback((id: string, options?: { autoNext?: boolean }) => {
@@ -135,15 +163,26 @@ export const EditorShell = ({
   }, []);
 
   const handleDelete = useCallback(() => {
+    // Phase 7.8-2: pending Auto-arrow があれば、BS は pending クリアを優先する。
+    // 通常の「選択中注釈削除」は pending クリア後に次の BS で復帰する。
+    if (pendingAutoArrowRef.current) {
+      setPendingAutoArrow(null);
+      return;
+    }
     const id = store.state.selectedId;
     if (!id) return;
     store.dispatch({ type: 'annotation/remove', id });
     if (editingTextId === id) {
       setEditingTextId(null);
     }
-  }, [store, editingTextId]);
+  }, [store, editingTextId, setPendingAutoArrow]);
 
   const handleEscape = useCallback(() => {
+    // Phase 7.8-2: pending Auto-arrow があれば、Esc は pending クリアを最優先。
+    if (pendingAutoArrowRef.current) {
+      setPendingAutoArrow(null);
+      return;
+    }
     if (editingTextId) {
       setEditingTextId(null);
       return;
@@ -151,7 +190,15 @@ export const EditorShell = ({
     if (store.state.selectedId) {
       store.dispatch({ type: 'select/set', id: null });
     }
-  }, [editingTextId, store]);
+  }, [editingTextId, store, setPendingAutoArrow]);
+
+  // Phase 7.8-2: マウス mousedown 任意座標で pending をクリアするための callback。
+  // CanvasStage の handleMouseDown 冒頭から呼ばれる。pending が null のときは no-op。
+  const handleCancelAutoArrowIfAny = useCallback(() => {
+    if (pendingAutoArrowRef.current) {
+      setPendingAutoArrow(null);
+    }
+  }, [setPendingAutoArrow]);
 
   const stageHeight = Math.max(stageSize.height - headerHeight, MIN_STAGE_HEIGHT);
   // Destructure once so each handler / effect depends on a stable function
@@ -203,6 +250,13 @@ export const EditorShell = ({
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_TOOL__ = store.state.tool;
   }, [store.state.tool]);
 
+  // Phase 7.8-2: pending Auto-arrow を E2E から poll するため公開。null = pending なし、
+  // object = プレビュー中。Toolbar に出ない情報なので window expose のみが現実的。
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__SNAP_SHARE_PENDING_AUTO_ARROW__ =
+      pendingAutoArrow;
+  }, [pendingAutoArrow]);
+
   // Expose transform actions for E2E. Playwright's keyboard.press cannot
   // reliably trigger Meta+0 / Meta+1 (Chromium intercepts these as browser
   // shortcuts before the page can preventDefault), so the E2E covers the
@@ -249,11 +303,13 @@ export const EditorShell = ({
   }, [editingTextId, editingAnnotation, store]);
 
   const handleClearImage = useCallback(() => {
+    // Phase 7.8-2: 画像クリア時に pending Auto-arrow も消す (孤立した pending 状態を残さない)。
+    setPendingAutoArrow(null);
     setStageImageSize(null);
     setImageNaturalSize(null);
     onClearImage();
     setEditingTextId(null);
-  }, [onClearImage, setStageImageSize]);
+  }, [onClearImage, setStageImageSize, setPendingAutoArrow]);
 
   // Single click handler: always update active color (drives next draws),
   // and if a selection exists, also apply the new color to it. Replaced the
@@ -288,6 +344,66 @@ export const EditorShell = ({
     setHelpOpen((prev) => !prev);
   }, []);
 
+  // Phase 7.8-2: 矩形 mouseup 時に呼ばれる callback。CanvasStage が rect 形状を渡す。
+  // 矩形 add は CanvasStage 側で既に dispatch 済 (handleMouseUp の committing dispatch)。
+  // ここでは pending を立てるだけ。stopUndoCapture で矩形 step を fix し、後続の
+  // arrow add (Enter 経路) を別 step として独立させる。
+  const handleAutoNextRectangle = useCallback(
+    (rect: { x: number; y: number; width: number; height: number }) => {
+      store.stopUndoCapture();
+      const { from, to } = computeAutoArrowDefault(rect);
+      setPendingAutoArrow({
+        from,
+        to,
+        color: store.state.activeColor,
+        strokeWidth: DEFAULT_STROKE_WIDTH,
+      });
+    },
+    [store, setPendingAutoArrow],
+  );
+
+  // Phase 7.8-2: Enter で pending Auto-arrow を確定。矢印 add → step 区切り → text add
+  // → tool=text + autoNextChainRef を立てて Phase 7.8-1 と同じ「commit/cancel 後 select
+  // 復帰」フローに合流。pending が null のときは安全側で no-op。
+  const handleConfirmAutoArrow = useCallback(() => {
+    const p = pendingAutoArrowRef.current;
+    if (!p) return;
+    const arrowId = generateId();
+    const arrowAnnotation: Annotation = {
+      id: arrowId,
+      type: 'arrow',
+      createdAt: Date.now(),
+      from: p.from,
+      to: p.to,
+      color: p.color,
+      strokeWidth: p.strokeWidth,
+    };
+    store.dispatch({ type: 'annotation/add', annotation: arrowAnnotation });
+    store.dispatch({ type: 'select/set', id: arrowId });
+    // arrow → text を独立 undo step に分ける (Phase 7.8-1 と同じ作法)。
+    store.stopUndoCapture();
+    const offset = computeAutoNextTextOffset(p.from, p.to, AUTO_NEXT_TEXT_OFFSET_PX);
+    const textId = generateId();
+    const textAnnotation: Annotation = {
+      id: textId,
+      type: 'text',
+      createdAt: Date.now(),
+      x: p.to.x + offset.x,
+      y: p.to.y + offset.y,
+      text: '',
+      fontSize: DEFAULT_FONT_SIZE,
+      color: p.color,
+    };
+    store.dispatch({ type: 'annotation/add', annotation: textAnnotation });
+    store.dispatch({ type: 'tool/set', tool: 'text' });
+    store.dispatch({ type: 'select/set', id: textId });
+    setPendingAutoArrow(null);
+    // Phase 7.8-2 review M1 修正: autoNextChainRef 設定 + setEditingTextId のペアを
+    // handleStartTextEditing に集約。Phase 7.8-1 の CanvasStage 経路と同じ関数を経由する
+    // ことで、Auto-next chain 起動の規約が 1 箇所に閉じる。
+    handleStartTextEditing(textId, { autoNext: true });
+  }, [store, setPendingAutoArrow, handleStartTextEditing]);
+
   useKeyboardShortcuts({
     onUndo: store.undo,
     onRedo: store.redo,
@@ -301,6 +417,9 @@ export const EditorShell = ({
     onShowHelp: handleShowHelp,
     onCycleColorNext: source ? handleCycleColorNext : undefined,
     onCycleColorPrev: source ? handleCycleColorPrev : undefined,
+    // Phase 7.8-2: pending Auto-arrow があるときだけ Enter binding を provide。
+    // pending なし時は browser default の Enter (button focus 等) を温存。
+    onConfirmAutoArrow: pendingAutoArrow ? handleConfirmAutoArrow : undefined,
   });
 
   const selectedId = store.state.selectedId;
@@ -359,6 +478,9 @@ export const EditorShell = ({
             onZoom={zoomBy}
             onPan={panBy}
             onImageLoaded={handleImageLoaded}
+            pendingAutoArrow={pendingAutoArrow}
+            onAutoNextRectangle={handleAutoNextRectangle}
+            onCancelAutoArrowIfAny={handleCancelAutoArrowIfAny}
           />
         ) : onLoadFile ? (
           <DropZone onFile={onLoadFile} error={imageError} />

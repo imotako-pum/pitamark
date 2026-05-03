@@ -192,4 +192,45 @@ describe('useKeyboardShortcuts', () => {
     expect(onCycleColorNext).not.toHaveBeenCalled();
     input.remove();
   });
+
+  it('Enter fires onConfirmAutoArrow and prevents default when provided', () => {
+    const onConfirmAutoArrow = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onConfirmAutoArrow })} />);
+    const { prevented } = press({ key: 'Enter' });
+    expect(onConfirmAutoArrow).toHaveBeenCalledOnce();
+    expect(prevented).toBe(true);
+  });
+
+  it('Enter does NOT preventDefault when onConfirmAutoArrow is undefined', () => {
+    mount.render(<Harness shortcuts={baseShortcuts()} />);
+    const { prevented } = press({ key: 'Enter' });
+    expect(prevented).toBe(false);
+  });
+
+  it('Shift+Enter does NOT trigger confirm', () => {
+    const onConfirmAutoArrow = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onConfirmAutoArrow })} />);
+    press({ key: 'Enter', shiftKey: true });
+    expect(onConfirmAutoArrow).not.toHaveBeenCalled();
+  });
+
+  it('Cmd+Enter does NOT trigger confirm (modifier required to be absent)', () => {
+    const onConfirmAutoArrow = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onConfirmAutoArrow })} />);
+    press({ key: 'Enter', metaKey: true });
+    expect(onConfirmAutoArrow).not.toHaveBeenCalled();
+  });
+
+  it('does not fire Enter binding when focus is in an input', () => {
+    const onConfirmAutoArrow = vi.fn();
+    mount.render(<Harness shortcuts={baseShortcuts({ onConfirmAutoArrow })} />);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+    Object.defineProperty(event, 'target', { value: input, writable: false });
+    window.dispatchEvent(event);
+    expect(onConfirmAutoArrow).not.toHaveBeenCalled();
+    input.remove();
+  });
 });
