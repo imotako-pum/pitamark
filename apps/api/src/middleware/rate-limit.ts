@@ -27,6 +27,13 @@ export const withRateLimit = (
   opts: RateLimitOptions,
 ): MiddlewareHandler<{ Bindings: Bindings }> => {
   return async (c, next) => {
+    // Phase 7.6: BYPASS_RATE_LIMIT="true" is a dev/E2E escape hatch so the
+    // production limit (5/60s on RL_CREATE_ROOM) does not break Playwright
+    // suites that create 14+ rooms in parallel. Production env keeps this
+    // unset / "false" so the real RL applies.
+    if (c.env.BYPASS_RATE_LIMIT === 'true') {
+      return next();
+    }
     const binding = opts.binding(c.env);
     if (!binding) {
       return next();

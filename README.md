@@ -204,6 +204,8 @@ wrangler secret put TURNSTILE_SECRET_KEY # CF dashboard → Turnstile → widget
 # 5. apps/api/wrangler.toml の [vars]:
 #    - TURNSTILE_SITE_KEY を本番 widget site key に書き換え
 #    - BYPASS_TURNSTILE は "false" のまま
+#    - BYPASS_RATE_LIMIT は "false" のまま
+#    - fork する場合は CORS_ALLOWED_ORIGINS の書き換えが必要 (下の Note 参照)
 
 # 6. Deploy API (Workers)
 cd apps/api && pnpm wrangler deploy
@@ -239,6 +241,8 @@ curl -i https://snap-share-api.<account>.workers.dev/health
 ```sh
 wrangler kv key put --binding=IMAGE_BLOCKLIST <sha256-hex> "phishing-2026q2"
 ```
+
+> **Note (fork して別 Pages project に deploy する場合)**: `apps/api/wrangler.toml` の `CORS_ALLOWED_ORIGINS` を fork 側の `<project>.pages.dev` に書き換えてください。本リポは `snap-share.pages.dev` + `*.snap-share.pages.dev` をハードコードしているため、書き換えを忘れると本番で `<img crossorigin="anonymous">` 経路の画像が CORS で弾かれ、受信側の PNG エクスポートが tainted canvas で落ちます（Phase 7.6 既知-1 の根本原因）。
 
 > 運用フロー / KPI / SLO / 撤退ライン / `wrangler tail` クエリ集は [docs/observability.md](./docs/observability.md) を参照。
 

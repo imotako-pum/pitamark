@@ -1,5 +1,10 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { ROOM_ID_REGEX, RoomPublicSchema, toPublicRoom } from '@snap-share/shared';
+import {
+  ROOM_ID_REGEX,
+  RoomCreatedSchema,
+  RoomPublicSchema,
+  toPublicRoom,
+} from '@snap-share/shared';
 import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { extractClientIp } from '../lib/ip';
@@ -70,8 +75,9 @@ const createRoomRoute = createRoute({
   },
   responses: {
     201: {
-      content: { 'application/json': { schema: RoomPublicSchema } },
-      description: 'Room created',
+      content: { 'application/json': { schema: RoomCreatedSchema } },
+      description:
+        'Room created. For protected rooms (`protected: true`) the response also carries an access `token` so the uploader skips the gate on first redirect.',
     },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
@@ -177,7 +183,14 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
         turnstileToken,
         remoteIp: extractClientIp(c.req.raw),
       });
-      return c.json(toPublicRoom(room), 201);
+      // Phase 7.6 既知-5 fix: protected room を作成した uploader は自分で
+      // password を入力したばかりなので、URL 遷移後に再度ゲートを出すのは
+      // UX 的にバグ。room.auth が立っている場合のみ token を発行して
+      // レスポンスに含め、クライアント側 (useImageSource) で sessionStorage
+      // に保存する。GET /rooms/:id では token を返さず、protected ルームの
+      // 受信者は従来通り authRoute (POST /rooms/:id/auth) で token 取得。
+      const token = room.auth ? await buildTokenService(c.env).issue(room.id) : undefined;
+      return c.json({ ...toPublicRoom(room), ...(token ? { token } : {}) }, 201);
     },
     (result, c) => {
       if (!result.success) {

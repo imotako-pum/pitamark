@@ -56,6 +56,7 @@ jobs:
         run: |
           cat > apps/api/.dev.vars <<'EOF'
           BYPASS_TURNSTILE="true"
+          BYPASS_RATE_LIMIT="true"
           TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
           ROOM_TOKEN_SECRET="ci-test-token-secret-min-32-bytes-long-enough"
           EOF

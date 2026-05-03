@@ -58,4 +58,41 @@ describe('withRateLimit', () => {
     const res = await app.request('/protected', undefined, minimalEnv);
     expect(res.status).toBe(200);
   });
+
+  // Phase 7.6: BYPASS_RATE_LIMIT は dev/E2E 用エスケープハッチ。production は
+  // wrangler.toml [vars] で "false" を明示し、middleware は文字列 "true" のみ
+  // を bypass トリガとして扱う。本番で誤って有効化されると RL が無効化される
+  // ため、unit レベルで両分岐をロックする。
+  it('passes through when BYPASS_RATE_LIMIT="true" even if the binding would block', async () => {
+    const app = buildApp(createStubRateLimit({ alwaysBlock: true }));
+    const env = { BYPASS_RATE_LIMIT: 'true' } as Bindings;
+    const res = await app.request('/protected', undefined, env);
+    expect(res.status).toBe(200);
+  });
+
+  it('still applies the limit when BYPASS_RATE_LIMIT="false" (production default)', async () => {
+    const app = buildApp(createStubRateLimit({ alwaysBlock: true }));
+    const env = { BYPASS_RATE_LIMIT: 'false' } as Bindings;
+    const res = await app.request('/protected', undefined, env);
+    expect(res.status).toBe(429);
+  });
+
+  it('still applies the limit when BYPASS_RATE_LIMIT is unset (production fallback)', async () => {
+    // Cloudflare Workers env が未定義の場合 `c.env.BYPASS_RATE_LIMIT === undefined`
+    // → 文字列 "true" との strict 比較で false → bypass しない。
+    const app = buildApp(createStubRateLimit({ alwaysBlock: true }));
+    const res = await app.request('/protected', undefined, minimalEnv);
+    expect(res.status).toBe(429);
+  });
+
+  it('does NOT bypass for truthy-but-not-"true" values like "1" / "yes" / "TRUE"', async () => {
+    // 文字列 "true" 以外（"1", "yes", "TRUE" など）を bypass 扱いにすると
+    // typo / misconfiguration での silent disable が起こる。strict 比較を維持。
+    const app = buildApp(createStubRateLimit({ alwaysBlock: true }));
+    for (const value of ['1', 'yes', 'TRUE', 'True']) {
+      const env = { BYPASS_RATE_LIMIT: value } as Bindings;
+      const res = await app.request('/protected', undefined, env);
+      expect(res.status, `BYPASS_RATE_LIMIT="${value}" should NOT bypass`).toBe(429);
+    }
+  });
 });

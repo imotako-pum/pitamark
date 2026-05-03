@@ -10,8 +10,10 @@ import {
 } from '../password';
 
 describe('PBKDF2 constants', () => {
-  it('iteration count meets OWASP 2023 minimum (>= 210k)', () => {
-    expect(PBKDF2_ITERATIONS).toBeGreaterThanOrEqual(210_000);
+  // Cloudflare Workers (workerd) は PBKDF2 iterations >100k を拒否するため
+  // OWASP 推奨を採れない。ランタイム上限ぎりぎりの 100k を bottom line とする。
+  it('iteration count uses the workerd-supported maximum (= 100k)', () => {
+    expect(PBKDF2_ITERATIONS).toBe(100_000);
   });
   it('salt is 16 bytes', () => {
     expect(SALT_BYTES).toBe(16);

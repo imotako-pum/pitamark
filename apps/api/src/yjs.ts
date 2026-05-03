@@ -107,7 +107,13 @@ export const syncRoute = new Hono<{ Bindings: Bindings }>()
       // an effective rate limit on its own. Unprotected rooms have no such
       // pacing, so apply RL_SYNC keyed on the visitor IP. Fail open if the
       // binding errors so a transient RL outage does not break collab.
-      const rl = c.env.RL_SYNC;
+      //
+      // Phase 7.6: BYPASS_RATE_LIMIT="true" は dev/E2E 用エスケープハッチ。
+      // `withRateLimit` middleware と挙動を揃える (未適用だと room-share の
+      // Yjs 同期 spec が CI Linux で `sync ws denied: rate limit` のため
+      // 3 retry 全敗していた既知の死角)。production は env 未設定 / "false" で
+      // 通常の RL_SYNC が効く。
+      const rl = c.env.BYPASS_RATE_LIMIT === 'true' ? undefined : c.env.RL_SYNC;
       if (rl) {
         const ip = extractClientIp(c.req.raw);
         try {

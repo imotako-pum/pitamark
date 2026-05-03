@@ -8,7 +8,8 @@ describe('passwordService.hash', () => {
   it('produces a RoomAuth envelope with PBKDF2-SHA256 algo', async () => {
     const auth = await svc.hash('correct horse');
     expect(auth.algo).toBe('PBKDF2-SHA256');
-    expect(auth.iterations).toBeGreaterThanOrEqual(210_000);
+    // Cloudflare Workers (workerd) の PBKDF2 上限が 100k のため OWASP 600k は採れない。
+    expect(auth.iterations).toBe(100_000);
     expect(auth.salt.length).toBeGreaterThan(0);
     expect(auth.hash.length).toBeGreaterThan(0);
     expect(auth.salt).toMatch(/^[A-Za-z0-9_-]+$/);

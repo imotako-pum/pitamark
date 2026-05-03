@@ -158,3 +158,77 @@ describe('GET /rooms/:id/image (Phase 5 — protected rooms)', () => {
     expect(cc).not.toContain('public');
   });
 });
+
+describe('GET /rooms/:id/image (Phase 7.6 — CORS for cross-origin <img crossorigin="anonymous">)', () => {
+  // Phase 7.6 既知-1 回帰検知: 公開ルームの受信側で Pages → Workers の
+  // cross-origin 画像取得を <img crossorigin="anonymous"> 経路で踏むと、
+  // サーバが Access-Control-Allow-Origin を返さない限り browser が canvas
+  // を tainted 化し PNG export (`stage.toCanvas().toBlob()`) を `SecurityError`
+  // で落とす。CORS middleware が GET /rooms/:id/image でも origin allowlist
+  // と一致した時に ACAO + `Vary: Origin` を返すことを保証する。
+  const PAGES_ORIGIN = 'https://snap-share.pages.dev';
+  const PREVIEW_ORIGIN = 'https://abc123.snap-share.pages.dev';
+  const FOREIGN_ORIGIN = 'https://evil.example.com';
+
+  it('returns Access-Control-Allow-Origin for an exact-match Pages origin', async () => {
+    const env = buildEnv();
+    const room = await createRoomWithImage(env, PNG_BYTES, 'image/png', 'cat.png');
+
+    const res = await app.request(
+      `/rooms/${room.id}/image`,
+      { headers: { origin: PAGES_ORIGIN } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe(PAGES_ORIGIN);
+  });
+
+  it('returns Access-Control-Allow-Origin for a wildcard-match Pages preview origin', async () => {
+    const env = buildEnv();
+    const room = await createRoomWithImage(env, PNG_BYTES, 'image/png', 'cat.png');
+
+    const res = await app.request(
+      `/rooms/${room.id}/image`,
+      { headers: { origin: PREVIEW_ORIGIN } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe(PREVIEW_ORIGIN);
+  });
+
+  it('emits Vary: Origin so shared caches key responses per origin', async () => {
+    // CDN / browser cache が「ACAO 付きレスポンス」を「ACAO 無しレスポンス」
+    // としてオリジン違いの client に再配信しないよう、Vary: Origin が必須。
+    const env = buildEnv();
+    const room = await createRoomWithImage(env, PNG_BYTES, 'image/png', 'cat.png');
+
+    const res = await app.request(
+      `/rooms/${room.id}/image`,
+      { headers: { origin: PAGES_ORIGIN } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const vary = res.headers.get('vary') ?? '';
+    expect(vary.toLowerCase()).toContain('origin');
+  });
+
+  it('does NOT echo Access-Control-Allow-Origin for a non-allowlisted origin', async () => {
+    const env = buildEnv();
+    const room = await createRoomWithImage(env, PNG_BYTES, 'image/png', 'cat.png');
+
+    const res = await app.request(
+      `/rooms/${room.id}/image`,
+      { headers: { origin: FOREIGN_ORIGIN } },
+      env,
+    );
+
+    // Image bytes still flow (the GET itself succeeds), but without the
+    // ACAO header so the browser refuses to use the response as image data
+    // for canvas / fetch contexts. This keeps fork deployments isolated.
+    const acao = res.headers.get('access-control-allow-origin');
+    expect(acao).not.toBe(FOREIGN_ORIGIN);
+  });
+});

@@ -76,6 +76,12 @@ TURNSTILE_SITE_KEY = "0x4AAAAAADHtSX4zIeH_vH_NJOJFTqQCS-A"
 # Phase 7.5: confirmed production keeps this `"false"`; local dev overrides via
 # `apps/api/.dev.vars` BYPASS_TURNSTILE=true (see .dev.vars.example).
 BYPASS_TURNSTILE = "false"
+# Phase 7.6: `BYPASS_RATE_LIMIT` MUST be `"false"` in production. Defensive
+# default — pairs with the `BYPASS_TURNSTILE` flag above so production env
+# always defines this var (Bindings type is `string`, runtime undefined would
+# work but breaks the type contract). Local dev / CI overrides via
+# `apps/api/.dev.vars` BYPASS_RATE_LIMIT=true (see .dev.vars.example).
+BYPASS_RATE_LIMIT = "false"
 # Phase 7.5: API を叩いてよいブラウザ origin の allowlist（カンマ区切り）。
 # 各エントリは以下のいずれか:
 #   - 完全オリジン       `https://snap-share.pages.dev`

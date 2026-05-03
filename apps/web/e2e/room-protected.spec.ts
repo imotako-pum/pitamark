@@ -14,16 +14,27 @@ test.describe('password-protected rooms', () => {
     const page1 = await ctx1.newPage();
     await page1.goto('/');
 
-    // パスワード保護 checkbox はツールバーと同じ z-10 領域にあり pointer
-    // events を遮られる。キーボード操作 (focus + Space) は pointer-event 判定
-    // を跨ぐので flake せず、a11y 経路の実証も兼ねる。
+    // Phase 7.6 既知-2 fix 後: panel を Toolbar 直下 (top-16) に逃がした
+    // ことで pointer-events が通るようになったため、Phase 7.5 の keyboard
+    // 迂回をやめて直接 click に戻す。直接 click 経路は別 spec
+    // (landing-password-toggle.spec.ts) で個別に actionability を担保している。
     const protectCheckbox = page1.getByRole('checkbox', { name: /パスワードで保護する/ });
-    await protectCheckbox.focus();
-    await page1.keyboard.press('Space');
+    await protectCheckbox.click();
     await page1.getByLabel('ルームのパスワード').fill(PASSWORD);
     await dropImage(page1);
     await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
     const sharedUrl = page1.url();
+
+    // Phase 7.6 既知-5 fix: uploader 本人は POST /rooms の応答に含まれる
+    // token が sessionStorage に書かれているはずで、`/r/:id` 遷移後に
+    // RoomGate を経由せず直接エディタが見えるべき。RoomGate 見出しが
+    // 一瞬でも現れたら回帰なので明示的に hidden を assert。
+    await expect(page1.getByRole('toolbar', { name: '編集ツール' })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page1.getByRole('heading', { name: 'このルームはパスワードで保護されています' }),
+    ).toBeHidden();
 
     const ctx2 = await browser.newContext();
     const page2 = await ctx2.newPage();
