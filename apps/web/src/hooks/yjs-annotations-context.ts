@@ -80,10 +80,26 @@ export const createYjsAnnotationsContext = (
         moveAnnotationY(doc, yAnnotations, action.id, action.dx, action.dy);
         return;
       case 'annotation/resize-rect':
-        resizeRectangleY(doc, yAnnotations, action.id, action.width, action.height);
+        resizeRectangleY(
+          doc,
+          yAnnotations,
+          action.id,
+          action.x,
+          action.y,
+          action.width,
+          action.height,
+        );
         return;
       case 'annotation/resize-highlight':
-        resizeHighlightY(doc, yAnnotations, action.id, action.width, action.height);
+        resizeHighlightY(
+          doc,
+          yAnnotations,
+          action.id,
+          action.x,
+          action.y,
+          action.width,
+          action.height,
+        );
         return;
       case 'annotation/set-arrow-endpoints':
         setArrowEndpointsY(doc, yAnnotations, action.id, action.from, action.to);

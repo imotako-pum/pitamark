@@ -55,12 +55,16 @@ export const resizeRectangleY = (
   doc: Y.Doc,
   ya: YAnnotations,
   id: string,
+  x: number,
+  y: number,
   width: number,
   height: number,
 ): void => {
   const m = ya.get(id);
   if (!m || m.get('type') !== 'rectangle') return;
   tx(doc, () => {
+    m.set('x', x);
+    m.set('y', y);
     m.set('width', width);
     m.set('height', height);
   });
@@ -70,12 +74,16 @@ export const resizeHighlightY = (
   doc: Y.Doc,
   ya: YAnnotations,
   id: string,
+  x: number,
+  y: number,
   width: number,
   height: number,
 ): void => {
   const m = ya.get(id);
   if (!m || m.get('type') !== 'highlight') return;
   tx(doc, () => {
+    m.set('x', x);
+    m.set('y', y);
     m.set('width', width);
     m.set('height', height);
   });

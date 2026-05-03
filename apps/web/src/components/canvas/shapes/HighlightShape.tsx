@@ -1,13 +1,23 @@
 import type { HighlightAnnotation } from '@snap-share/shared';
+import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { Rect as KonvaRect } from 'react-konva';
-import { HIGHLIGHT_OPACITY, OUTLINE_ACCENT } from '../colors';
+import { useEffect, useRef } from 'react';
+import { Rect as KonvaRect, Transformer } from 'react-konva';
+import { HIGHLIGHT_OPACITY, MIN_RESIZE_SIZE, OUTLINE_ACCENT } from '../colors';
+
+export type HighlightResizePatch = Readonly<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}>;
 
 type HighlightShapeProps = Readonly<{
   annotation: HighlightAnnotation;
   isSelected: boolean;
   onClick: (id: string) => void;
   onDragEnd: (id: string, x: number, y: number) => void;
+  onResize: (id: string, patch: HighlightResizePatch) => void;
 }>;
 
 export const HighlightShape = ({
@@ -15,21 +25,66 @@ export const HighlightShape = ({
   isSelected,
   onClick,
   onDragEnd,
-}: HighlightShapeProps) => (
-  <KonvaRect
-    x={annotation.x}
-    y={annotation.y}
-    width={annotation.width}
-    height={annotation.height}
-    fill={annotation.fill}
-    opacity={HIGHLIGHT_OPACITY}
-    stroke={isSelected ? OUTLINE_ACCENT : undefined}
-    strokeWidth={isSelected ? 2 : 0}
-    draggable
-    onClick={(e: KonvaEventObject<MouseEvent>) => {
-      e.cancelBubble = true;
-      onClick(annotation.id);
-    }}
-    onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
-  />
-);
+  onResize,
+}: HighlightShapeProps) => {
+  const shapeRef = useRef<Konva.Rect>(null);
+  const trRef = useRef<Konva.Transformer>(null);
+
+  useEffect(() => {
+    if (isSelected && shapeRef.current && trRef.current) {
+      trRef.current.nodes([shapeRef.current]);
+      trRef.current.getLayer()?.batchDraw();
+    } else {
+      trRef.current?.nodes([]);
+    }
+  }, [isSelected]);
+
+  return (
+    <>
+      <KonvaRect
+        ref={shapeRef}
+        x={annotation.x}
+        y={annotation.y}
+        width={annotation.width}
+        height={annotation.height}
+        fill={annotation.fill}
+        opacity={HIGHLIGHT_OPACITY}
+        stroke={isSelected ? OUTLINE_ACCENT : undefined}
+        strokeWidth={isSelected ? 2 : 0}
+        draggable
+        onClick={(e: KonvaEventObject<MouseEvent>) => {
+          e.cancelBubble = true;
+          onClick(annotation.id);
+        }}
+        onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
+        onTransformEnd={() => {
+          const node = shapeRef.current;
+          if (!node) return;
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+          node.scaleX(1);
+          node.scaleY(1);
+          onResize(annotation.id, {
+            x: node.x(),
+            y: node.y(),
+            width: Math.max(MIN_RESIZE_SIZE, node.width() * scaleX),
+            height: Math.max(MIN_RESIZE_SIZE, node.height() * scaleY),
+          });
+        }}
+      />
+      {isSelected && (
+        <Transformer
+          ref={trRef}
+          rotateEnabled={false}
+          flipEnabled={false}
+          ignoreStroke
+          boundBoxFunc={(oldBox, newBox) =>
+            Math.abs(newBox.width) < MIN_RESIZE_SIZE || Math.abs(newBox.height) < MIN_RESIZE_SIZE
+              ? oldBox
+              : newBox
+          }
+        />
+      )}
+    </>
+  );
+};

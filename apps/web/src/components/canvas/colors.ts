@@ -10,6 +10,15 @@ export const FILL_HIGHLIGHT = '#f5d142';
 export const SELECTED_STROKE_BOOST = 1;
 export const HIGHLIGHT_OPACITY = 0.35;
 
+// Endpoint handle fill for Arrow resize (custom Circle handles, since Konva
+// Transformer's bbox handles do not fit a free-angle Arrow naturally).
+export const HANDLE_FILL = '#ffffff';
+export const HANDLE_RADIUS = 6;
+export const HANDLE_STROKE_WIDTH = 2;
+// Minimum width/height enforced by Transformer's boundBoxFunc to keep tiny
+// rectangles/highlights still visible and re-grabbable after a drag.
+export const MIN_RESIZE_SIZE = 5;
+
 export const DEFAULT_STROKE_WIDTH = 2;
 export const DEFAULT_FONT_SIZE = 18;
 export const ARROW_POINTER_LENGTH = 12;

@@ -24,8 +24,22 @@ export type AnnotationsAction =
   | { type: 'annotation/add'; annotation: Annotation }
   | { type: 'annotation/remove'; id: string }
   | { type: 'annotation/move'; id: string; dx: number; dy: number }
-  | { type: 'annotation/resize-rect'; id: string; width: number; height: number }
-  | { type: 'annotation/resize-highlight'; id: string; width: number; height: number }
+  | {
+      type: 'annotation/resize-rect';
+      id: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }
+  | {
+      type: 'annotation/resize-highlight';
+      id: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }
   | { type: 'annotation/set-arrow-endpoints'; id: string; from: Point; to: Point }
   | { type: 'annotation/set-text'; id: string; text: string };
 
@@ -60,12 +74,26 @@ export const annotationsReducer = (
     case 'annotation/resize-rect':
       return {
         ...state,
-        annotations: resizeRectangle(state.annotations, action.id, action.width, action.height),
+        annotations: resizeRectangle(
+          state.annotations,
+          action.id,
+          action.x,
+          action.y,
+          action.width,
+          action.height,
+        ),
       };
     case 'annotation/resize-highlight':
       return {
         ...state,
-        annotations: resizeHighlight(state.annotations, action.id, action.width, action.height),
+        annotations: resizeHighlight(
+          state.annotations,
+          action.id,
+          action.x,
+          action.y,
+          action.width,
+          action.height,
+        ),
       };
     case 'annotation/set-arrow-endpoints':
       return {

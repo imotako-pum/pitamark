@@ -43,18 +43,26 @@ export const moveAnnotation = (
 export const resizeRectangle = (
   annotations: ReadonlyArray<Annotation>,
   id: string,
+  x: number,
+  y: number,
   width: number,
   height: number,
 ): ReadonlyArray<Annotation> =>
-  annotations.map((a) => (a.id === id && a.type === 'rectangle' ? { ...a, width, height } : a));
+  annotations.map((a) =>
+    a.id === id && a.type === 'rectangle' ? { ...a, x, y, width, height } : a,
+  );
 
 export const resizeHighlight = (
   annotations: ReadonlyArray<Annotation>,
   id: string,
+  x: number,
+  y: number,
   width: number,
   height: number,
 ): ReadonlyArray<Annotation> =>
-  annotations.map((a) => (a.id === id && a.type === 'highlight' ? { ...a, width, height } : a));
+  annotations.map((a) =>
+    a.id === id && a.type === 'highlight' ? { ...a, x, y, width, height } : a,
+  );
 
 export const setArrowEndpoints = (
   annotations: ReadonlyArray<Annotation>,

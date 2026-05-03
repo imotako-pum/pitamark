@@ -119,21 +119,25 @@ describe('moveAnnotationY', () => {
 });
 
 describe('resizeRectangleY / resizeHighlightY', () => {
-  it('resizes only when the target type matches', () => {
+  it('resizes (x/y/width/height) only when the target type matches', () => {
     const { doc, ya } = setupDoc();
     addAnnotationY(doc, ya, rect('r1'));
     addAnnotationY(doc, ya, hi('h1'));
 
-    resizeRectangleY(doc, ya, 'r1', 200, 80);
-    resizeRectangleY(doc, ya, 'h1', 999, 999);
-    resizeHighlightY(doc, ya, 'h1', 60, 70);
-    resizeHighlightY(doc, ya, 'r1', 999, 999);
+    resizeRectangleY(doc, ya, 'r1', 30, 40, 200, 80);
+    resizeRectangleY(doc, ya, 'h1', 0, 0, 999, 999);
+    resizeHighlightY(doc, ya, 'h1', 12, 14, 60, 70);
+    resizeHighlightY(doc, ya, 'r1', 0, 0, 999, 999);
 
     expect(yMapToAnnotation(ya.get('r1') as Y.Map<unknown>)).toMatchObject({
+      x: 30,
+      y: 40,
       width: 200,
       height: 80,
     });
     expect(yMapToAnnotation(ya.get('h1') as Y.Map<unknown>)).toMatchObject({
+      x: 12,
+      y: 14,
       width: 60,
       height: 70,
     });

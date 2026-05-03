@@ -94,14 +94,16 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
     ctx.applyDataAction({
       type: 'annotation/resize-rect',
       id: 'r1',
+      x: 25,
+      y: 35,
       width: 200,
       height: 80,
     });
     unsub();
 
     expect(ctx.snapshot()[0]).toMatchObject({
-      x: 15,
-      y: 27,
+      x: 25,
+      y: 35,
       width: 200,
       height: 80,
     });

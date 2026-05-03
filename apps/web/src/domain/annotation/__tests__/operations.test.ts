@@ -147,43 +147,47 @@ describe('moveAnnotation', () => {
 });
 
 describe('resizeRectangle', () => {
-  it('updates only when target type is rectangle', () => {
+  it('updates x/y/width/height only when target type is rectangle', () => {
     const before: ReadonlyArray<Annotation> = [rect, arrow];
-    const next = resizeRectangle(before, 'r1', 200, 150);
+    const next = resizeRectangle(before, 'r1', 30, 40, 200, 150);
     const updated = next[0] as RectangleAnnotation;
 
+    expect(updated.x).toBe(30);
+    expect(updated.y).toBe(40);
     expect(updated.width).toBe(200);
     expect(updated.height).toBe(150);
     expect(next[1]).toBe(arrow);
   });
 
   it('is a no-op when id matches a non-rectangle annotation', () => {
-    const next = resizeRectangle([arrow], 'a1', 200, 150);
+    const next = resizeRectangle([arrow], 'a1', 0, 0, 200, 150);
     expect(next[0]).toBe(arrow);
   });
 
   it('is a no-op for unknown id', () => {
-    const next = resizeRectangle([rect], 'zzz', 1, 1);
+    const next = resizeRectangle([rect], 'zzz', 0, 0, 1, 1);
     expect(next[0]).toBe(rect);
   });
 });
 
 describe('resizeHighlight', () => {
-  it('updates only when target type is highlight', () => {
-    const next = resizeHighlight([highlight], 'h1', 300, 60);
+  it('updates x/y/width/height only when target type is highlight', () => {
+    const next = resizeHighlight([highlight], 'h1', 7, 8, 300, 60);
     const updated = next[0] as HighlightAnnotation;
 
+    expect(updated.x).toBe(7);
+    expect(updated.y).toBe(8);
     expect(updated.width).toBe(300);
     expect(updated.height).toBe(60);
   });
 
   it('is a no-op when id matches a non-highlight annotation', () => {
-    const next = resizeHighlight([rect], 'r1', 1, 1);
+    const next = resizeHighlight([rect], 'r1', 0, 0, 1, 1);
     expect(next[0]).toBe(rect);
   });
 
   it('is a no-op for unknown id', () => {
-    const next = resizeHighlight([highlight], 'zzz', 1, 1);
+    const next = resizeHighlight([highlight], 'zzz', 0, 0, 1, 1);
     expect(next[0]).toBe(highlight);
   });
 });

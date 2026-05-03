@@ -1,4 +1,4 @@
-import type { Annotation } from '@snap-share/shared';
+import type { Annotation, Point } from '@snap-share/shared';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { type ReactNode, type Ref, useCallback, useRef, useState } from 'react';
@@ -15,6 +15,9 @@ import {
   STROKE_RECTANGLE,
 } from './colors';
 import { ImageLayer } from './ImageLayer';
+import type { ArrowEndpointsPatch } from './shapes/ArrowShape';
+import type { HighlightResizePatch } from './shapes/HighlightShape';
+import type { RectangleResizePatch } from './shapes/RectangleShape';
 
 type CanvasStageProps = Readonly<{
   src: string;
@@ -201,6 +204,43 @@ export const CanvasStage = ({
     [dispatch],
   );
 
+  const handleResizeRectangle = useCallback(
+    (id: string, patch: RectangleResizePatch) => {
+      dispatch({
+        type: 'annotation/resize-rect',
+        id,
+        x: patch.x,
+        y: patch.y,
+        width: patch.width,
+        height: patch.height,
+      });
+    },
+    [dispatch],
+  );
+
+  const handleResizeHighlight = useCallback(
+    (id: string, patch: HighlightResizePatch) => {
+      dispatch({
+        type: 'annotation/resize-highlight',
+        id,
+        x: patch.x,
+        y: patch.y,
+        width: patch.width,
+        height: patch.height,
+      });
+    },
+    [dispatch],
+  );
+
+  const handleArrowEndpoints = useCallback(
+    (id: string, endpoints: ArrowEndpointsPatch) => {
+      const from: Point = { x: endpoints.from.x, y: endpoints.from.y };
+      const to: Point = { x: endpoints.to.x, y: endpoints.to.y };
+      dispatch({ type: 'annotation/set-arrow-endpoints', id, from, to });
+    },
+    [dispatch],
+  );
+
   const visibleAnnotations: ReadonlyArray<Annotation> = draft
     ? [...annotations, draft]
     : annotations;
@@ -223,6 +263,9 @@ export const CanvasStage = ({
         onShapeClick={handleShapeClick}
         onShapeMove={handleShapeMove}
         onTextDoubleClick={onTextDoubleClick}
+        onResizeRectangle={handleResizeRectangle}
+        onResizeHighlight={handleResizeHighlight}
+        onArrowEndpoints={handleArrowEndpoints}
       />
       {extraLayers}
     </Stage>

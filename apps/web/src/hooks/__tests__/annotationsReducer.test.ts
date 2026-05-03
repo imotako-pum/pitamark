@@ -108,14 +108,18 @@ describe('annotationsReducer.annotation/move', () => {
 });
 
 describe('annotationsReducer.annotation/resize-rect', () => {
-  it('updates width/height of a rectangle', () => {
+  it('updates x/y/width/height of a rectangle', () => {
     const next = annotationsReducer(seedWith([rect]), {
       type: 'annotation/resize-rect',
       id: 'r1',
+      x: 12,
+      y: 18,
       width: 100,
       height: 50,
     });
 
+    expect((next.annotations[0] as RectangleAnnotation).x).toBe(12);
+    expect((next.annotations[0] as RectangleAnnotation).y).toBe(18);
     expect((next.annotations[0] as RectangleAnnotation).width).toBe(100);
     expect((next.annotations[0] as RectangleAnnotation).height).toBe(50);
   });
