@@ -67,20 +67,38 @@ export type Room = RoomStored;
 // Public (API response) shape. Protected rooms hide `image` so unauthenticated
 // clients cannot derive the R2 object key. `protected: false` always carries
 // the image; `protected: true` always omits it.
-export const RoomPublicSchema = z
-  .object({
-    id: z.string().regex(ROOM_ID_REGEX),
-    createdAt: z.number().int().nonnegative(),
-    ttlMs: z.number().int().positive(),
-    protected: z.boolean(),
-    image: RoomImageSchema.optional(),
-  })
+const roomPublicShape = z.object({
+  id: z.string().regex(ROOM_ID_REGEX),
+  createdAt: z.number().int().nonnegative(),
+  ttlMs: z.number().int().positive(),
+  protected: z.boolean(),
+  image: RoomImageSchema.optional(),
+});
+
+const protectedImageRefine = {
+  check: (r: { protected: boolean; image?: unknown }) =>
+    r.protected ? r.image === undefined : r.image !== undefined,
+  message: 'image must be present iff protected is false',
+} as const;
+
+export const RoomPublicSchema = roomPublicShape
   .readonly()
-  .refine((r) => (r.protected ? r.image === undefined : r.image !== undefined), {
-    message: 'image must be present iff protected is false',
-  });
+  .refine(protectedImageRefine.check, { message: protectedImageRefine.message });
 
 export type RoomPublic = z.infer<typeof RoomPublicSchema>;
+
+// POST /rooms 専用のレスポンス。protected room を作成した uploader が、
+// 直後にゲートを再表示されないよう server で発行した access token を含める。
+// GET /rooms/:id では token を返さないため `RoomPublicSchema` とは分離している
+// (token 漏洩を schema レベルで遮断)。token は protected の場合のみ存在。
+export const RoomCreatedSchema = roomPublicShape
+  .extend({
+    token: z.string().min(1).optional(),
+  })
+  .readonly()
+  .refine(protectedImageRefine.check, { message: protectedImageRefine.message });
+
+export type RoomCreated = z.infer<typeof RoomCreatedSchema>;
 
 export const toPublicRoom = (stored: RoomStored): RoomPublic => {
   const { id, createdAt, ttlMs, image, auth } = stored;

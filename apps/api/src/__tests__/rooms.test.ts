@@ -214,6 +214,34 @@ const createProtectedRoom = async (
   return (await res.json()) as PublicRoom;
 };
 
+describe('POST /rooms (Phase 7.6 既知-5 — uploader token)', () => {
+  it('returns no `token` when no password is given (unprotected room)', async () => {
+    const env = buildEnv();
+    const body = (await createUnprotectedRoom(env)) as PublicRoom & { token?: string };
+    expect(body.protected).toBe(false);
+    expect(body.token).toBeUndefined();
+  });
+
+  it('returns a non-empty `token` (JWT, 3 segments) when password is given (protected room)', async () => {
+    const env = buildEnv();
+    const body = (await createProtectedRoom(env, 'letmein')) as PublicRoom & { token?: string };
+    expect(body.protected).toBe(true);
+    expect(typeof body.token).toBe('string');
+    expect(body.token?.length ?? 0).toBeGreaterThan(0);
+    // Must be the same JWT shape as the authRoute issues so RoomEditor can
+    // reuse it directly via auth-storage / Bearer header.
+    expect(body.token?.split('.').length).toBe(3);
+  });
+
+  it('GET /rooms/:id never echoes a `token` field (no leak path)', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(`/rooms/${created.id}`, undefined, env);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.token).toBeUndefined();
+  });
+});
+
 describe('POST /rooms (Phase 5 — password)', () => {
   it('returns RoomPublic with protected:false and image present when no password is given', async () => {
     const env = buildEnv();

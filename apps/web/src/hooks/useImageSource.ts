@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { type CreateRoomFailure, createRoom } from '../lib/api-client';
+import { setRoomToken } from '../lib/auth-storage';
 import { validateImageFile } from '../lib/imageValidation';
 import { logger } from '../lib/logger';
 
@@ -79,6 +80,12 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
     void (async () => {
       const out = await createRoom(file, password, turnstileToken);
       if (out.ok) {
+        // Phase 7.6 既知-5 fix: protected room の uploader は server が返した
+        // token を sessionStorage に書いてから URL push する。これで
+        // RoomEditor の getRoomToken() が即ヒットし RoomGate を skip できる。
+        // 受信者経路 (URL 共有された別 browser) は sessionStorage が空なので
+        // 従来通り RoomGate → POST /rooms/:id/auth → token 取得。
+        if (out.token) setRoomToken(out.room.id, out.token);
         onRoomCreatedRef.current?.(out.room.id);
         return;
       }

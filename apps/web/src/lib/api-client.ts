@@ -1,5 +1,5 @@
 import type { AppType } from '@snap-share/api';
-import type { RoomPublic } from '@snap-share/shared';
+import type { RoomCreated, RoomPublic } from '@snap-share/shared';
 import { hc } from 'hono/client';
 import { logger } from './logger';
 
@@ -35,7 +35,13 @@ export type CreateRoomFailure =
   | { reason: 'invalid' }
   | { reason: 'network' };
 
-export type CreateRoomResult = { ok: true; room: RoomPublic } | ({ ok: false } & CreateRoomFailure);
+// Phase 7.6 既知-5 fix: protected room を作成した uploader は POST /rooms の
+// レスポンスに含まれる `token` をそのまま sessionStorage に保存することで、
+// `/r/:id` 遷移後の RoomGate を skip できる (本人は password を知っている)。
+// password なしルームでは `token` は undefined。
+export type CreateRoomResult =
+  | { ok: true; room: RoomPublic; token?: string }
+  | ({ ok: false } & CreateRoomFailure);
 
 /**
  * Uploads an image to `POST /rooms`.
@@ -55,7 +61,11 @@ export const createRoom = async (
     if (pw !== undefined) form.set('password', pw);
     form.set('cf-turnstile-response', turnstileToken);
     const res = await fetch(`${baseUrl}/rooms`, { method: 'POST', body: form });
-    if (res.status === 201) return { ok: true, room: (await res.json()) as RoomPublic };
+    if (res.status === 201) {
+      const body = (await res.json()) as RoomCreated;
+      const { token, ...room } = body;
+      return token ? { ok: true, room, token } : { ok: true, room };
+    }
     if (res.status === 429) return { ok: false, reason: 'rate-limited' };
     if (res.status === 422) return { ok: false, reason: 'image-blocked' };
     if (res.status === 401) return { ok: false, reason: 'turnstile' };

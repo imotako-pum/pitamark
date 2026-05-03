@@ -123,7 +123,8 @@ A7 操作中に別ターミナルで `pnpm wrangler tail snap-share-api --format
 | 既知-1 | High | ✅ Fixed (本番未反映) | - | 公開ルーム × 受信側 PNG エクスポートで tainted canvas | `57bcc1a` | `apps/web/e2e/room-export-receiver.spec.ts` |
 | 既知-2 | High | ✅ Fixed (本番未反映) | - | password 保護パネルが Toolbar の下に隠れて click できない | (本 commit) | `apps/web/e2e/landing-password-toggle.spec.ts` + `room-protected.spec.ts` 経路復元 |
 | 既知-3 | Medium | ✅ Fixed (本番未反映) | - | 「画像をクリア」ボタンが注釈のみ削除（ラベルと挙動が不一致） | (本 commit) | `apps/web/e2e/room-clear-image.spec.ts` |
-| 既知-4 | High | ✅ Fixed (本番未反映) | - | password 設定時の画像 D&D が本番/preview で 500 INTERNAL（localhost は通る）。`NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported (requested 210000)` — Workers (workerd) の Web Crypto 実装の上限。ローカル `wrangler dev` (miniflare) は Node Web Crypto なのでこの制限が無く本番でだけ落ちた | (本 commit) | api unit test の assertion を `>= 210k` → `= 100k` に変更してロック。E2E は既存の `room-protected.spec.ts` がカバー（password 経路を真の本番条件で踏むのは Phase E1 後の clean run） |
+| 既知-4 | High | ✅ Fixed (本番未反映) | - | password 設定時の画像 D&D が本番/preview で 500 INTERNAL（localhost は通る）。`NotSupportedError: Pbkdf2 failed: iteration counts above 100000 are not supported (requested 210000)` — Workers (workerd) の Web Crypto 実装の上限。ローカル `wrangler dev` (miniflare) は Node Web Crypto なのでこの制限が無く本番でだけ落ちた | `57602a6` | api unit test の assertion を `>= 210k` → `= 100k` に変更してロック。E2E は既存の `room-protected.spec.ts` がカバー（password 経路を真の本番条件で踏むのは Phase E1 後の clean run） |
+| 既知-5 | High | ✅ Fixed (本番未反映) | - | パスワード保護ルームを作成した uploader 本人が、`/r/:id` 遷移後に RoomGate で再度パスワード入力させられる UX バグ。受信者のゲート表示は仕様通りだが、本人にも見せていた | (本 commit) | shared に `RoomCreatedSchema` 追加 (token 漏洩を schema 分離で防止) / api `createRoomRoute` で `tokenService.issue` → response に token 同梱 / web `useImageSource` で `setRoomToken` を URL push **前** に実施 / E2E `room-uploader-gate-skip.spec.ts` 新規 + `room-protected.spec.ts` に「uploader はゲートを見ない」assert 追加 |
 
 ### Decisions Log
 
@@ -131,6 +132,8 @@ A7 操作中に別ターミナルで `pnpm wrangler tail snap-share-api --format
 - **既知-2 の修正方針**: panel の z-index を上げる（案 a）ではなく、配置を `top-4` → `top-16` に下げる（案 b）を採用。Toolbar (`absolute inset-x-0 top-0 z-10`) との z-index 競合を消すためで、両者の重なり自体が無くなる方が visual にもクリーン。
 - **room-protected.spec.ts のクリック経路復元**: Phase 7.5 の keyboard 迂回（focus + Space）は既知-2 fix の前提を曖昧にするため、**直接 click に戻し** て pointer-events 通過を実証する形に変更。actionability check を bug シグナルとして扱う運用へ。
 - **Firefox / WebKit プロジェクト追加**: TBD（B4 結果次第）
+- **既知-5 の token 経路設計**: GET /rooms/:id で token が漏れないよう `RoomPublicSchema` を直接拡張せず別 `RoomCreatedSchema` を新設。POST /rooms route の OpenAPI response schema もこちらに差し替え。`hc<AppType>` 経由で web 側の型推論も自動追従。token 保存は `useImageSource` 内で実施し、URL push **前**に sessionStorage 書き込みを終えてから RoomEditor を mount させる順序を担保
+- **uploader が新タブで再訪問するケース**: sessionStorage は tab close で消えるため、uploader が同じ URL を新タブで開くと RoomGate に戻る。これは Phase 5 で意図的に sessionStorage を採用した「短期一時共有」設計通りで本修正の対象外
 
 ### Follow-ups (Phase 7.6 スコープ外)
 
@@ -164,6 +167,7 @@ A7 操作中に別ターミナルで `pnpm wrangler tail snap-share-api --format
 | Phase 7.5 完了時点 | 5 | landing / room-create / room-share / room-protected / room-mobile |
 | Phase 7.6 既知-1 fix 後 | 9 | + room-export-receiver / annotation-tools / keyboard-shortcuts / dropzone-validation |
 | Phase 7.6 既知-2,3 fix 後 | 11 | + landing-password-toggle / room-clear-image |
+| Phase 7.6 既知-5 fix 後 | 12 | + room-uploader-gate-skip |
 
 ### room-mobile Linux snapshot 整備
 

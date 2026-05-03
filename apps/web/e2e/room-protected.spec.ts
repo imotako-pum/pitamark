@@ -25,6 +25,17 @@ test.describe('password-protected rooms', () => {
     await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
     const sharedUrl = page1.url();
 
+    // Phase 7.6 既知-5 fix: uploader 本人は POST /rooms の応答に含まれる
+    // token が sessionStorage に書かれているはずで、`/r/:id` 遷移後に
+    // RoomGate を経由せず直接エディタが見えるべき。RoomGate 見出しが
+    // 一瞬でも現れたら回帰なので明示的に hidden を assert。
+    await expect(page1.getByRole('toolbar', { name: '編集ツール' })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page1.getByRole('heading', { name: 'このルームはパスワードで保護されています' }),
+    ).toBeHidden();
+
     const ctx2 = await browser.newContext();
     const page2 = await ctx2.newPage();
     try {
