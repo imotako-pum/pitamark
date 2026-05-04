@@ -146,7 +146,12 @@ export async function dropImageBuffer(
 
   // dragOver と drop を順に dispatch すると DropZone の handleDragOver で
   // setIsOver(true) → handleDrop で setIsOver(false) という想定経路を踏める。
+  // Phase 8.x perf review #10 H1: `EditorPage` を `React.lazy()` boundary
+  // にしたため、`page.goto('/')` 直後は Suspense fallback が表示されている
+  // 状態。DropZone (LocalEditor 内) が visible になるのを明示的に待つことで、
+  // lazy chunk のロード待ちを担保する (低速 CI で flaky 発生していたため)。
   const dropZone = page.locator('section[aria-labelledby="dropzone-heading"]');
+  await dropZone.waitFor({ state: 'visible', timeout: 10_000 });
   await dropZone.dispatchEvent('dragover', { dataTransfer });
   await dropZone.dispatchEvent('drop', { dataTransfer });
 }

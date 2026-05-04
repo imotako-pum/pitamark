@@ -29,11 +29,23 @@ const dispatchHelpKey = (page: import('@playwright/test').Page) =>
     );
   });
 
+// Phase 8.x perf review #10 H1: `EditorPage` was put behind `React.lazy()`
+// to split the canvas/Yjs vendor chunks out of the initial bundle. As a
+// side-effect, immediately dispatching keyboard events after `page.goto`
+// can race the lazy chunk: the Suspense fallback is still mounted when the
+// `?` event fires and the `useKeyboardShortcuts` listener (declared in
+// `EditorShell`, which lives inside the lazy boundary) is not attached
+// yet. Wait for the toolbar to appear — that guarantees `EditorShell` has
+// mounted and its listeners are wired up.
+const waitForEditorReady = (page: import('@playwright/test').Page) =>
+  page.getByRole('toolbar', { name: '編集ツール' }).waitFor({ state: 'visible' });
+
 test.describe('HelpModal', () => {
   test('? キーで開いて Esc で閉じる (画像未投入でも動く)', async ({ page }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
     // 画像未投入でも `?` は効く設計 (キーボード discoverability の担保)。
+    await waitForEditorReady(page);
     await dispatchHelpKey(page);
     await expect(page.locator('[data-slot="dialog-content"]')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('キーボードショートカット')).toBeVisible();
@@ -66,6 +78,7 @@ test.describe('HelpModal', () => {
   }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
+    await waitForEditorReady(page);
     await dispatchHelpKey(page);
     const modal = page.locator('[data-slot="dialog-content"]');
     await expect(modal).toBeVisible({ timeout: 5_000 });

@@ -43,10 +43,10 @@ export type Bindings = {
   /**
    * Phase 8.x security review #13 H1: KV namespace holding short-lived
    * one-shot WebSocket upgrade tickets. Keys are `ws-ticket:<32 hex chars>`,
-   * values are the bound roomId. Entries auto-expire via `expirationTtl=30`
-   * and are deleted on consume — protected room WS connections exchange the
-   * 24h JWT for one of these so the JWT never rides on the URL.
-   * `wrangler kv namespace create WS_TICKETS` to provision.
+   * values are the bound roomId. Entries auto-expire via `expirationTtl=60`
+   * (Cloudflare KV minimum) and are deleted on consume — protected room WS
+   * connections exchange the 24h JWT for one of these so the JWT never
+   * rides on the URL. `wrangler kv namespace create WS_TICKETS` to provision.
    */
   WS_TICKETS: KVNamespace;
 

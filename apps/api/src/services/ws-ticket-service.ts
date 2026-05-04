@@ -1,18 +1,24 @@
 // Phase 8.x security review #13 H1: WebSocket cannot send Authorization
 // headers, so a query param is the only option for upgrade-time auth. To
 // keep the long-lived 24h JWT out of platform access logs (`wrangler tail`,
-// CDN logs), protected rooms exchange the JWT for a one-shot, 30-second
+// CDN logs), protected rooms exchange the JWT for a one-shot, 60-second
 // ticket that lives in KV. The ticket is bound to a roomId and is deleted
 // the moment the WebSocket upgrade verifies it, so URL leakage outside the
-// 30s window cannot grant access. Rooms remain unprotected = no ticket
+// 60s window cannot grant access. Rooms remain unprotected = no ticket
 // required (they are gated by RL_SYNC instead).
 //
 // `KVNamespace` is a global ambient type from the Workers runtime; we do
 // not import it explicitly so that web's tsconfig can compile this file
 // when traversed via the workspace dependency graph.
+//
+// `expirationTtl` minimum is 60s on Cloudflare KV (production + miniflare
+// reject < 60 with a 400). The `init` flow happens inside seconds — even
+// 60s is a fully oversized window for the legitimate use case (web fetches
+// the ticket and immediately opens the WS). Burn-on-consume keeps the
+// effective lifetime to "first WS upgrade".
 
-const TICKET_BYTES = 16; // 128 bits → 32 hex chars; brute-force in 30s impossible.
-export const WS_TICKET_TTL_SEC = 30;
+const TICKET_BYTES = 16; // 128 bits → 32 hex chars; brute-force in 60s impossible.
+export const WS_TICKET_TTL_SEC = 60;
 const KV_KEY_PREFIX = 'ws-ticket:';
 
 export type WsTicketServiceDeps = Readonly<{
