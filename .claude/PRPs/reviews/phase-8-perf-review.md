@@ -247,6 +247,16 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 2: Bundle / perf optimization)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **H1** single-bundle 283.82 KB gz / chunking ゼロ | `vite.config.ts` の `manualChunks` で Konva (`vendor-canvas`) と Yjs (`vendor-yjs`) を分離。`EditorPage` で `LocalEditor` / `RoomEditor` を `React.lazy()` boundary に。**実測 build: `index-*.js` 287.15 KB raw / 85.85 KB gz** (200 KB 目標を 70% 下回る)、`EditorShell-*.js` 191.06 KB / 63.90 KB gz、`vendor-canvas-*.js` 317.89 KB / 97.29 KB gz、`vendor-yjs-*.js` 91.52 KB / 27.82 KB gz、`LocalEditor` 13.58 KB / 5.51 KB gz、`RoomEditor` 19.42 KB / 7.30 KB gz | `apps/web/vite.config.ts` / `apps/web/src/pages/EditorPage.tsx` |
+| **M1** Konva が local mode でも全量ロード | H1 の `vendor-canvas` 分離 + `LocalEditor` lazy で local mode でも一発で Konva が乗る形だが、room モード遷移時の追加 fetch は不要 (LocalEditor も Konva を使うため) | (H1 と同) |
+| **M2** `window.resize` 二重登録 (useStageSize / EditorShell) | `useStageSize` を `document.documentElement` の ResizeObserver ベースに書き換え、EditorShell の `stageRect` 観測も `stageContainerRef` の ResizeObserver に切替。`window.resize` 登録ゼロを test で担保 (`useStageSize.test.tsx` 4 件追加) | `apps/web/src/hooks/useStageSize.ts` / `apps/web/src/pages/EditorShell.tsx` / `apps/web/src/hooks/__tests__/useStageSize.test.tsx` (new) |
+| **M3** `useStageSize` の viewport vs Konva Stage 描画域の乖離 | viewport size を返す概念は維持 (stageHeight = stageSize.height - headerHeight の依存関係)、ResizeObserver 化で観測源を一本化、`stageContainerRef` は別観測なので循環依存なし | (M2 と同) |
+| L1 / L2 / L3 (HF=false) | Backlog (Phase 9 dogfood で実測判断) | — |
+
 （Phase 8 は観察のみ、修正は Phase 8.x で別 PR）
 
 ---

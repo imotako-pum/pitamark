@@ -80,8 +80,13 @@ export const EditorShell = ({
   floatingExtras,
   roomId = null,
 }: EditorShellProps) => {
-  const stageSize = useStageSize();
   const stageContainerRef = useRef<HTMLDivElement>(null);
+  // Phase 8.x perf review #10 M2: `useStageSize` no longer registers a
+  // `window.resize` listener — it observes `document.documentElement` via
+  // ResizeObserver. The duplicate resize listener that lived here for
+  // `stageRect` has been switched to ResizeObserver on the stage container
+  // (see effect below) so a viewport change re-renders exactly once.
+  const stageSize = useStageSize();
   const headerRef = useRef<HTMLElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const awarenessLayerRef = useRef<Konva.Layer>(null);
@@ -130,13 +135,26 @@ export const EditorShell = ({
     };
   }, []);
 
+  // Phase 8.x perf review #10 M2: TextEditorOverlay positions against the
+  // exact stage container rect, so we observe the same element via
+  // ResizeObserver (matching `useStageSize`) instead of a second
+  // `window.resize` listener. `source` triggers re-observation when the
+  // image swap remounts the stage container.
   useLayoutEffect(() => {
     const el = stageContainerRef.current;
     if (!el) return;
     const update = () => setStageRect(el.getBoundingClientRect());
     update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    let raf = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    });
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
   }, [source]);
 
   const editingAnnotation: TextAnnotation | null = (() => {

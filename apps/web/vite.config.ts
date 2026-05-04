@@ -24,6 +24,40 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
+  // Phase 8.x perf review #10 H1+M1: separate Konva and Yjs into vendor
+  // chunks so the landing/local page does not pay for the room-only Yjs
+  // network code on first load. `EditorPage` lazy-loads `LocalEditor` /
+  // `RoomEditor`, so React.lazy() boundaries control which vendor chunks
+  // are even fetched. Combined target: main `index-*.js` ≤ 200 KB gz
+  // (down from 283.82 KB single-bundle pre-fix).
+  //
+  // Vite 8 ships with rolldown which only accepts the function form of
+  // `manualChunks` (the object form is rollup-only). We pattern-match each
+  // module id against the known vendor packages so future additions stay
+  // adjacent to the same chunk decision.
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('/node_modules/konva/') ||
+            id.includes('/node_modules/react-konva/') ||
+            id.includes('/node_modules/use-image/')
+          ) {
+            return 'vendor-canvas';
+          }
+          if (
+            id.includes('/node_modules/yjs/') ||
+            id.includes('/node_modules/y-websocket/') ||
+            id.includes('/node_modules/y-protocols/')
+          ) {
+            return 'vendor-yjs';
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
