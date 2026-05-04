@@ -23,6 +23,13 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
     trace: 'on-first-retry',
+    // Phase 10.E: pin browser locale to ja-JP so the i18n auto-detect picks
+    // 'ja' as the default UI language. Existing specs assert against JA
+    // labels (`編集ツール` / `矩形` / etc.) — overriding the default Playwright
+    // locale (en-US) would surface English UI and break those specs. The
+    // dedicated `i18n.spec.ts` toggles language via the in-app LangToggle
+    // rather than relying on browser locale, so it works under both pins.
+    locale: 'ja-JP',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
