@@ -217,6 +217,19 @@ export const useYjsAnnotationsStore = (
     ctx?.undoManager.stopCapturing();
   }, [ctx]);
 
+  // Phase 8.x tests review #8 M3: expose `stopUndoCapture` to E2E so the
+  // spec can split undo groups deterministically without `waitForTimeout`
+  // (annotation-tools.spec.ts previously slept 700ms to let
+  // `captureTimeout` lapse — flaky on slow CI). DEV-only so production
+  // bundles strip the assignment via Vite tree-shaking; matches the
+  // `__SNAP_SHARE_ANNOTATIONS__` pattern.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (
+      window as unknown as { __SNAP_SHARE_STOP_UNDO_CAPTURE__?: () => void }
+    ).__SNAP_SHARE_STOP_UNDO_CAPTURE__ = stopUndoCapture;
+  }, [stopUndoCapture]);
+
   const state: AnnotationsState = {
     annotations,
     selectedId,

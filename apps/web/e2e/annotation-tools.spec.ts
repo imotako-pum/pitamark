@@ -159,8 +159,16 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 60, y: 60 }, { x: 160, y: 160 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
-    // captureTimeout を超える wait で undo group を分離
-    await page.waitForTimeout(700);
+    // Phase 8.x tests review #8 M3: undo group の分離を deterministic に。
+    // 旧実装は captureTimeout (500ms) を超える sleep だったが、低速 CI で
+    // flaky。`__SNAP_SHARE_STOP_UNDO_CAPTURE__` (DEV-only window hatch、
+    // useYjsAnnotationsStore.ts:222 で expose) を直接呼んで undo step を
+    // 確定させる。
+    await page.evaluate(() => {
+      (
+        window as unknown as { __SNAP_SHARE_STOP_UNDO_CAPTURE__?: () => void }
+      ).__SNAP_SHARE_STOP_UNDO_CAPTURE__?.();
+    });
 
     // 2 個目: 矢印 — Phase 7.8-1 Auto-next-A で空 text + IME 起動が走るため、Esc で
     // text を破棄してから次の assert へ。矢印確定が 1 step として undo に積まれる
@@ -170,7 +178,12 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await page.keyboard.press('Escape');
     await expect.poll(() => readAnnotationCount(page)).toBe(2);
 
-    await page.waitForTimeout(700);
+    // 同上 (#8 M3): undo step を確定させる
+    await page.evaluate(() => {
+      (
+        window as unknown as { __SNAP_SHARE_STOP_UNDO_CAPTURE__?: () => void }
+      ).__SNAP_SHARE_STOP_UNDO_CAPTURE__?.();
+    });
 
     // Undo で 2 個目を取り消し
     const undoBtn = page.getByRole('button', { name: '元に戻す' });
