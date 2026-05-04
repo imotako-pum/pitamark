@@ -57,6 +57,7 @@ export const en: Record<I18nKey, string> = {
   'dropzone.instructionPrefix': 'Click to choose, or paste with',
   'dropzone.instructionSuffix': '',
   'dropzone.formats': 'PNG / JPEG / WebP / SVG (up to 10MB)',
+  'dropzone.loading': 'Loading image…',
 
   // Confirm clear-all dialog.
   'dialog.clearAll.title': 'Clear all annotations in this room?',

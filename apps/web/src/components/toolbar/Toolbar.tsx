@@ -14,6 +14,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { TOOLS, type Tool } from '../../hooks/annotationsReducer';
 import { type I18nKey, useTranslation } from '../../i18n';
+import { LangToggle } from '../lang-toggle/LangToggle';
 import { ColorPalette } from './ColorPalette';
 import { FontSizeControl } from './FontSizeControl';
 import { ToolButton } from './ToolButton';
@@ -167,6 +168,8 @@ export const Toolbar = ({
           shortcut="?"
           onClick={onShowHelp}
         />
+        <Divider />
+        <LangToggle />
       </div>
     </TooltipProvider>
   );

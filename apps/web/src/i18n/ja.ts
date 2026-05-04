@@ -59,6 +59,7 @@ export const ja = {
   'dropzone.instructionPrefix': 'クリックで選択、または',
   'dropzone.instructionSuffix': 'で貼り付け',
   'dropzone.formats': 'PNG / JPEG / WebP / SVG (10MB まで)',
+  'dropzone.loading': '画像を読み込んでいます…',
 
   // Confirm clear-all dialog.
   'dialog.clearAll.title': 'ルーム内の注釈をすべて削除しますか？',

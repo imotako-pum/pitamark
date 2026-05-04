@@ -21,6 +21,7 @@ import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
 import { useStageTransform } from '../hooks/useStageTransform';
+import { useTranslation } from '../i18n';
 import { computeAutoArrowDefault } from '../lib/autoArrowDefault';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../lib/autoNextOffset';
 import { nextColor, prevColor } from '../lib/colorCycle';
@@ -80,6 +81,7 @@ export const EditorShell = ({
   floatingExtras,
   roomId = null,
 }: EditorShellProps) => {
+  const t = useTranslation();
   const stageContainerRef = useRef<HTMLDivElement>(null);
   // Phase 8.x perf review #10 M2: `useStageSize` no longer registers a
   // `window.resize` listener — it observes `document.documentElement` via
@@ -554,7 +556,7 @@ export const EditorShell = ({
           <DropZone onFile={onLoadFile} error={imageError} />
         ) : (
           <div className="flex h-full items-center justify-center text-sm opacity-60">
-            画像を読み込んでいます…
+            {t('dropzone.loading')}
           </div>
         )}
       </div>
