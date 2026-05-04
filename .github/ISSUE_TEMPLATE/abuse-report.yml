@@ -1,0 +1,74 @@
+name: 通報・違反コンテンツ報告 (Abuse Report)
+description: 公開済みの snap-share ルームで著作権侵害・誹謗中傷・個人情報漏洩・性的コンテンツ・違法行為等を発見した場合の報告フォーム。
+title: "[abuse] "
+labels: ["report-abuse"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 通報の前に
+        - **緊急性が高い場合** (児童ポルノ、爆破予告、生命に関わる脅迫など) は、本フォームではなく **警察または該当機関に直接通報** してください。
+        - 個人情報・パスワード・センシティブな URL を本 issue に貼り付けないでください (本 issue は public です)。必要な場合は運営者に直接メールで連絡してください ([TBD: 公開リリース時に追記])。
+        - 通報内容は運営者が確認のうえ、合理的な範囲で対応します (削除 / TTL 短縮 / 追加調査)。すべての通報に個別回答することは保証しません。
+
+  - type: input
+    id: target-url
+    attributes:
+      label: 対象の共有 URL
+      description: snap-share の公開ルーム URL を記入してください (例 `https://snap-share.pages.dev/r/V1StGXR8_Z5jdHi6B-myT`)。
+      placeholder: https://snap-share.pages.dev/r/...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: violation-category
+    attributes:
+      label: 違反内容のカテゴリ
+      description: 該当するものを 1 つ選んでください。複数該当する場合は、最も重大なものを選び、詳細欄に補足してください。
+      options:
+        - 著作権 / 商標権侵害
+        - 個人情報の漏洩 (氏名 / 住所 / 連絡先 / 顔写真 等)
+        - 誹謗中傷 / 名誉毀損
+        - 性的コンテンツ (児童ポルノを含む)
+        - 暴力 / 脅迫 / ヘイトスピーチ
+        - スパム / フィッシング / マルウェア
+        - 違法な物品・サービスの宣伝
+        - その他 (詳細欄に記入)
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 違反内容の詳細
+      description: 何が問題なのか、なぜ違反と判断したのか、被害があれば内容を記入してください。
+      placeholder: |
+        例: 上記の URL に、私 (○○) が撮影した写真が無断で使用されています。
+        該当箇所: 画像中央の人物写真。元画像は https://example.com/... で 2025 年に公開しています。
+        対応希望: 削除をお願いします。
+    validations:
+      required: true
+
+  - type: input
+    id: reporter-relation
+    attributes:
+      label: あなたと違反コンテンツの関係 (任意)
+      description: 例「権利者本人」「権利者の代理人」「第三者」「該当の被写体」など。
+      placeholder: 権利者本人
+
+  - type: input
+    id: contact
+    attributes:
+      label: 連絡先 (任意)
+      description: 追加の確認が必要な場合の連絡先 (メール / GitHub ユーザ名)。空欄でも構いません。
+      placeholder: example@example.com
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 確認
+      options:
+        - label: 本 issue に個人情報やパスワードなどの機微情報を貼り付けていません
+          required: true
+        - label: 本通報は事実に基づいており、虚偽の通報ではありません
+          required: true
