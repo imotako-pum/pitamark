@@ -2,8 +2,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { __resetI18nForTesting, setLang } from '../../../i18n';
 import { COLOR_PALETTE } from '../../canvas/colors';
 import { ColorPalette } from '../ColorPalette';
+
+const swatchAria = (color: string) => `色: ${color}`;
 
 const renderPalette = (props: {
   activeColor?: string;
@@ -43,10 +46,16 @@ describe('ColorPalette', () => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
+    // Pin language to JA so ARIA-label-based queries are deterministic.
+    window.localStorage.setItem('snap-share-lang', 'ja');
+    __resetI18nForTesting();
+    setLang('ja');
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    __resetI18nForTesting();
   });
 
   it('renders one swatch button per palette color', () => {
@@ -61,7 +70,7 @@ describe('ColorPalette', () => {
     if (!target) throw new Error('palette must have at least 3 colors');
     const m = renderPalette({ activeColor: target });
     const button = m.container.querySelector<HTMLButtonElement>(
-      `button[aria-label="色: ${target}"]`,
+      `button[aria-label="${swatchAria(target)}"]`,
     );
     expect(button?.getAttribute('aria-pressed')).toBe('true');
     m.unmount();
@@ -73,7 +82,7 @@ describe('ColorPalette', () => {
     const target = COLOR_PALETTE[3];
     if (!target) throw new Error('palette must have at least 4 colors');
     const button = m.container.querySelector<HTMLButtonElement>(
-      `button[aria-label="色: ${target}"]`,
+      `button[aria-label="${swatchAria(target)}"]`,
     );
     act(() => {
       button?.click();

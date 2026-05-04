@@ -1,6 +1,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { __resetI18nForTesting, setLang } from '../../../i18n';
+import { ja } from '../../../i18n/ja';
 import { HelpModal } from '../HelpModal';
 
 const renderModal = (props: { open?: boolean; onOpenChange?: (o: boolean) => void }) => {
@@ -29,10 +31,15 @@ const renderModal = (props: { open?: boolean; onOpenChange?: (o: boolean) => voi
 describe('HelpModal', () => {
   beforeEach(() => {
     while (document.body.firstChild) document.body.removeChild(document.body.firstChild);
+    window.localStorage.setItem('snap-share-lang', 'ja');
+    __resetI18nForTesting();
+    setLang('ja');
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    __resetI18nForTesting();
   });
 
   it('open=false renders nothing into the document body', () => {
@@ -44,12 +51,12 @@ describe('HelpModal', () => {
   it('open=true renders the cheatsheet title and key kbd entries', () => {
     const m = renderModal({ open: true });
     const title = document.body.querySelector('[data-slot="dialog-title"]');
-    expect(title?.textContent).toContain('キーボードショートカット');
+    expect(title?.textContent).toContain(ja['help.title']);
     // 主要な行ラベルが描画されていること
-    expect(document.body.textContent).toContain('選択');
-    expect(document.body.textContent).toContain('次の色');
+    expect(document.body.textContent).toContain(ja['help.row.select']);
+    expect(document.body.textContent).toContain(ja['help.row.nextColor']);
     // Phase 7.8-5: 「次手予測」セクションが描画されていること
-    expect(document.body.textContent).toContain('次手予測');
+    expect(document.body.textContent).toContain(ja['help.section.predict']);
     // 主要な kbd が表示されていること
     const kbds = Array.from(document.body.querySelectorAll('kbd')).map((k) => k.textContent);
     expect(kbds).toContain('⌘');
@@ -59,11 +66,11 @@ describe('HelpModal', () => {
     m.unmount();
   });
 
-  it('lists the [ and ] shortcuts under "テキスト" section', () => {
+  it('lists the [ and ] shortcuts under the text section', () => {
     const m = renderModal({ open: true });
-    expect(document.body.textContent).toContain('テキスト');
-    expect(document.body.textContent).toContain('フォントサイズ +2');
-    expect(document.body.textContent).toContain('フォントサイズ -2');
+    expect(document.body.textContent).toContain(ja['help.section.text']);
+    expect(document.body.textContent).toContain(ja['help.row.fontSizeIncrease']);
+    expect(document.body.textContent).toContain(ja['help.row.fontSizeDecrease']);
     const kbds = Array.from(document.body.querySelectorAll('kbd')).map((k) => k.textContent);
     expect(kbds).toContain(']');
     expect(kbds).toContain('[');
@@ -75,10 +82,10 @@ describe('HelpModal', () => {
   // 固有のラベル — Esc は他セクションでも出現するので一意性は要求しない。
   it('lists the Auto-next predict section with Enter / Esc / ⌫ kbds', () => {
     const m = renderModal({ open: true });
-    expect(document.body.textContent).toContain('次手予測');
-    expect(document.body.textContent).toContain('サジェスト確定');
-    expect(document.body.textContent).toContain('サジェスト破棄');
-    expect(document.body.textContent).toContain('pending クリア');
+    expect(document.body.textContent).toContain(ja['help.section.predict']);
+    expect(document.body.textContent).toContain(ja['help.row.suggestionAccept']);
+    expect(document.body.textContent).toContain(ja['help.row.suggestionDismiss']);
+    expect(document.body.textContent).toContain(ja['help.row.pendingClear']);
     const kbds = Array.from(document.body.querySelectorAll('kbd')).map((k) => k.textContent);
     expect(kbds).toContain('Enter');
     expect(kbds).toContain('⌫');

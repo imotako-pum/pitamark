@@ -35,27 +35,27 @@ export const ColorPalette = ({ activeColor, disabled, onPickColor }: ColorPalett
                   variant="ghost"
                   size="icon-sm"
                   aria-label={interpolate(t('toolbar.colorPalette.swatchAria'), { color })}
-                aria-pressed={pressed}
-                disabled={disabled}
-                onClick={() => onPickColor(color)}
-                className={cn(
-                  'rounded-md border border-transparent p-0',
-                  pressed && 'border-(--color-accent)',
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className="block size-4 rounded-[3px]"
-                  style={{
-                    background: color,
-                    boxShadow: pressed
-                      ? `0 0 0 2px ${OUTLINE_ACCENT} inset`
-                      : '0 0 0 1px rgba(0,0,0,0.12) inset',
-                  }}
-                />
-              </Button>
-            }
-          />
+                  aria-pressed={pressed}
+                  disabled={disabled}
+                  onClick={() => onPickColor(color)}
+                  className={cn(
+                    'rounded-md border border-transparent p-0',
+                    pressed && 'border-(--color-accent)',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="block size-4 rounded-[3px]"
+                    style={{
+                      background: color,
+                      boxShadow: pressed
+                        ? `0 0 0 2px ${OUTLINE_ACCENT} inset`
+                        : '0 0 0 1px rgba(0,0,0,0.12) inset',
+                    }}
+                  />
+                </Button>
+              }
+            />
             <TooltipContent side="bottom">
               <span>{color}</span>
             </TooltipContent>

@@ -15,9 +15,7 @@ export type ValidImage = Readonly<{
 // consumer can switch language without re-running validation. The narrow
 // `errorKey` union (vs. a generic `I18nKey`) lets call sites exhaustively
 // switch on the failure reason if they need to log / toast differently.
-export type ImageValidationErrorKey =
-  | 'error.image.unsupportedFormat'
-  | 'error.image.tooLarge';
+export type ImageValidationErrorKey = 'error.image.unsupportedFormat' | 'error.image.tooLarge';
 
 export type InvalidImage = Readonly<{
   ok: false;

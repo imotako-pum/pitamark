@@ -61,8 +61,7 @@ export const en: Record<I18nKey, string> = {
 
   // Confirm clear-all dialog.
   'dialog.clearAll.title': 'Clear all annotations in this room?',
-  'dialog.clearAll.description':
-    'This will be visible to other participants and cannot be undone.',
+  'dialog.clearAll.description': 'This will be visible to other participants and cannot be undone.',
   'dialog.clearAll.cancel': 'Cancel',
   'dialog.clearAll.confirm': 'Clear',
 

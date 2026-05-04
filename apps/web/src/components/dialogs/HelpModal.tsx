@@ -71,9 +71,7 @@ const ZOOM_ROWS: ReadonlyArray<Row> = [
   { labelKey: 'help.row.pan', keys: ['Space', { key: 'help.key.drag' }] },
 ];
 
-const EXPORT_ROWS: ReadonlyArray<Row> = [
-  { labelKey: 'help.row.exportPng', keys: ['⌘', 'S'] },
-];
+const EXPORT_ROWS: ReadonlyArray<Row> = [{ labelKey: 'help.row.exportPng', keys: ['⌘', 'S'] }];
 
 const HELP_ROWS: ReadonlyArray<Row> = [{ labelKey: 'help.row.toggleHelp', keys: ['?'] }];
 
@@ -127,9 +125,7 @@ export const HelpModal = ({ open, onOpenChange }: Props) => {
                         <span className="flex items-center gap-1">
                           {row.keys.map((k, i) => {
                             const txt = renderKey(k);
-                            return (
-                              <Kbd key={`${row.labelKey}-${i}-${txt}`}>{txt}</Kbd>
-                            );
+                            return <Kbd key={`${row.labelKey}-${i}-${txt}`}>{txt}</Kbd>;
                           })}
                         </span>
                       </li>

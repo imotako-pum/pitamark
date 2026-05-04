@@ -1,6 +1,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { __resetI18nForTesting, setLang } from '../../../i18n';
+import { ja } from '../../../i18n/ja';
 import { RoomGate } from '../RoomGate';
 
 const ROOM = 'V1StGXR8_Z5jdHi6B-mYT';
@@ -36,10 +38,16 @@ beforeEach(() => {
   fetchMock.mockReset();
   sessionStorage.clear();
   vi.stubGlobal('fetch', fetchMock);
+  // Pin language to JA for stable text-content assertions across the suite.
+  window.localStorage.setItem('snap-share-lang', 'ja');
+  __resetI18nForTesting();
+  setLang('ja');
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.clear();
+  __resetI18nForTesting();
 });
 
 const findInput = (container: HTMLElement): HTMLInputElement => {
@@ -72,9 +80,9 @@ describe('RoomGate', () => {
   it('renders the lock heading, password input, and submit button', () => {
     const m = setupMount();
     m.render(<RoomGate roomId={ROOM} onAuthenticated={() => {}} />);
-    expect(m.container.textContent).toContain('このルームはパスワードで保護されています');
+    expect(m.container.textContent).toContain(ja['gate.heading']);
     expect(findInput(m.container)).toBeTruthy();
-    expect(findButton(m.container).textContent).toContain('入室');
+    expect(findButton(m.container).textContent).toContain(ja['gate.button.submit']);
     m.unmount();
   });
 
@@ -124,7 +132,7 @@ describe('RoomGate', () => {
     });
 
     expect(onAuth).not.toHaveBeenCalled();
-    expect(m.container.textContent).toContain('パスワードが違います');
+    expect(m.container.textContent).toContain(ja['gate.error.wrongPassword']);
     expect(sessionStorage.getItem(`roomToken:${ROOM}`)).toBeNull();
     m.unmount();
   });
@@ -142,7 +150,7 @@ describe('RoomGate', () => {
     });
 
     expect(onAuth).not.toHaveBeenCalled();
-    expect(m.container.textContent).toContain('ネットワークエラー');
+    expect(m.container.textContent).toContain(ja['gate.error.network']);
     m.unmount();
   });
 });

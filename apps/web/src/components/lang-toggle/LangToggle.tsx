@@ -4,13 +4,7 @@
 // the user can switch language regardless of which surface they're on.
 
 import { cn } from '@/lib/utils';
-import {
-  type Lang,
-  setLang,
-  SUPPORTED_LANGS,
-  useCurrentLang,
-  useTranslation,
-} from '../../i18n';
+import { type Lang, SUPPORTED_LANGS, setLang, useCurrentLang, useTranslation } from '../../i18n';
 
 type Props = Readonly<{
   className?: string;
@@ -25,6 +19,7 @@ export const LangToggle = ({ className }: Props) => {
   const t = useTranslation();
   const lang = useCurrentLang();
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> would inherit unwanted form semantics + browser default border. role="group" + aria-label cleanly groups the two language buttons without form coupling.
     <div
       role="group"
       aria-label={t('common.langToggle.label')}

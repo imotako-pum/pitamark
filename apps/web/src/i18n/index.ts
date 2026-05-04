@@ -14,10 +14,10 @@ import { en } from './en';
 import { ja } from './ja';
 import { type I18nKey, type Lang, SUPPORTED_LANGS } from './keys';
 
+export { en } from './en';
+export { ja } from './ja';
 export type { I18nKey, Lang } from './keys';
 export { SUPPORTED_LANGS } from './keys';
-export { ja } from './ja';
-export { en } from './en';
 
 const STORAGE_KEY = 'snap-share-lang';
 
