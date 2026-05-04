@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { TOOLS, type Tool } from '../../hooks/annotationsReducer';
 
 type Props = Readonly<{
   open: boolean;
@@ -14,13 +15,19 @@ type Props = Readonly<{
 type Row = Readonly<{ label: string; keys: ReadonlyArray<string> }>;
 type Section = Readonly<{ title: string; rows: ReadonlyArray<Row> }>;
 
-const TOOL_ROWS: ReadonlyArray<Row> = [
-  { label: '選択', keys: ['V'] },
-  { label: '矩形', keys: ['R'] },
-  { label: '矢印', keys: ['A'] },
-  { label: 'テキスト', keys: ['T'] },
-  { label: 'ハイライト', keys: ['H'] },
-];
+// Phase 8.x extensibility review #7 M1 案 B: `Readonly<Record<Tool, Row>>`
+// 化することで、新しい `Tool` を追加した時点でこの map に key 漏れが
+// コンパイルエラーで surface する。`TOOL_ROWS` (配列) は `TOOLS` から
+// 順序を借りて生成する。
+const TOOL_ROW_BY_TOOL: Readonly<Record<Tool, Row>> = {
+  select: { label: '選択', keys: ['V'] },
+  rectangle: { label: '矩形', keys: ['R'] },
+  arrow: { label: '矢印', keys: ['A'] },
+  text: { label: 'テキスト', keys: ['T'] },
+  highlight: { label: 'ハイライト', keys: ['H'] },
+};
+
+const TOOL_ROWS: ReadonlyArray<Row> = TOOLS.map((t) => TOOL_ROW_BY_TOOL[t]);
 
 const COLOR_ROWS: ReadonlyArray<Row> = [
   { label: '次の色', keys: ['C'] },

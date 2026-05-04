@@ -35,13 +35,22 @@ export type KeyboardShortcuts = Readonly<{
   onDecrementFontSize?: () => void;
 }>;
 
-const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
-  v: 'select',
-  r: 'rectangle',
-  a: 'arrow',
-  t: 'text',
-  h: 'highlight',
+// Phase 8.x extensibility review #7 M1 案 B: declare the tool→key direction
+// as `Record<Tool, string>` so adding a new `Tool` becomes a typecheck
+// failure here (forces the implementer to choose a key). Lookup by key
+// goes through `TOOL_BY_KEY`, an inverse `Map` derived from the same
+// source — single SSOT, no manual sync.
+const TOOL_KEYS: Readonly<Record<Tool, string>> = {
+  select: 'v',
+  rectangle: 'r',
+  arrow: 'a',
+  text: 't',
+  highlight: 'h',
 };
+
+const TOOL_BY_KEY: ReadonlyMap<string, Tool> = new Map(
+  (Object.entries(TOOL_KEYS) as Array<[Tool, string]>).map(([t, k]) => [k, t]),
+);
 
 export const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -156,7 +165,7 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
       }
       if (mod) return;
 
-      const tool = TOOL_KEY_MAP[key];
+      const tool = TOOL_BY_KEY.get(key);
       if (tool) {
         ref.current.onSetTool(tool);
       }

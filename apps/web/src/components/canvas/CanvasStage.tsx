@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { Arrow as KonvaArrow, Layer, Stage } from 'react-konva';
+import type { Tool } from '../../hooks/annotationsReducer';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
 import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
@@ -100,6 +101,19 @@ const buildDraftArrow = (start: DragStart, x: number, y: number, color: string):
   color,
   strokeWidth: DEFAULT_STROKE_WIDTH,
 });
+
+// Phase 8.x extensibility review #7 L3: drag-based tools がここに集まる。
+// `Exclude<Tool, 'select' | 'text'>` で「select は drag を持たず、text は
+// mousedown その場確定 (drag 不要)」という設計を型に埋める。新しい
+// drag-based tool を `Tool` union に追加すると、この Record に key を
+// 増やさない限りコンパイルエラーになる。
+type DraftBuilder = (start: DragStart, x: number, y: number, color: string) => Annotation;
+
+const DRAFT_BUILDERS: Readonly<Record<Exclude<Tool, 'select' | 'text'>, DraftBuilder>> = {
+  rectangle: buildDraftRectangle,
+  highlight: buildDraftHighlight,
+  arrow: buildDraftArrow,
+};
 
 const distance = (a: DragStart, x: number, y: number) => Math.hypot(x - a.x, y - a.y);
 
@@ -291,15 +305,14 @@ export const CanvasStage = ({
       const dragStart = dragStartRef.current;
       if (!dragStart || !pos) return;
 
-      let next: Annotation | null = null;
-      if (tool === 'rectangle') next = buildDraftRectangle(dragStart, pos.x, pos.y, activeColor);
-      else if (tool === 'highlight')
-        next = buildDraftHighlight(dragStart, pos.x, pos.y, activeColor);
-      else if (tool === 'arrow') next = buildDraftArrow(dragStart, pos.x, pos.y, activeColor);
-      if (next) {
-        draftRef.current = next;
-        setDraft(next);
-      }
+      // Phase 8.x extensibility review #7 L3: lookup via `DRAFT_BUILDERS`
+      // (typed `Record<Exclude<Tool, 'select' | 'text'>, ...>`) replaces the
+      // old `else if` chain. `tool === 'select' | 'text'` is filtered first
+      // because select has no draft + text commits at mousedown.
+      if (tool === 'select' || tool === 'text') return;
+      const next = DRAFT_BUILDERS[tool](dragStart, pos.x, pos.y, activeColor);
+      draftRef.current = next;
+      setDraft(next);
     },
     [tool, onCursorMove, activeColor, onPan],
   );

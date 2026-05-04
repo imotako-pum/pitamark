@@ -46,55 +46,74 @@ export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {
   return m;
 };
 
+// Phase 8.x extensibility review #7 M1 案 A: switch + `const _: never` で
+// 網羅性をコンパイル時に enforce。新しい annotation 種を `Annotation` union
+// に追加した瞬間、ここで switch case 漏れがエラーになるので「忘れたら気付か
+// ない場所」が消える。runtime safeParse は引き続き Yjs migration safety net
+// として残す (外部ピアからの malformed sync を弾く)。
 export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
-  const type = m.get('type');
+  const rawType = m.get('type');
+  if (typeof rawType !== 'string') return null;
+  const type = rawType as Annotation['type'];
   let candidate: unknown;
-  if (type === 'arrow') {
-    candidate = {
-      id: m.get('id'),
-      type: 'arrow',
-      createdAt: m.get('createdAt'),
-      from: { x: m.get('fromX'), y: m.get('fromY') },
-      to: { x: m.get('toX'), y: m.get('toY') },
-      color: m.get('color'),
-      strokeWidth: m.get('strokeWidth'),
-    };
-  } else if (type === 'rectangle') {
-    candidate = {
-      id: m.get('id'),
-      type: 'rectangle',
-      createdAt: m.get('createdAt'),
-      x: m.get('x'),
-      y: m.get('y'),
-      width: m.get('width'),
-      height: m.get('height'),
-      color: m.get('color'),
-      strokeWidth: m.get('strokeWidth'),
-    };
-  } else if (type === 'text') {
-    candidate = {
-      id: m.get('id'),
-      type: 'text',
-      createdAt: m.get('createdAt'),
-      x: m.get('x'),
-      y: m.get('y'),
-      text: m.get('text'),
-      fontSize: m.get('fontSize'),
-      color: m.get('color'),
-    };
-  } else if (type === 'highlight') {
-    candidate = {
-      id: m.get('id'),
-      type: 'highlight',
-      createdAt: m.get('createdAt'),
-      x: m.get('x'),
-      y: m.get('y'),
-      width: m.get('width'),
-      height: m.get('height'),
-      color: m.get('color'),
-    };
-  } else {
-    return null;
+  switch (type) {
+    case 'arrow':
+      candidate = {
+        id: m.get('id'),
+        type: 'arrow',
+        createdAt: m.get('createdAt'),
+        from: { x: m.get('fromX'), y: m.get('fromY') },
+        to: { x: m.get('toX'), y: m.get('toY') },
+        color: m.get('color'),
+        strokeWidth: m.get('strokeWidth'),
+      };
+      break;
+    case 'rectangle':
+      candidate = {
+        id: m.get('id'),
+        type: 'rectangle',
+        createdAt: m.get('createdAt'),
+        x: m.get('x'),
+        y: m.get('y'),
+        width: m.get('width'),
+        height: m.get('height'),
+        color: m.get('color'),
+        strokeWidth: m.get('strokeWidth'),
+      };
+      break;
+    case 'text':
+      candidate = {
+        id: m.get('id'),
+        type: 'text',
+        createdAt: m.get('createdAt'),
+        x: m.get('x'),
+        y: m.get('y'),
+        text: m.get('text'),
+        fontSize: m.get('fontSize'),
+        color: m.get('color'),
+      };
+      break;
+    case 'highlight':
+      candidate = {
+        id: m.get('id'),
+        type: 'highlight',
+        createdAt: m.get('createdAt'),
+        x: m.get('x'),
+        y: m.get('y'),
+        width: m.get('width'),
+        height: m.get('height'),
+        color: m.get('color'),
+      };
+      break;
+    default: {
+      // Unknown stringly-typed kind — ignore. Same lenient fallback as the
+      // pre-switch `else { return null }` to keep room for migrations from
+      // an old peer pushing a future annotation type. Compile-time
+      // exhaustiveness is enforced by the assignment to `never` below.
+      const _exhaustive: never = type;
+      void _exhaustive;
+      return null;
+    }
   }
   const parsed = AnnotationSchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
