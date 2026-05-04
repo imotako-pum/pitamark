@@ -251,6 +251,33 @@ describe('annotationsReducer.annotation/set-font-size', () => {
     expect(next.annotations[0]).toBe(rect);
   });
 
+  // Phase 8.x tests review #8 M2: assert that the annotations array
+  // identity is preserved on a no-op so the upstream `historyReducer`
+  // never appends an empty undo step. Phase 7.8-3 review M1 hinged on
+  // handler-side gating; this test ensures the safety net at the
+  // reducer layer for non-text targets.
+  it('preserves annotations array identity when no-op on non-text id', () => {
+    const seeded = seedWith([rect]);
+    const next = annotationsReducer(seeded, {
+      type: 'annotation/set-font-size',
+      id: 'r1',
+      fontSize: 24,
+    });
+
+    expect(next.annotations).toBe(seeded.annotations);
+  });
+
+  it('preserves annotations array identity when no-op on unknown id', () => {
+    const seeded = seedWith([text]);
+    const next = annotationsReducer(seeded, {
+      type: 'annotation/set-font-size',
+      id: 'zzz',
+      fontSize: 24,
+    });
+
+    expect(next.annotations).toBe(seeded.annotations);
+  });
+
   it('is a no-op for unknown id', () => {
     const seeded = seedWith([text]);
     const next = annotationsReducer(seeded, {

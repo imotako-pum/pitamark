@@ -12,7 +12,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import type { Tool } from '../../hooks/annotationsReducer';
+import { TOOLS, type Tool } from '../../hooks/annotationsReducer';
 import { ColorPalette } from './ColorPalette';
 import { FontSizeControl } from './FontSizeControl';
 import { ToolButton } from './ToolButton';
@@ -39,19 +39,22 @@ type ToolbarProps = Readonly<{
 }>;
 
 type ToolDef = Readonly<{
-  tool: Tool;
   icon: typeof MousePointer2;
   label: string;
   shortcut: string;
 }>;
 
-const TOOL_DEFS: ReadonlyArray<ToolDef> = [
-  { tool: 'select', icon: MousePointer2, label: '選択', shortcut: 'V' },
-  { tool: 'rectangle', icon: Square, label: '矩形', shortcut: 'R' },
-  { tool: 'arrow', icon: ArrowUpRight, label: '矢印', shortcut: 'A' },
-  { tool: 'text', icon: Type, label: 'テキスト', shortcut: 'T' },
-  { tool: 'highlight', icon: Highlighter, label: 'ハイライト', shortcut: 'H' },
-];
+// Phase 8.x extensibility review #7 M1 案 B: `Readonly<Record<Tool, ToolDef>>`
+// 化することで、`Tool` union に新しい kind を足すと TS が「TOOL_DEFS に key
+// が足りない」とコンパイル時に教えてくれる。iteration 順序は `TOOLS` 配列
+// (= `['select', ...ANNOTATION_TYPES]`、annotationsReducer.ts) に従う。
+const TOOL_DEFS: Readonly<Record<Tool, ToolDef>> = {
+  select: { icon: MousePointer2, label: '選択', shortcut: 'V' },
+  rectangle: { icon: Square, label: '矩形', shortcut: 'R' },
+  arrow: { icon: ArrowUpRight, label: '矢印', shortcut: 'A' },
+  text: { icon: Type, label: 'テキスト', shortcut: 'T' },
+  highlight: { icon: Highlighter, label: 'ハイライト', shortcut: 'H' },
+};
 
 const Divider = () => (
   <div aria-hidden="true" className="hidden h-6 w-px bg-(--color-toolbar-border) sm:block" />
@@ -87,17 +90,20 @@ export const Toolbar = ({
       ].join(' ')}
     >
       <div className="flex items-center gap-1">
-        {TOOL_DEFS.map((def) => (
-          <ToolButton
-            key={def.tool}
-            icon={def.icon}
-            label={def.label}
-            shortcut={def.shortcut}
-            pressed={tool === def.tool}
-            disabled={!imageLoaded}
-            onClick={() => onSetTool(def.tool)}
-          />
-        ))}
+        {TOOLS.map((t) => {
+          const def = TOOL_DEFS[t];
+          return (
+            <ToolButton
+              key={t}
+              icon={def.icon}
+              label={def.label}
+              shortcut={def.shortcut}
+              pressed={tool === t}
+              disabled={!imageLoaded}
+              onClick={() => onSetTool(t)}
+            />
+          );
+        })}
       </div>
       <Divider />
       <div className="flex items-center gap-1">

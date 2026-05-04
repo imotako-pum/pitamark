@@ -1,6 +1,7 @@
 import { MAX_IMAGE_BYTES } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
+import type { ErrorEnvelope } from '../lib/error';
 import { buildEnv } from './helpers/build-env';
 import { createInMemoryKv } from './helpers/in-memory-kv';
 import { createStubRateLimit } from './helpers/in-memory-rl';
@@ -21,7 +22,10 @@ const formWithImage = (file: File, extra: Record<string, string> = {}): FormData
   return form;
 };
 
-type ErrorBody = { ok: false; error: { code: string; message: string } };
+// Phase 8.x error-envelope review #11 L3: re-use the shared `ErrorEnvelope`
+// so the test asserts against the actual `ErrorCode` union — a typo or
+// removed code surfaces as a compile error here.
+type ErrorBody = ErrorEnvelope;
 type PublicRoom = {
   id: string;
   createdAt: number;
@@ -407,6 +411,147 @@ describe('POST /rooms/:id/auth (Phase 5 — token issuance)', () => {
       },
       env,
     );
+    expect(res.status).toBe(429);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
+});
+
+// Phase 8.x security review #13 H1: WS upgrade ticket exchange.
+describe('POST /rooms/:id/ws-ticket (Phase 8.x — short-lived WS upgrade ticket)', () => {
+  const fetchAuthToken = async (
+    env: ReturnType<typeof buildEnv>,
+    id: string,
+    password: string,
+  ): Promise<string> => {
+    const res = await app.request(
+      `/rooms/${id}/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password }),
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as AuthOk;
+    return body.token;
+  };
+
+  it('returns 201 with a 32-hex ticket for a valid bearer on a protected room', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const token = await fetchAuthToken(env, created.id, 'letmein');
+
+    const res = await app.request(
+      `/rooms/${created.id}/ws-ticket`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+      },
+      env,
+    );
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { ticket: string };
+    expect(body.ticket).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it('returns 401 UNAUTHORIZED when no Authorization header is present', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(`/rooms/${created.id}/ws-ticket`, { method: 'POST' }, env);
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('returns 401 UNAUTHORIZED when bearer is malformed', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const res = await app.request(
+      `/rooms/${created.id}/ws-ticket`,
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer garbage' },
+      },
+      env,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when bearer JWT is bound to a different room (sub mismatch)', async () => {
+    const env = buildEnv();
+    const a = await createProtectedRoom(env, 'letmein');
+    const b = await createProtectedRoom(env, 'letmein');
+    const tokenA = await fetchAuthToken(env, a.id, 'letmein');
+
+    const res = await app.request(
+      `/rooms/${b.id}/ws-ticket`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${tokenA}` },
+      },
+      env,
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when the room is unprotected (no ticket needed for public rooms)', async () => {
+    const env = buildEnv();
+    const form = formWithImage(pngFile(4));
+    const create = await app.request('/rooms', { method: 'POST', body: form }, env);
+    const created = (await create.json()) as PublicRoom;
+
+    const res = await app.request(
+      `/rooms/${created.id}/ws-ticket`,
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer anything' },
+      },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+
+  it('returns 404 when the room does not exist', async () => {
+    const env = buildEnv();
+    const res = await app.request(
+      '/rooms/V1StGXR8_Z5jdHi6B-mYT/ws-ticket',
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer anything' },
+      },
+      env,
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('applies RL_AUTH rate limit', async () => {
+    // Setup uses permissive RL_AUTH (default) so we can fetch a real bearer.
+    const env = buildEnv();
+    const created = await createProtectedRoom(env, 'letmein');
+    const token = await fetchAuthToken(env, created.id, 'letmein');
+
+    // Now flip RL_AUTH to alwaysBlock and reuse the same R2 + KV state.
+    const blockedEnv = {
+      ...env,
+      RL_AUTH: createStubRateLimit({ alwaysBlock: true }),
+    };
+
+    const res = await app.request(
+      `/rooms/${created.id}/ws-ticket`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+      },
+      blockedEnv,
+    );
+
     expect(res.status).toBe(429);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('RATE_LIMITED');

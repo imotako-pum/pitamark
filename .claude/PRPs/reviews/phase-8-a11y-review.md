@@ -237,6 +237,18 @@ None.
 4. **L4 (HelpModal section order)** と **L5 (biome-ignore comment 標準化)** は backlog。Phase 9 後の review iteration で再判定。
 5. Phase 9 dogfood で SR (macOS VoiceOver / Windows NVDA) を 1 周通すこと。canvas 内 annotation 自体の SR 露出は別フェーズ案件として PRD 化すべき (現状未着手 = scope outside)。
 
+## Resolution Update
+
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4: quality cleanup)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **M1** `--muted-foreground` SC 1.4.3 境界 | `oklch(50%) → oklch(42%)` で AAA 達成 (~7:1 contrast)。HelpModal description / placeholder すべて改善 | `apps/web/src/styles/tokens.css` |
+| L2 DropZone error nesting | `<p role="alert">` を `<button>` 外に移動、`aria-describedby` で連携。SR が button accessible name と error を分離して読み上げ | `apps/web/src/components/empty-state/DropZone.tsx` |
+| L3 prefers-reduced-motion 対応ゼロ | `global.css` に `@media (prefers-reduced-motion: reduce)` ブロック追加。ConnectionBadge `animate-pulse` 等が停止 | `apps/web/src/styles/global.css` |
+| L5 FontSizeControl biome-ignore 相対参照 | comment を「ColorPalette と同じく」から自立した justification (fieldset を避ける具体理由 — form 干渉 / `<legend>` 強制 / browser 既定スタイル) に書き換え | `apps/web/src/components/toolbar/FontSizeControl.tsx` |
+| L1 / L4 (HF=false) | Backlog (Phase 9 dogfood で SR 実機検証後判断) | — |
+
 ## Decision Rationale
 
 - **CRITICAL/HIGH なし** → Phase 9 dogfood への BLOCKER ではない、Decision = NEEDS_FIX (BLOCK ではなく)

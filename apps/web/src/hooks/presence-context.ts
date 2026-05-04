@@ -1,19 +1,21 @@
-import type { UserPresence } from '@snap-share/shared';
+import { type UserPresence, UserPresenceSchema } from '@snap-share/shared';
+import type { Awareness } from 'y-protocols/awareness';
 import type { LocalUser } from '../lib/local-user';
 
 /**
  * Minimal subset of `y-protocols/awareness`'s Awareness surface that
  * `createPresenceContext` exercises. Tests pass a plain stub that records
  * the calls; real callers pass `provider.awareness`.
+ *
+ * Phase 8.x typesafety review #6 M3: derive the shape via `Pick` from the
+ * upstream `Awareness` type so that minor version drift in y-protocols is
+ * caught at compile time. The previous hand-rolled type silently allowed
+ * structural divergence (e.g. signature changes in `on` / `off`).
  */
-export type AwarenessLike = {
-  clientID: number;
-  setLocalState: (state: Record<string, unknown> | null) => void;
-  setLocalStateField: (field: string, value: unknown) => void;
-  getStates: () => Map<number, Record<string, unknown>>;
-  on: (event: 'change', handler: () => void) => void;
-  off: (event: 'change', handler: () => void) => void;
-};
+export type AwarenessLike = Pick<
+  Awareness,
+  'clientID' | 'setLocalState' | 'setLocalStateField' | 'getStates' | 'on' | 'off'
+>;
 
 export type PresenceContext = Readonly<{
   setCursor: (point: { x: number; y: number } | null) => void;
@@ -28,20 +30,24 @@ export type PresenceContext = Readonly<{
   dispose: () => void;
 }>;
 
+// Phase 8.x typesafety review #6 L2: `awareness.getStates()` returns a map
+// of `Record<string, unknown>` so each client's state must be parsed
+// before flowing into `UserPresence`. Validating the assembled record via
+// `UserPresenceSchema` rejects malformed peers (missing displayName /
+// color, malformed cursor) without crashing the whole presence layer.
 const buildOthers = (awareness: AwarenessLike): ReadonlyArray<UserPresence> => {
   const states = awareness.getStates();
   const result: UserPresence[] = [];
   for (const [clientId, raw] of states) {
     if (clientId === awareness.clientID) continue;
-    const user = raw.user as { userId: string; displayName: string; color: string } | undefined;
-    if (!user?.userId) continue;
-    result.push({
-      userId: user.userId,
-      displayName: user.displayName,
-      color: user.color,
-      cursor: (raw.cursor as { x: number; y: number } | null | undefined) ?? null,
-      selectedId: (raw.selectedId as string | null | undefined) ?? null,
-    });
+    const candidate = {
+      ...((raw.user as Record<string, unknown> | undefined) ?? {}),
+      cursor: raw.cursor ?? null,
+      selectedId: raw.selectedId ?? null,
+    };
+    const parsed = UserPresenceSchema.safeParse(candidate);
+    if (!parsed.success) continue;
+    result.push(parsed.data);
   }
   return Object.freeze(result);
 };

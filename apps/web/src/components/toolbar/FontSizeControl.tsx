@@ -21,7 +21,7 @@ export const FontSizeControl = ({
   const atMin = activeFontSize <= MIN_FONT_SIZE;
   const atMax = activeFontSize >= MAX_FONT_SIZE;
   return (
-    // biome-ignore lint/a11y/useSemanticElements: ColorPalette と同じく role="group" でグルーピング
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> would inherit unwanted form semantics (legend requirement, browser default border/padding, the implicit "this is part of a form submission" affordance). The font-size cluster lives outside any form, so `role="group"` + `aria-label` cleanly groups these two buttons for SR users without the form coupling.
     <div className="flex items-center gap-0.5" role="group" aria-label="フォントサイズ">
       <Tooltip>
         <TooltipTrigger

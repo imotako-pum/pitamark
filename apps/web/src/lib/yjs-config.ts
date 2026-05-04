@@ -16,7 +16,7 @@ export const resolveWsBaseUrl = (
     ? window.location
     : { protocol: 'http:', host: 'localhost:8787' },
 ): string => {
-  const fromEnv = (env as { VITE_API_WS_URL?: string }).VITE_API_WS_URL;
+  const fromEnv = env.VITE_API_WS_URL;
   if (fromEnv) return fromEnv;
   const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${wsProtocol}//${location.host}`;

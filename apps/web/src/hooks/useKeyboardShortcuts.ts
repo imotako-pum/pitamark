@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Tool } from './annotationsReducer';
+import { TOOLS, type Tool } from './annotationsReducer';
 
 export type KeyboardShortcuts = Readonly<{
   onUndo: () => void;
@@ -35,13 +35,26 @@ export type KeyboardShortcuts = Readonly<{
   onDecrementFontSize?: () => void;
 }>;
 
-const TOOL_KEY_MAP: Readonly<Record<string, Tool>> = {
-  v: 'select',
-  r: 'rectangle',
-  a: 'arrow',
-  t: 'text',
-  h: 'highlight',
+// Phase 8.x extensibility review #7 M1 案 B: declare the tool→key direction
+// as `Record<Tool, string>` so adding a new `Tool` becomes a typecheck
+// failure here (forces the implementer to choose a key). Lookup by key
+// goes through `TOOL_BY_KEY`, an inverse `Map` derived from the same
+// source — single SSOT, no manual sync.
+const TOOL_KEYS: Readonly<Record<Tool, string>> = {
+  select: 'v',
+  rectangle: 'r',
+  arrow: 'a',
+  text: 't',
+  highlight: 'h',
 };
+
+// Phase 8.x PR #15 self-review L2: build the inverse map by iterating
+// `TOOLS` (typed `readonly Tool[]`) so `TOOL_KEYS[t]` is type-safe and we
+// avoid `Object.entries`'s loss of key types. `TOOLS` lives upstream so
+// that adding a new `Tool` triggers a typecheck in `TOOL_KEYS` first.
+const TOOL_BY_KEY: ReadonlyMap<string, Tool> = new Map(
+  TOOLS.map((t) => [TOOL_KEYS[t], t] as const),
+);
 
 export const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -156,7 +169,7 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
       }
       if (mod) return;
 
-      const tool = TOOL_KEY_MAP[key];
+      const tool = TOOL_BY_KEY.get(key);
       if (tool) {
         ref.current.onSetTool(tool);
       }

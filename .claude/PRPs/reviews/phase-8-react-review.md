@@ -177,6 +177,14 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4: quality cleanup)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **L1** DropZone `onFile` deps 依存 | `onFileRef` パターンに切替、effect の deps を `[]` に。`useKeyboardShortcuts` と同じ stable ref pattern | `apps/web/src/components/empty-state/DropZone.tsx` |
+| **L3** RoomGate floating promise | `handleSubmit` 全体を try/catch で囲み、unexpected rejection を `setError('unexpected')` 経路に倒す。`submitting` clear を成功 path 後に分離 | `apps/web/src/components/room-gate/RoomGate.tsx` |
+| L2 / L4 / L5 (HF=false) | Backlog | — |
+
 (Phase 8.x で修正された後、Phase 8.x 着手側の Plan/Implement で追記)
 
 ---

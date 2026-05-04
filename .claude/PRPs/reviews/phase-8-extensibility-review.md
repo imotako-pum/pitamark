@@ -174,6 +174,19 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (commit 8: extensibility friction reduction)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **M1** 案 A: `yMapToAnnotation` if-else | switch + `const _exhaustive: never = type` で網羅性をコンパイル時 enforce。Annotation union 拡張時に case 漏れがエラー化。runtime safeParse は維持 | `apps/web/src/domain/annotation/yjs-codec.ts` |
+| **M1** 案 B: `TOOL_DEFS` / `TOOL_KEY_MAP` / `TOOL_ROWS` 配列 | `Readonly<Record<Tool, ToolDef>>` / `Readonly<Record<Tool, string>>` + 逆引き Map / `Readonly<Record<Tool, Row>>` 化。新 `Tool` 追加で key 漏れがコンパイル時エラー化。iteration 順序は `TOOLS` (= `['select', ...ANNOTATION_TYPES]`) に従う | `apps/web/src/components/toolbar/Toolbar.tsx` / `apps/web/src/hooks/useKeyboardShortcuts.ts` / `apps/web/src/components/dialogs/HelpModal.tsx` |
+| **M1** 案 C: `COMMITTING_ACTIONS` 配列 | `isCommittingAction(action)` を switch + never で導出、配列定数撤去。新 action variant 追加で「committing or UI-only」をここで明示する必要が出る | `apps/web/src/hooks/annotationsReducer.ts` |
+| **L3** CanvasStage `tool === 'text'` 特殊分岐 + else if chain | `DRAFT_BUILDERS: Readonly<Record<Exclude<Tool, 'select' \| 'text'>, DraftBuilder>>` で drag-based tool を集約。`select` (drag なし) と `text` (mousedown 確定) は型レベルで除外。新 drag-based tool 追加で Record 漏れがエラー化 | `apps/web/src/components/canvas/CanvasStage.tsx` |
+| **L4** `ANNOTATION_TYPES ↔ TOOLS` 手動同期 | `TOOLS = ['select', ...ANNOTATION_TYPES] as const` で `packages/shared` から導出、手動 sync 撤廃 | `apps/web/src/hooks/annotationsReducer.ts` |
+| L1 / L2 (HF=false) | Backlog (Phase 9 後) | — |
+
+これにより、新 annotation 種を `ANNOTATION_TYPES` に追加すると以下の **5 箇所すべて** がコンパイル時エラーで「触るべき場所」を教えてくれる構造になった: `yMapToAnnotation` switch / `TOOL_DEFS` / `TOOL_KEYS` / `TOOL_ROW_BY_TOOL` / `DRAFT_BUILDERS` (drag-based なら) + `applyDataAction` switch (既に exhaustive)。「忘れたら気付かない場所」5 → 0。
+
 (Phase 8.x で M1 / L3 を fix する Plan が立った時点で更新)
 
 ---

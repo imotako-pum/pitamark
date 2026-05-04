@@ -124,6 +124,19 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4: quality cleanup)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **M1** umbrella report 必須化 policy 未確定 | `CLAUDE.md` の workflow conventions 節に「umbrella plan vs sub-plan の選択基準」と「umbrella report の必須化 (Phase 9 以降)」を追記。Phase 7.7 / 7.8 retroactive は明示的に NOT Building | `CLAUDE.md` |
+| L1 / L2 / L3 / L4 / L5 | Backlog (`/prp-implement` skill 改訂時 / 別 phase で扱う、frozen archive は touch しない) | — |
+
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4) — extensibility cross-ref
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| (extensibility #7 M1+L3+L4) | (deferred) `yMapToAnnotation` switch 化 / `COMMITTING_ACTIONS` switch 化 / `TOOL_DEFS` Record 化 / `CanvasStage.buildDraftFactory` は touch surface が大きく theme 4 commit 内で他 finding と bisect 不可能化するリスクが高い。Phase 9 後に独立 PR で扱う (新 annotation 種を実際に追加するときの摩擦削減 PR として) | — |
+
 (Phase 8.x or Phase 9 以降で各 finding 対応後に追記)
 
 ---

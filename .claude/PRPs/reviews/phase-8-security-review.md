@@ -231,6 +231,16 @@ Image と Meta を同一 R2 バケット (`IMAGES`) で管理しているが、k
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 1: Security hardening)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **H1** WebSocket JWT が URL query param 経由で露出 | **60s** 一発限り KV ticket 化 (32-hex)。`POST /rooms/:id/ws-ticket` で JWT bearer を ticket に交換、`?ticket=<hex>` で WS upgrade。consume 時に KV.delete で replay 不可。**TTL は当初 30s で実装したが Cloudflare KV の `expirationTtl` 最小値が 60s のため commit 10 で 60s に修正** (production + miniflare 両方で 400 回避、burn-on-consume が有効寿命を「最初の WS upgrade まで」に保つので security 影響なし) | `apps/api/src/services/ws-ticket-service.ts` (new) / `apps/api/src/routes/rooms.ts` / `apps/api/src/yjs.ts` / `apps/api/src/lib/bindings.ts` (`WS_TICKETS`) / `apps/api/wrangler.toml` / `apps/web/src/lib/api-client.ts` (`requestWsTicket`) / `apps/web/src/hooks/useYjsAnnotationsStore.ts` |
+| **H2** HSTS に `preload` 欠如 | `_headers` に `; preload` 追加 + コメントで申請判断方針記載 | `apps/web/public/_headers` |
+| **M1** `assertValidTtlMs` の publicMessage が `ROOM_TTL_MS` を漏洩 | publicMessage を generic 化、env var 名は logContext.cause に押し込め | `apps/api/src/services/room-service.ts` |
+| **L1** CSP `'unsafe-inline'` の Phase 8 follow-up が ambiguous | `_headers` コメントを「Phase 9 dogfood 後に独立 PR で nonce 化検討」と明示化 | `apps/web/public/_headers` |
+| L2 / L3 (HF=false) | Backlog (Phase 9 dogfood 後再判断) | — |
+
 (Phase 8 は観察のみ。修正は Phase 8.x で別ブランチ・別 PR に切り出す)
 
 ---

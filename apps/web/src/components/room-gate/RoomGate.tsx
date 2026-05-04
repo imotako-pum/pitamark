@@ -34,14 +34,24 @@ export const RoomGate = ({ roomId, onAuthenticated }: Props) => {
     if (submitting || password.length === 0) return;
     setSubmitting(true);
     setError(null);
-    const result = await authenticateRoom(roomId, password);
-    if (result.ok) {
-      setRoomToken(roomId, result.token);
-      onAuthenticated(result.token);
-      // Do NOT clear `submitting`: parent will unmount us on success.
-      return;
+    // Phase 8.x React review #3 L3: `authenticateRoom` already wraps fetch in
+    // try/catch and surfaces failures via `{ ok: false, reason: 'network' }`,
+    // but a regression in that contract (or a bug downstream) would leave
+    // this async handler with an unhandled rejection. Wrapping here makes
+    // the contract explicit at the call site and ensures `submitting` is
+    // always cleared.
+    try {
+      const result = await authenticateRoom(roomId, password);
+      if (result.ok) {
+        setRoomToken(roomId, result.token);
+        onAuthenticated(result.token);
+        // Do NOT clear `submitting`: parent will unmount us on success.
+        return;
+      }
+      setError(result.reason);
+    } catch {
+      setError('unexpected');
     }
-    setError(result.reason);
     setSubmitting(false);
   };
 

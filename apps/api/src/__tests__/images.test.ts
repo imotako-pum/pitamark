@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import app from '../index';
+import type { ErrorEnvelope } from '../lib/error';
 import { issueRoomToken } from '../lib/token';
 import { buildEnv, DEFAULT_ROOM_TOKEN_SECRET } from './helpers/build-env';
 
@@ -23,7 +24,8 @@ const createRoomWithImage = async (
   return (await res.json()) as CreatedRoom;
 };
 
-type ErrorBody = { ok: false; error: { code: string; message: string } };
+// Phase 8.x error-envelope review #11 L3: see rooms.test.ts.
+type ErrorBody = ErrorEnvelope;
 
 describe('GET /rooms/:id/image', () => {
   it('returns 200 with stored image bytes, content-type, and nosniff', async () => {

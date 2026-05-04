@@ -63,6 +63,20 @@ period = 60
 binding = "IMAGE_BLOCKLIST"
 id = "750e562861214964ab8e157b79a1d42d"
 
+# Phase 8.x security review #13 H1: KV namespace for short-lived WebSocket
+# upgrade tickets. Keys are `ws-ticket:<32 hex chars>`, values are the bound
+# roomId. Entries auto-expire after 60 seconds via `expirationTtl=60` (the
+# Cloudflare KV minimum) set by `ws-ticket-service.issue` and are deleted on
+# consume. Provision per environment BEFORE the next `wrangler deploy`:
+#   wrangler kv namespace create WS_TICKETS
+#   wrangler kv namespace create WS_TICKETS --preview   # 任意 (dev 用)
+# Replace the placeholder ID below with the one returned by the command. In
+# `wrangler dev` the binding is auto-mocked in-memory, so local development
+# does not require provisioning.
+[[kv_namespaces]]
+binding = "WS_TICKETS"
+id = "REPLACE_WITH_PRODUCTION_KV_ID"
+
 [vars]
 ROOM_TTL_MS = "604800000" # 7 days
 # Public Turnstile site key. The default is the always-passes dev test key

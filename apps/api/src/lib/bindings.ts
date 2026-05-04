@@ -41,6 +41,16 @@ export type Bindings = {
   IMAGE_BLOCKLIST: KVNamespace;
 
   /**
+   * Phase 8.x security review #13 H1: KV namespace holding short-lived
+   * one-shot WebSocket upgrade tickets. Keys are `ws-ticket:<32 hex chars>`,
+   * values are the bound roomId. Entries auto-expire via `expirationTtl=60`
+   * (Cloudflare KV minimum) and are deleted on consume — protected room WS
+   * connections exchange the 24h JWT for one of these so the JWT never
+   * rides on the URL. `wrangler kv namespace create WS_TICKETS` to provision.
+   */
+  WS_TICKETS: KVNamespace;
+
+  /**
    * Phase 7: Public Turnstile site key. Safe to ship in the client bundle and
    * commit to wrangler.toml.
    */

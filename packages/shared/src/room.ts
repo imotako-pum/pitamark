@@ -100,6 +100,32 @@ export const RoomCreatedSchema = roomPublicShape
 
 export type RoomCreated = z.infer<typeof RoomCreatedSchema>;
 
+// POST /rooms/:id/auth レスポンス。Phase 8.x SSOT review #1 M1: 元々 api
+// workspace 内の routes/rooms.ts に inline 定義されていたが、web 受信側は
+// schema を import できず `as { token: string }` で素通ししていた。同じ
+// 「API レスポンス schema」を packages/shared で一本化することで、両 workspace が
+// safeParse 経由で runtime 検証できる構造に揃える。
+export const AuthResponseSchema = z
+  .object({
+    token: z.string().min(1),
+  })
+  .readonly();
+
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+
+// POST /rooms/:id/ws-ticket レスポンス。Phase 8.x PR #15 self-review M1:
+// `AuthResponseSchema` と同じ pattern で shared に集約。32 hex 文字の制約は
+// `ws-ticket-service.ts` で生成側、ここで受信側、`yjs.ts` の
+// `isValidTicketShape` で consume 側、と 3 箇所で同じ regex を持っていた
+// ものをこの 1 箇所に統合する。
+export const WsTicketResponseSchema = z
+  .object({
+    ticket: z.string().regex(/^[0-9a-f]{32}$/),
+  })
+  .readonly();
+
+export type WsTicketResponse = z.infer<typeof WsTicketResponseSchema>;
+
 export const toPublicRoom = (stored: RoomStored): RoomPublic => {
   const { id, createdAt, ttlMs, image, auth } = stored;
   if (auth) {

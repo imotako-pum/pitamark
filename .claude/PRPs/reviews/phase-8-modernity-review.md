@@ -137,6 +137,16 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 5: modernity bumps)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **H1** TypeScript 5.6.3 → 6.0 | catalog `typescript: ^6.0` (latest 6.0.3 解決)。pin policy も caret 統一でコメント化 (#2 L3 と同 PR で吸収)。`pnpm typecheck` 全 pass、TS 6 で出た 1 件 (`apps/api/src/lib/password.ts:33` の `BufferSource` 型狭まり) を `salt as BufferSource` cast で修正 | `pnpm-workspace.yaml` / `apps/api/src/lib/password.ts` |
+| **M1** lucide-react v0 → v1 | catalog `lucide-react: ^0.460 → ^1.0` (latest 1.14.0 解決)。本リポジトリで使う 16 icon (ImagePlus / Lock / X / ArrowUpRight / ...) は v1 でも同じ named export を維持 — grep 確認 + `pnpm typecheck` で named import 互換性が検証済み | `pnpm-workspace.yaml` |
+| **M2** hono catalog 外 | catalog に `hono: ^4.12` を追加、`apps/web/package.json` と `apps/api/package.json` を `"hono": "catalog:"` に。CLAUDE.md cross-cutting rule 6 に「2+ workspace 共通 dep は catalog 必須」policy を追記 | `pnpm-workspace.yaml` / `apps/web/package.json` / `apps/api/package.json` / `CLAUDE.md` |
+| **L3** caret vs 固定 pin の混在 | TS upgrade と同タイミングで caret 化 + 理由をコメント化、policy 一貫性を回復 | `pnpm-workspace.yaml` |
+| L1 / L2 (HF=false) | Backlog (`@biomejs/biome` バージョン文書同期は cosmetic、`tsconfig.target` ES2023 引き上げは optional で TS 6 と独立判断) | — |
+
 (Phase 8.x で各 finding 対応後に追記)
 
 ---

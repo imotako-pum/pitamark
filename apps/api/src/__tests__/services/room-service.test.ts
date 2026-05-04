@@ -241,4 +241,21 @@ describe('roomService.create — TTL configuration guard', () => {
       code: 'INTERNAL',
     });
   });
+
+  // Phase 8.x security review #13 M1 / error-envelope #11 M1: env var name
+  // belongs in the logContext, not in the public response body. The client
+  // should only see a generic "Internal server error" string.
+  it('does not expose the env var name `ROOM_TTL_MS` in the public message', async () => {
+    const { bucket } = createInMemoryR2WithControls();
+    const service = createRoomService({
+      images: createR2ImageStorage(bucket),
+      meta: createR2MetaStorage(bucket),
+      now: () => FIXED_NOW,
+      ttlMs: Number.NaN,
+      password: createPasswordService(),
+    });
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    const error = await service.create(file).catch((e) => e);
+    expect(error.message).not.toContain('ROOM_TTL_MS');
+  });
 });

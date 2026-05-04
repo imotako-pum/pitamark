@@ -131,6 +131,20 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 1: Security hardening)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **M1** `assertValidTtlMs` の publicMessage が `ROOM_TTL_MS` を漏洩 (= #13 M1) | security review で master, ここでは cross-ref 解消。publicMessage は `'Internal server error'`、env 名は logContext.cause へ | `apps/api/src/services/room-service.ts` |
+| L1 CLAUDE.md envelope codes の Phase 7 追加 3 コード未記載 | `CLAUDE.md` の API conventions 節を 5 → 8 codes に更新 (`UNAUTHORIZED` 401 / `UNPROCESSABLE_ENTITY` 422 / `RATE_LIMITED` 429 を追記) | `CLAUDE.md` |
+
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4: quality cleanup)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| L2 二重ログ (rooms.ts / images.ts) | explicit `logger.warn` を撤去し、`AppError(..., logContext)` のみで `onAppError` が一回だけ warn 出力するパターンに統一 | `apps/api/src/routes/rooms.ts` / `apps/api/src/routes/images.ts` |
+| L3 ErrorEnvelope テスト型のローカル定義 | `import type { ErrorEnvelope }` 経由に切替、3 テストファイル | `apps/api/src/__tests__/rooms.test.ts` / `images.test.ts` / `yjs.test.ts` |
+
 (Phase 8 は観察のみ。修正は Phase 8.x で別 PR)
 
 ---

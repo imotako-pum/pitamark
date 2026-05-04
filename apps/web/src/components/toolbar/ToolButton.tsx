@@ -15,10 +15,14 @@ type ToolButtonProps = Readonly<{
   onClick: () => void;
 }>;
 
+// Phase 8.x band-aids review #5 L2: `danger` tone now consumes the shadcn
+// `--destructive` bridge variable instead of a hand-rolled inline OKLCH
+// literal. Keeps the toolbar palette in lockstep with `tokens.css` so a
+// future destructive-color tweak does not have to be repeated here.
 const TONE_CLASS: Record<NonNullable<ToolButtonProps['tone']>, string> = {
   default:
     'aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:border-(--color-accent)',
-  danger: 'text-[color:oklch(54%_0.22_27)] hover:bg-[color:oklch(96%_0.05_27)]',
+  danger: 'text-destructive hover:bg-destructive/10',
 };
 
 export const ToolButton = ({

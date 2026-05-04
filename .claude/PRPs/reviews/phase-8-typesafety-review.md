@@ -387,5 +387,22 @@ None.
 - **LOW 3 件 (うち Human Friction true = L2 のみ)**: L2 (`presence-context` の raw cast) は collab 機能改修時に必読かつ認知負荷が増す。
 
 ---
+
+## Resolution Update
+
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 3: SSOT + typesafety)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **H1** `api-client.ts` の `as RoomCreated` / `as RoomPublic` | Shared schema (`RoomCreatedSchema`, `RoomPublicSchema`) を value import、`safeParse` 経由 fail-soft へ。RED test (4 件) で schema mismatch → `network` / `null` / `unexpected` を担保 | `apps/web/src/lib/api-client.ts` / `apps/web/src/lib/__tests__/api-client.test.ts` |
+| **H2** `historyReducer.ts` の `as T` キャスト | `as T` を `!` non-null assertion + `biome-ignore lint/style/noNonNullAssertion: length > 0 は guard で保証` コメントへ。`noUncheckedIndexedAccess` の検知精度を局所で潰さない | `apps/web/src/hooks/historyReducer.ts` |
+| **M1** `turnstile-service` の `SiteverifyResponse` inline 型 | `SiteverifyResponseSchema` を Zod で定義、`safeParse` 経由。`error-codes` も配列保証 | `apps/api/src/services/turnstile-service.ts` |
+| **M2** `vite-env.d.ts` 不在で `import.meta.env` キャスト散在 | `apps/web/src/vite-env.d.ts` 新設、`api-client.ts` / `yjs-config.ts` / `LocalEditor.tsx` の 3 cast 撤去 | `apps/web/src/vite-env.d.ts` (new) / `apps/web/src/lib/api-client.ts` / `apps/web/src/lib/yjs-config.ts` / `apps/web/src/pages/LocalEditor.tsx` |
+| **M3** `AwarenessLike` の `as` cast | `AwarenessLike = Pick<Awareness, ...>` で structural 等価をコンパイル時担保。`useYjsAnnotationsStore` の `as AwarenessLike` 撤去 | `apps/web/src/hooks/presence-context.ts` / `apps/web/src/hooks/useYjsAnnotationsStore.ts` / `apps/web/src/hooks/__tests__/presence-context.test.ts` |
+| L2 `presence-context` の raw cast | `UserPresenceSchema.safeParse` 経由でパースし、malformed peer を skip。`as { user: ... }` cast 撤去 | `apps/web/src/hooks/presence-context.ts` |
+| L3 `as { token: string }` (auth) | M1 と同 PR で `AuthResponseSchema.safeParse` に置換済み | (上記 H1 と同) |
+| L1 `yjs-mutations` の `as number` (HF=false) | Backlog (Phase 9 後) | — |
+
+---
 *Generated: 2026-05-04*
 *Reviewer: Claude Sonnet 4.6 (typescript-reviewer axis)*

@@ -16,4 +16,5 @@ test-results/
 .tsbuildinfo/
 *.tsbuildinfo
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 docs/.tmp

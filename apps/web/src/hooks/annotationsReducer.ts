@@ -1,4 +1,4 @@
-import type { Annotation, Point } from '@snap-share/shared';
+import { ANNOTATION_TYPES, type Annotation, type Point } from '@snap-share/shared';
 import { DEFAULT_FONT_SIZE, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import {
   addAnnotation,
@@ -12,7 +12,12 @@ import {
   setText,
 } from '../domain/annotation/operations';
 
-export const TOOLS = ['select', 'rectangle', 'arrow', 'text', 'highlight'] as const;
+// Phase 8.x extensibility review #7 L4: derive the editor's tool set from
+// `ANNOTATION_TYPES` (in `packages/shared`) so adding a new annotation kind
+// to the SSOT automatically flows into `Tool`. `'select'` stays at the head
+// because it has no annotation counterpart and several call sites depend on
+// it being position 0.
+export const TOOLS = ['select', ...ANNOTATION_TYPES] as const;
 export type Tool = (typeof TOOLS)[number];
 
 export type AnnotationsState = Readonly<{
@@ -133,11 +138,17 @@ export const annotationsReducer = (
         ...state,
         annotations: setColor(state.annotations, action.id, action.color),
       };
-    case 'annotation/set-font-size':
-      return {
-        ...state,
-        annotations: setFontSize(state.annotations, action.id, action.fontSize),
-      };
+    case 'annotation/set-font-size': {
+      // Phase 8.x tests review #8 M2: when `setFontSize` returns the same
+      // array reference (no-op for non-text or unknown id), preserve the
+      // outer state identity too. Without this, `historyReducer` sees a
+      // freshly-allocated wrapper and appends an empty undo step — Phase
+      // 7.8-3 already gated this from the handler side; this is the
+      // belt-and-suspenders reducer-level guarantee.
+      const nextAnnotations = setFontSize(state.annotations, action.id, action.fontSize);
+      if (nextAnnotations === state.annotations) return state;
+      return { ...state, annotations: nextAnnotations };
+    }
     default: {
       const _exhaustive: never = action;
       return _exhaustive;
@@ -145,17 +156,32 @@ export const annotationsReducer = (
   }
 };
 
-const COMMITTING_ACTIONS: ReadonlyArray<AnnotationsAction['type']> = [
-  'annotation/add',
-  'annotation/remove',
-  'annotation/move',
-  'annotation/resize-rect',
-  'annotation/resize-highlight',
-  'annotation/set-arrow-endpoints',
-  'annotation/set-text',
-  'annotation/set-color',
-  'annotation/set-font-size',
-];
-
-export const isCommittingAction = (action: AnnotationsAction): boolean =>
-  (COMMITTING_ACTIONS as ReadonlyArray<string>).includes(action.type);
+// Phase 8.x extensibility review #7 M1 案 C: switch + `const _: never` で
+// 網羅性をコンパイル時に enforce。新 action variant を追加した瞬間に
+// 「committing にするか UI-only か」をここで明示する必要が出るので、
+// 配列ベース `includes` 時代の「足し忘れて undo に積まれない」事故が
+// 発生しなくなる。
+export const isCommittingAction = (action: AnnotationsAction): boolean => {
+  switch (action.type) {
+    case 'tool/set':
+    case 'select/set':
+    case 'active-color/set':
+    case 'active-font-size/set':
+      return false;
+    case 'annotation/add':
+    case 'annotation/remove':
+    case 'annotation/move':
+    case 'annotation/resize-rect':
+    case 'annotation/resize-highlight':
+    case 'annotation/set-arrow-endpoints':
+    case 'annotation/set-text':
+    case 'annotation/set-color':
+    case 'annotation/set-font-size':
+      return true;
+    default: {
+      const _exhaustive: never = action;
+      void _exhaustive;
+      return false;
+    }
+  }
+};

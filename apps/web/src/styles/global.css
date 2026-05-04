@@ -83,3 +83,22 @@ body {
   background: var(--color-surface);
   color: var(--color-text);
 }
+
+/* Phase 8.x a11y review #9 L3: respect prefers-reduced-motion. Targets
+   ConnectionBadge's continuous `animate-pulse` (vestibular trigger) plus
+   the shadcn fade-in/fade-out keyframes and DropZone's transitions. The
+   `!important` is the recommended override pattern (web.dev / MDN) — it's
+   the only way to outweigh inline animation declarations from third-party
+   libraries (sonner / Base UI) that we don't directly own. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    /* biome-ignore lint/complexity/noImportantStyles: deliberate — see comment above */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: deliberate — see comment above */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: deliberate — see comment above */
+    transition-duration: 0.01ms !important;
+  }
+}

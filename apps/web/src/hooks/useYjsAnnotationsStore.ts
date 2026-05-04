@@ -4,6 +4,7 @@ import type { Awareness } from 'y-protocols/awareness';
 import { WebsocketProvider } from 'y-websocket';
 import * as Y from 'yjs';
 import { DEFAULT_FONT_SIZE, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
+import { requestWsTicket } from '../lib/api-client';
 import { logger } from '../lib/logger';
 import { resolveWsBaseUrl } from '../lib/yjs-config';
 import type { AnnotationsAction, AnnotationsState, Tool } from './annotationsReducer';
@@ -40,25 +41,64 @@ export const useYjsAnnotationsStore = (
   providerFactory?: ProviderFactory,
   token?: string | null,
 ): YjsAnnotationsStore => {
+  // Phase 8.x security review #13 H1: protected rooms exchange the 24h JWT
+  // for a 30s one-shot ticket BEFORE opening the WebSocket. The ticket —
+  // not the JWT — appears on the upgrade URL so platform-level access logs
+  // (wrangler tail, CDN logs, browser history) never see the JWT.
+  //
+  // Unprotected rooms (token is null/undefined) bypass this entirely: they
+  // hit RL_SYNC on the upgrade and need no ticket. Test stubs that supply
+  // their own `providerFactory` skip this whole flow.
+  const [wsTicket, setWsTicket] = useState<string | null>(null);
+  useEffect(() => {
+    // Stub providers handle their own auth — never call the API.
+    if (providerFactory) {
+      setWsTicket(null);
+      return;
+    }
+    if (!token) {
+      setWsTicket(null);
+      return;
+    }
+    let cancelled = false;
+    setWsTicket(null);
+    void requestWsTicket(roomId, token).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setWsTicket(result.ticket);
+      } else {
+        logger.warn('ws ticket request failed', { roomId, reason: result.reason });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId, providerFactory, token]);
+
   // y-websocket constructs the connection URL as `${serverUrl}/${roomName}`,
   // so we pass `${wsBase}/sync` as serverUrl and `roomId` as roomName.
   // Putting roomId into serverUrl with an empty roomName produces a trailing
   // slash (`/sync/<id>/`) which the Hono `/sync/:id` route rejects.
   //
-  // Protected rooms ride a `token` query parameter — y-websocket exposes a
-  // `params` option that gets URL-encoded onto the upgrade request.
-  //
-  // NOTE: tests must always pass `providerFactory`; the default branch boots
-  // a real WebSocket and is not testable under happy-dom.
+  // For protected rooms we wait until `wsTicket` resolves before booting
+  // the provider. Until then `factory` returns a no-op stub so the
+  // upstream effect's dependency tracking still works.
   const factory = useMemo<ProviderFactory>(
     () =>
       providerFactory ??
       ((doc) =>
         new WebsocketProvider(`${resolveWsBaseUrl()}/sync`, roomId, doc, {
           connect: true,
-          ...(token ? { params: { token } } : {}),
+          ...(wsTicket ? { params: { ticket: wsTicket } } : {}),
         })),
-    [roomId, providerFactory, token],
+    [roomId, providerFactory, wsTicket],
+  );
+
+  // Block context creation for protected rooms until the ticket arrives.
+  // This avoids opening a WebSocket that the API would 401-reject.
+  const ctxBootDeps = useMemo(
+    () => ({ factory, ready: !token || providerFactory !== undefined || wsTicket !== null }),
+    [factory, token, providerFactory, wsTicket],
   );
 
   // StrictMode-safe lifecycle: the CRDT context is created inside an effect
@@ -66,15 +106,20 @@ export const useYjsAnnotationsStore = (
   // the first provider and creates a fresh one on the second mount. With
   // `useMemo`, the same destroyed context would be reused on remount,
   // leaving the WebSocket dead before the y-websocket sync handshake.
+  //
+  // Phase 8.x: protected rooms wait for `ctxBootDeps.ready` (i.e. ticket
+  // resolved) before booting the provider — avoids racing the WS open
+  // against a not-yet-issued ticket.
   const [ctx, setCtx] = useState<YjsAnnotationsContext | null>(null);
   useEffect(() => {
-    const c = createYjsAnnotationsContext(factory);
+    if (!ctxBootDeps.ready) return;
+    const c = createYjsAnnotationsContext(ctxBootDeps.factory);
     setCtx(c);
     return () => {
       c.destroy();
       setCtx((current) => (current === c ? null : current));
     };
-  }, [factory]);
+  }, [ctxBootDeps]);
 
   // Tool / selectedId / activeColor / activeFontSize are client-local — do NOT persist via CRDT.
   const [tool, setTool] = useStateRef<Tool>('select');
@@ -172,6 +217,19 @@ export const useYjsAnnotationsStore = (
     ctx?.undoManager.stopCapturing();
   }, [ctx]);
 
+  // Phase 8.x tests review #8 M3: expose `stopUndoCapture` to E2E so the
+  // spec can split undo groups deterministically without `waitForTimeout`
+  // (annotation-tools.spec.ts previously slept 700ms to let
+  // `captureTimeout` lapse — flaky on slow CI). DEV-only so production
+  // bundles strip the assignment via Vite tree-shaking; matches the
+  // `__SNAP_SHARE_ANNOTATIONS__` pattern.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (
+      window as unknown as { __SNAP_SHARE_STOP_UNDO_CAPTURE__?: () => void }
+    ).__SNAP_SHARE_STOP_UNDO_CAPTURE__ = stopUndoCapture;
+  }, [stopUndoCapture]);
+
   const state: AnnotationsState = {
     annotations,
     selectedId,
@@ -182,7 +240,14 @@ export const useYjsAnnotationsStore = (
 
   // y-websocket exposes `awareness` on its provider; tests use a stub that
   // omits this field, so we narrow at the seam rather than in callers.
-  const awareness = ctx ? ((ctx.provider as { awareness?: Awareness }).awareness ?? null) : null;
+  // Phase 8.x typesafety review #6 M3: `Awareness` is a structural superset
+  // of `AwarenessLike` (now derived via `Pick<Awareness, ...>` in
+  // presence-context), so the assignment is type-safe without an `as`
+  // cast — y-protocols version drift will surface as a compiler error
+  // instead of silent runtime breakage.
+  const awareness: AwarenessLike | null = ctx
+    ? ((ctx.provider as { awareness?: Awareness }).awareness ?? null)
+    : null;
 
   return {
     state,
@@ -195,6 +260,6 @@ export const useYjsAnnotationsStore = (
     stopUndoCapture,
     status,
     doc: ctx?.doc ?? PLACEHOLDER_DOC,
-    awareness: awareness as AwarenessLike | null,
+    awareness,
   };
 };

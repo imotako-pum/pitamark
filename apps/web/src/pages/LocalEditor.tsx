@@ -15,8 +15,9 @@ type Props = Readonly<{
   onRoomIdChange: (roomId: string | null) => void;
 }>;
 
-const TURNSTILE_SITE_KEY = (import.meta.env as { VITE_TURNSTILE_SITE_KEY?: string })
-  .VITE_TURNSTILE_SITE_KEY;
+// Phase 8.x typesafety review #6 M2: vite-env.d.ts now declares the
+// VITE_* shape so direct property access typechecks without the cast.
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 /**
  * Local-only editor — Phase 3 behavior, extended in Phase 5 with optional
