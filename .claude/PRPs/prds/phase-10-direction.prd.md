@@ -252,10 +252,10 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 |---|-------|-------------|--------|----------|---------|----------|
 | 10.0 | 本 PRD 確定 + ADR-0003/0004 起票 | 議論結果の文書化、Open Questions 9 件 decide 完了 | complete | - | Phase 8.x | (本 PRD) |
 | 10.A | snap-share.prd.md 更新 | 確定分（TTL / CHANGELOG / 通報窓口 / Q9 Mac spike 後回し / 撤退条件）を Decisions Log + Open Questions に織込み | complete | with 10.0 | 10.0 確定後 | (commit b8978a0) |
-| 10.B | 公開リリース最低限整備 | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 / CHANGELOG | in-progress (TTL/CHANGELOG/法務 draft/通報窓口/OGP 完了、Cloudflare Analytics ダッシュボード確認 + GitHub label 設定がオーナー手動) | with 10.C/10.D | 10.A | [phase-10-b-launch-prep.plan.md](../plans/phase-10-b-launch-prep.plan.md) |
+| 10.B | 公開リリース最低限整備 | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 (CHANGELOG は 10.F 後ろ倒し) | complete (自走範囲: TTL/法務 draft/通報窓口/OGP の 4 件、CHANGELOG は時期尚早につき 10.F 送り。Cloudflare Analytics ダッシュボード確認 + GitHub label 設定の 2 件はオーナー手動作業) | with 10.C/10.D | 10.A | [phase-10-b-launch-prep.plan.md](../plans/phase-10-b-launch-prep.plan.md) |
 | ~~10.C~~ | ~~Mac spike (Tauri)~~ | **Q9 で削除、Phase 11+ 候補へ後回し** | removed | — | — | [ADR-0003](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) (on hold) |
 | 10.D | アプリ名 + ドメイン取得 | ブレスト + 商標調査 + 取得 + Turnstile site 切替 | pending | with 10.B/E | 10.A | TBD |
-| 10.E | i18n 軽量実装 | 自作 dict + 日英 2 言語、Q9 で待ち条件解消し独立実行可 | pending | with 10.B/D | 10.A | TBD |
+| 10.E | i18n 軽量実装 | 自作 dict + 日英 2 言語、Q9 で待ち条件解消し独立実行可 | complete (apps/web/src/i18n/ + ~80 keys + LangToggle UI + 305 unit + 4 e2e、英訳 draft はオーナー後続レビュー) | with 10.B/D | 10.A | [phase-10-e-i18n.plan.md](../plans/phase-10-e-i18n.plan.md) |
 | 10.F | 公開リリース実走 | pages.dev or カスタムドメインで公開、Analytics 観察開始 | pending | - | 10.B + 10.D + 10.E | TBD |
 | 10.G | 観察期間（1 ヶ月） | Analytics 蓄積 + オーナーの「詰まった瞬間メモ」 | pending | - | 10.F | (ad-hoc) |
 | 11.0 | Phase 11 PRD 起票 | 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、Mac spike 再検討含む実装方向確定 | pending | - | 10.G | TBD |

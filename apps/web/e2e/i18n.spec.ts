@@ -36,7 +36,10 @@ test.describe('i18n — LangToggle', () => {
     await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible();
 
     // Click EN.
-    await page.getByRole('group', { name: '言語' }).getByRole('button', { name: 'English' }).click();
+    await page
+      .getByRole('group', { name: '言語' })
+      .getByRole('button', { name: 'English' })
+      .click();
 
     // Toolbar aria-label flips to the EN value.
     await expect(page.getByRole('toolbar', { name: 'Editing tools' })).toBeVisible();
@@ -52,17 +55,26 @@ test.describe('i18n — LangToggle', () => {
   test('switching back to JA restores the JA toolbar label', async ({ page }) => {
     await page.goto('/');
 
-    await page.getByRole('group', { name: '言語' }).getByRole('button', { name: 'English' }).click();
+    await page
+      .getByRole('group', { name: '言語' })
+      .getByRole('button', { name: 'English' })
+      .click();
     await expect(page.getByRole('toolbar', { name: 'Editing tools' })).toBeVisible();
 
-    await page.getByRole('group', { name: 'Language' }).getByRole('button', { name: '日本語' }).click();
+    await page
+      .getByRole('group', { name: 'Language' })
+      .getByRole('button', { name: '日本語' })
+      .click();
     await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   });
 
   test('persisted lang is restored on full page reload', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('group', { name: '言語' }).getByRole('button', { name: 'English' }).click();
+    await page
+      .getByRole('group', { name: '言語' })
+      .getByRole('button', { name: 'English' })
+      .click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
     await page.reload();
