@@ -1,17 +1,24 @@
 import type { AppType } from '@snap-share/api';
-import type { RoomCreated, RoomPublic } from '@snap-share/shared';
+import {
+  AuthResponseSchema,
+  RoomCreatedSchema,
+  type RoomPublic,
+  RoomPublicSchema,
+} from '@snap-share/shared';
 import { hc } from 'hono/client';
 import { logger } from './logger';
 
-// `import type` ensures the api workspace's runtime code (Hono routes, R2
-// bindings, OpenAPI schemas) never bundles into the web build.
+// `import type` for `AppType` ensures the api workspace's runtime code
+// (Hono routes, R2 bindings, OpenAPI schemas) never bundles into the web
+// build. The Zod schemas, by contrast, are imported as values so they can
+// `safeParse` at runtime — Phase 8.x SSOT review #1 H1.
 //
 // Empty baseUrl is the default in `vite dev` (no `.env` set): all requests
 // become relative paths and Vite's `server.proxy` (`/rooms` + `/sync`) routes
 // them to the wrangler dev server. Set `VITE_API_URL` only when running
 // against a non-proxied origin (CI, prod, etc.).
 export const resolveApiBaseUrl = (env: ImportMetaEnv = import.meta.env): string =>
-  (env as { VITE_API_URL?: string }).VITE_API_URL ?? '';
+  env.VITE_API_URL ?? '';
 
 const baseUrl = resolveApiBaseUrl();
 
@@ -62,8 +69,20 @@ export const createRoom = async (
     form.set('cf-turnstile-response', turnstileToken);
     const res = await fetch(`${baseUrl}/rooms`, { method: 'POST', body: form });
     if (res.status === 201) {
-      const body = (await res.json()) as RoomCreated;
-      const { token, ...room } = body;
+      // Phase 8.x SSOT review #1 H1: validate the response shape with the
+      // shared Zod schema rather than trusting a TS cast. A schema drift
+      // (server rolled back, intermediary corrupting JSON, refine
+      // `protected ↔ image` violation) downgrades to a network failure
+      // instead of silently flowing into UI state.
+      const raw: unknown = await res.json();
+      const parsed = RoomCreatedSchema.safeParse(raw);
+      if (!parsed.success) {
+        logger.warn('createRoom: unexpected response shape', {
+          issues: parsed.error.issues.map((i) => ({ path: i.path, code: i.code })),
+        });
+        return { ok: false, reason: 'network' };
+      }
+      const { token, ...room } = parsed.data;
       return token ? { ok: true, room, token } : { ok: true, room };
     }
     if (res.status === 429) return { ok: false, reason: 'rate-limited' };
@@ -86,7 +105,18 @@ export const fetchRoom = async (id: string): Promise<RoomPublic | null> => {
   try {
     const res = await fetch(`${baseUrl}/rooms/${encodeURIComponent(id)}`);
     if (res.status !== 200) return null;
-    return (await res.json()) as RoomPublic;
+    // Phase 8.x SSOT review #1 H1: see `createRoom`. The refine on
+    // `RoomPublicSchema` enforces `protected ↔ image` exclusivity so
+    // downstream rendering can rely on the discriminator.
+    const raw: unknown = await res.json();
+    const parsed = RoomPublicSchema.safeParse(raw);
+    if (!parsed.success) {
+      logger.warn('fetchRoom: unexpected response shape', {
+        issues: parsed.error.issues.map((i) => ({ path: i.path, code: i.code })),
+      });
+      return null;
+    }
+    return parsed.data;
   } catch (e: unknown) {
     logger.warn('fetchRoom: network error', {
       error: e instanceof Error ? e.message : String(e),
@@ -114,8 +144,18 @@ export const authenticateRoom = async (id: string, password: string): Promise<Au
       body: JSON.stringify({ password }),
     });
     if (res.status === 200) {
-      const body = (await res.json()) as { token: string };
-      return { ok: true, token: body.token };
+      // Phase 8.x SSOT review #1 M1: shared `AuthResponseSchema` replaces
+      // the prior `as { token: string }` cast. `min(1)` on token would
+      // catch a server-side regression that emits an empty string.
+      const raw: unknown = await res.json();
+      const parsed = AuthResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        logger.warn('authenticateRoom: unexpected response shape', {
+          issues: parsed.error.issues.map((i) => ({ path: i.path, code: i.code })),
+        });
+        return { ok: false, reason: 'unexpected' };
+      }
+      return { ok: true, token: parsed.data.token };
     }
     if (res.status === 401) {
       return { ok: false, reason: 'wrong-password' };

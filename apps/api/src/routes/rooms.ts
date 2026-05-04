@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import {
+  AuthResponseSchema,
   ROOM_ID_REGEX,
   RoomCreatedSchema,
   RoomPublicSchema,
@@ -37,10 +38,6 @@ const uploadFormSchema = z.object({
 
 const authBodySchema = z.object({
   password: z.string().min(1).max(256),
-});
-
-const authResponseSchema = z.object({
-  token: z.string(),
 });
 
 // Phase 8.x security review #13 H1: WS upgrade tickets are 32 hex chars
@@ -208,7 +205,7 @@ const authRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: authResponseSchema } },
+      content: { 'application/json': { schema: AuthResponseSchema } },
       description: 'Password accepted; JWT issued',
     },
     400: {

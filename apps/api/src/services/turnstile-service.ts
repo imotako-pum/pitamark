@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { logger } from '../lib/logger';
 
 // Phase 7: server-side Turnstile siteverify wrapper.
@@ -38,10 +39,15 @@ const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverif
 // existing `network` reason; clients see a uniform "verification failed".
 const SITEVERIFY_TIMEOUT_MS = 5_000;
 
-type SiteverifyResponse = Readonly<{
-  success: boolean;
-  'error-codes'?: ReadonlyArray<string>;
-}>;
+// Phase 8.x typesafety review #6 M1: replace the inline TS-only type with
+// a Zod schema. The previous `as SiteverifyResponse` cast trusted any
+// shape from Cloudflare; if siteverify ever returned `{ success: 'yes' }`
+// or a different field, the boolean check below would silently degrade
+// to fail-closed (safe) but obscure the actual cause from logs.
+const SiteverifyResponseSchema = z.object({
+  success: z.boolean(),
+  'error-codes': z.array(z.string()).optional(),
+});
 
 export const createTurnstileService = (deps: TurnstileDeps): TurnstileService => ({
   async verify({ token, remoteIp }) {
@@ -59,11 +65,20 @@ export const createTurnstileService = (deps: TurnstileDeps): TurnstileService =>
         body,
         signal: AbortSignal.timeout(SITEVERIFY_TIMEOUT_MS),
       });
-      const json = (await res.json()) as SiteverifyResponse;
-      if (json.success) return { ok: true };
+      const raw: unknown = await res.json();
+      const parsed = SiteverifyResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        logger.warn('turnstile verify: unexpected siteverify shape', {
+          issues: parsed.error.issues.map((i) => ({ path: i.path, code: i.code })),
+        });
+        return { ok: false, reason: 'network' };
+      }
+      if (parsed.data.success) return { ok: true };
       // `error-codes` may include user-controlled bytes; never echo it to clients,
       // only into structured server logs.
-      logger.warn('turnstile verify failed', { codes: json['error-codes'] ?? [] });
+      logger.warn('turnstile verify failed', {
+        codes: parsed.data['error-codes'] ?? [],
+      });
       return { ok: false, reason: 'invalid' };
     } catch (err: unknown) {
       logger.warn('turnstile verify network error', {

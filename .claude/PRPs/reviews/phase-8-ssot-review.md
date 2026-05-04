@@ -183,6 +183,16 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 3: SSOT + typesafety)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **H1** Web 側 API レスポンスが Zod parse なし | `api-client.ts` の `createRoom` / `fetchRoom` / `authenticateRoom` をすべて `safeParse` 経由 fail-soft に書き換え。schema mismatch は `network` / `null` / `unexpected` に倒す | `apps/web/src/lib/api-client.ts` / `packages/shared/src/room.ts` |
+| **M1** `authResponseSchema` が api workspace 内ローカル定義 | `AuthResponseSchema` を `packages/shared/src/room.ts` に export、api と web の両方で import | `packages/shared/src/room.ts` / `apps/api/src/routes/rooms.ts` / `apps/web/src/lib/api-client.ts` |
+| L1 / L2 / M2 / L3 (HF=false) | Backlog | — |
+
+(Theme 3 で対応した SSOT は API 境界限定。`tokens.css` per-tool stale token (M2) は theme 4 quality cleanup で扱う)
+
 (Phase 8.x で各 finding 修正後に追記)
 
 ---

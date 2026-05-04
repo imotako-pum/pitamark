@@ -227,7 +227,14 @@ export const useYjsAnnotationsStore = (
 
   // y-websocket exposes `awareness` on its provider; tests use a stub that
   // omits this field, so we narrow at the seam rather than in callers.
-  const awareness = ctx ? ((ctx.provider as { awareness?: Awareness }).awareness ?? null) : null;
+  // Phase 8.x typesafety review #6 M3: `Awareness` is a structural superset
+  // of `AwarenessLike` (now derived via `Pick<Awareness, ...>` in
+  // presence-context), so the assignment is type-safe without an `as`
+  // cast — y-protocols version drift will surface as a compiler error
+  // instead of silent runtime breakage.
+  const awareness: AwarenessLike | null = ctx
+    ? ((ctx.provider as { awareness?: Awareness }).awareness ?? null)
+    : null;
 
   return {
     state,
@@ -240,6 +247,6 @@ export const useYjsAnnotationsStore = (
     stopUndoCapture,
     status,
     doc: ctx?.doc ?? PLACEHOLDER_DOC,
-    awareness: awareness as AwarenessLike | null,
+    awareness,
   };
 };

@@ -100,6 +100,19 @@ export const RoomCreatedSchema = roomPublicShape
 
 export type RoomCreated = z.infer<typeof RoomCreatedSchema>;
 
+// POST /rooms/:id/auth レスポンス。Phase 8.x SSOT review #1 M1: 元々 api
+// workspace 内の routes/rooms.ts に inline 定義されていたが、web 受信側は
+// schema を import できず `as { token: string }` で素通ししていた。同じ
+// 「API レスポンス schema」を packages/shared で一本化することで、両 workspace が
+// safeParse 経由で runtime 検証できる構造に揃える。
+export const AuthResponseSchema = z
+  .object({
+    token: z.string().min(1),
+  })
+  .readonly();
+
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+
 export const toPublicRoom = (stored: RoomStored): RoomPublic => {
   const { id, createdAt, ttlMs, image, auth } = stored;
   if (auth) {
