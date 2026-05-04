@@ -101,6 +101,14 @@ export const en: Record<I18nKey, string> = {
   // Local user (Awareness presence).
   'localUser.namePrefix': 'Guest-',
 
+  // Help cheat-sheet — top-level title + description.
+  'help.title': 'Keyboard shortcuts',
+  'help.description':
+    'Every action is keyboard-driven. Press Esc or click outside to close. Confirm arrow→text / rectangle→arrow suggestions with Enter, dismiss with Esc.',
+  'help.key.wheel': 'Wheel',
+  'help.key.drag': 'Drag',
+  'help.row.zoomReset': '100%',
+
   // Help cheat-sheet — section titles.
   'help.section.tools': 'Tools',
   'help.section.colors': 'Colors',

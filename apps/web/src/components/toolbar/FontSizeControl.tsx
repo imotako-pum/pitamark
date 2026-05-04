@@ -1,6 +1,7 @@
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTranslation } from '../../i18n';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../lib/fontSize';
 
 type FontSizeControlProps = Readonly<{
@@ -18,11 +19,16 @@ export const FontSizeControl = ({
   onIncrementFontSize,
   onDecrementFontSize,
 }: FontSizeControlProps) => {
+  const t = useTranslation();
   const atMin = activeFontSize <= MIN_FONT_SIZE;
   const atMax = activeFontSize >= MAX_FONT_SIZE;
   return (
     // biome-ignore lint/a11y/useSemanticElements: <fieldset> would inherit unwanted form semantics (legend requirement, browser default border/padding, the implicit "this is part of a form submission" affordance). The font-size cluster lives outside any form, so `role="group"` + `aria-label` cleanly groups these two buttons for SR users without the form coupling.
-    <div className="flex items-center gap-0.5" role="group" aria-label="フォントサイズ">
+    <div
+      className="flex items-center gap-0.5"
+      role="group"
+      aria-label={t('toolbar.fontSize.groupLabel')}
+    >
       <Tooltip>
         <TooltipTrigger
           render={
@@ -30,7 +36,7 @@ export const FontSizeControl = ({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="フォントサイズを小さくする"
+              aria-label={t('toolbar.fontSize.decreaseAria')}
               disabled={disabled || atMin}
               onClick={onDecrementFontSize}
               className="rounded-md"
@@ -40,7 +46,7 @@ export const FontSizeControl = ({
           }
         />
         <TooltipContent side="bottom">
-          <span>小さく [</span>
+          <span>{t('toolbar.fontSize.decreaseLabel')}</span>
         </TooltipContent>
       </Tooltip>
       <span
@@ -64,7 +70,7 @@ export const FontSizeControl = ({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="フォントサイズを大きくする"
+              aria-label={t('toolbar.fontSize.increaseAria')}
               disabled={disabled || atMax}
               onClick={onIncrementFontSize}
               className="rounded-md"
@@ -74,7 +80,7 @@ export const FontSizeControl = ({
           }
         />
         <TooltipContent side="bottom">
-          <span>大きく ]</span>
+          <span>{t('toolbar.fontSize.increaseLabel')}</span>
         </TooltipContent>
       </Tooltip>
     </div>

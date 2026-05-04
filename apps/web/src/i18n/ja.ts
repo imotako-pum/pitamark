@@ -102,6 +102,14 @@ export const ja = {
   // Local user (Awareness presence).
   'localUser.namePrefix': 'ゲスト-',
 
+  // Help cheat-sheet — top-level title + description.
+  'help.title': 'キーボードショートカット',
+  'help.description':
+    'すべての操作はキーボードで完結できます。閉じるには Esc か外側をクリック。矢印→テキスト・矩形→矢印 のサジェストは Enter で確定 / Esc で破棄。',
+  'help.key.wheel': 'ホイール',
+  'help.key.drag': 'ドラッグ',
+  'help.row.zoomReset': '100%',
+
   // Help cheat-sheet — section titles.
   'help.section.tools': 'ツール',
   'help.section.colors': '色',
