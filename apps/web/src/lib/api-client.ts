@@ -4,6 +4,7 @@ import {
   RoomCreatedSchema,
   type RoomPublic,
   RoomPublicSchema,
+  WsTicketResponseSchema,
 } from '@snap-share/shared';
 import { hc } from 'hono/client';
 import { logger } from './logger';
@@ -203,14 +204,19 @@ export const requestWsTicket = async (roomId: string, token: string): Promise<Ws
       header: { authorization: `Bearer ${token}` },
     });
     if (res.status === 201) {
-      const body = (await res.json()) as { ticket: string };
-      // Defense in depth: the API only emits 32-hex tickets; a different
-      // shape means an upstream broke contract — fall back to network.
-      if (typeof body.ticket !== 'string' || !/^[0-9a-f]{32}$/.test(body.ticket)) {
-        logger.warn('requestWsTicket: unexpected ticket shape');
+      // Phase 8.x PR #15 self-review M1: shared `WsTicketResponseSchema`
+      // を使って safeParse。`fetchRoom` / `authenticateRoom` と同じ
+      // fail-soft pattern。32 hex regex は schema 側で enforce される
+      // ため、ここでの手書き check は不要になった。
+      const raw: unknown = await res.json();
+      const parsed = WsTicketResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        logger.warn('requestWsTicket: unexpected response shape', {
+          issues: parsed.error.issues.map((i) => ({ path: i.path, code: i.code })),
+        });
         return { ok: false, reason: 'network' };
       }
-      return { ok: true, ticket: body.ticket };
+      return { ok: true, ticket: parsed.data.ticket };
     }
     if (res.status === 401) return { ok: false, reason: 'unauthorized' };
     if (res.status === 404) return { ok: false, reason: 'not-found' };

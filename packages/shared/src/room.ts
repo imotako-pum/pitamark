@@ -113,6 +113,19 @@ export const AuthResponseSchema = z
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
+// POST /rooms/:id/ws-ticket レスポンス。Phase 8.x PR #15 self-review M1:
+// `AuthResponseSchema` と同じ pattern で shared に集約。32 hex 文字の制約は
+// `ws-ticket-service.ts` で生成側、ここで受信側、`yjs.ts` の
+// `isValidTicketShape` で consume 側、と 3 箇所で同じ regex を持っていた
+// ものをこの 1 箇所に統合する。
+export const WsTicketResponseSchema = z
+  .object({
+    ticket: z.string().regex(/^[0-9a-f]{32}$/),
+  })
+  .readonly();
+
+export type WsTicketResponse = z.infer<typeof WsTicketResponseSchema>;
+
 export const toPublicRoom = (stored: RoomStored): RoomPublic => {
   const { id, createdAt, ttlMs, image, auth } = stored;
   if (auth) {

@@ -4,6 +4,7 @@ import {
   RoomCreatedSchema,
   RoomPublicSchema,
   toPublicRoom,
+  WsTicketResponseSchema,
 } from '@snap-share/shared';
 import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
@@ -34,13 +35,6 @@ const uploadFormSchema = z.object({
 
 const authBodySchema = z.object({
   password: z.string().min(1).max(256),
-});
-
-// Phase 8.x security review #13 H1: WS upgrade tickets are 32 hex chars
-// (128-bit random) — pinned in the schema so the OpenAPI doc does not
-// describe them as arbitrary strings.
-const wsTicketResponseSchema = z.object({
-  ticket: z.string().regex(/^[0-9a-f]{32}$/),
 });
 
 const buildPasswordService = () => createPasswordService();
@@ -161,7 +155,7 @@ const wsTicketRoute = createRoute({
   },
   responses: {
     201: {
-      content: { 'application/json': { schema: wsTicketResponseSchema } },
+      content: { 'application/json': { schema: WsTicketResponseSchema } },
       description:
         '30s one-shot ticket bound to the room. Pass it as `?ticket=<hex>` on the WS upgrade.',
     },

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Tool } from './annotationsReducer';
+import { TOOLS, type Tool } from './annotationsReducer';
 
 export type KeyboardShortcuts = Readonly<{
   onUndo: () => void;
@@ -48,8 +48,12 @@ const TOOL_KEYS: Readonly<Record<Tool, string>> = {
   highlight: 'h',
 };
 
+// Phase 8.x PR #15 self-review L2: build the inverse map by iterating
+// `TOOLS` (typed `readonly Tool[]`) so `TOOL_KEYS[t]` is type-safe and we
+// avoid `Object.entries`'s loss of key types. `TOOLS` lives upstream so
+// that adding a new `Tool` triggers a typecheck in `TOOL_KEYS` first.
 const TOOL_BY_KEY: ReadonlyMap<string, Tool> = new Map(
-  (Object.entries(TOOL_KEYS) as Array<[Tool, string]>).map(([t, k]) => [k, t]),
+  TOOLS.map((t) => [TOOL_KEYS[t], t] as const),
 );
 
 export const isEditableTarget = (target: EventTarget | null): boolean => {
