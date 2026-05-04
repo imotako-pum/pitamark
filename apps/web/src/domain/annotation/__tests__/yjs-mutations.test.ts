@@ -12,6 +12,7 @@ import {
   resizeRectangleY,
   setAnnotationColorY,
   setArrowEndpointsY,
+  setTextFontSizeY,
   setTextY,
 } from '../yjs-mutations';
 
@@ -179,6 +180,29 @@ describe('setTextY', () => {
     addAnnotationY(doc, ya, rect('r1'));
     setTextY(doc, ya, 'r1', 'should-not-apply');
     expect(yMapToAnnotation(ya.get('r1') as Y.Map<unknown>)).toEqual(rect('r1'));
+  });
+});
+
+describe('setTextFontSizeY', () => {
+  it('updates fontSize on a text annotation', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, txt('t1'));
+    setTextFontSizeY(doc, ya, 't1', 24);
+    expect(yMapToAnnotation(ya.get('t1') as Y.Map<unknown>)).toMatchObject({ fontSize: 24 });
+  });
+
+  it('is a no-op for non-text targets', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1'));
+    setTextFontSizeY(doc, ya, 'r1', 24);
+    expect(yMapToAnnotation(ya.get('r1') as Y.Map<unknown>)).toEqual(rect('r1'));
+  });
+
+  it('is a no-op for unknown id', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, txt('t1'));
+    setTextFontSizeY(doc, ya, 'does-not-exist', 24);
+    expect(yMapToAnnotation(ya.get('t1') as Y.Map<unknown>)).toMatchObject({ fontSize: 16 });
   });
 });
 

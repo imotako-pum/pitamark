@@ -63,6 +63,10 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
   await page.mouse.down();
   await page.mouse.move(box.x + 350, box.y + 300, { steps: 5 });
   await page.mouse.up();
+  // Phase 7.8-1 Auto-next-A: 矢印確定で空 text + IME 起動が走るため、Esc で text を
+  // 破棄して矢印のみ残す。本 spec の主旨は 4 種注釈が独立に作れること + ⌘S 出力で、
+  // Auto-next 連鎖は別 spec (auto-next-arrow-text.spec.ts) でカバー済。
+  await page.keyboard.press('Escape');
 
   // T: text (1 文字打って Enter で commit)
   await page.keyboard.press('t');

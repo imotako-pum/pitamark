@@ -10,6 +10,7 @@ import {
   resizeRectangleY,
   setAnnotationColorY,
   setArrowEndpointsY,
+  setTextFontSizeY,
   setTextY,
 } from '../domain/annotation/yjs-mutations';
 import { LOCAL_ORIGIN } from '../lib/yjs-config';
@@ -71,6 +72,7 @@ export const createYjsAnnotationsContext = (
       case 'tool/set':
       case 'select/set':
       case 'active-color/set':
+      case 'active-font-size/set':
         // UI-only state; never persisted to Yjs.
         return;
       case 'annotation/add':
@@ -112,6 +114,9 @@ export const createYjsAnnotationsContext = (
         return;
       case 'annotation/set-color':
         setAnnotationColorY(doc, yAnnotations, action.id, action.color);
+        return;
+      case 'annotation/set-font-size':
+        setTextFontSizeY(doc, yAnnotations, action.id, action.fontSize);
         return;
       default: {
         // Exhaustiveness check — compile-time via `never`, runtime via throw

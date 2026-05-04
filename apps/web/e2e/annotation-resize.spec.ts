@@ -29,6 +29,7 @@ const logicalToScreen = async (
     (k) => (window as unknown as Record<string, { scale: number; x: number; y: number }>)[k],
     TRANSFORM_KEY,
   );
+  if (!t) throw new Error('__SNAP_SHARE_STAGE_TRANSFORM__ が window に未公開');
   return { x: logical.x * t.scale + t.x, y: logical.y * t.scale + t.y };
 };
 
@@ -154,6 +155,11 @@ test.describe('annotation resize — Transformer (rect / highlight) と Arrow en
 
     await page.getByRole('button', { name: '矢印' }).click();
     await dragOnStage(page, { x: 100, y: 100 }, { x: 240, y: 240 });
+    // Phase 7.8-1 Auto-next-A: 矢印確定で空 text + IME 起動が走るため、まず Esc で
+    // text を破棄。Auto-next の text 削除に伴い selectedId は null になる
+    // (annotation/remove reducer が selectedId クリア) ので、矢印中点を click して
+    // 再選択し to 端点ハンドルを表示させてから操作する。
+    await page.keyboard.press('Escape');
     await expect.poll(() => readAnnotations(page).then((a) => a.length)).toBe(1);
 
     const before = (await readAnnotations(page))[0] as {
@@ -161,8 +167,14 @@ test.describe('annotation resize — Transformer (rect / highlight) と Arrow en
       to: { x: number; y: number };
     };
 
-    // to 端点 (画面座標) を別位置にドラッグ。logical→screen 変換が必要。
     const stage = await stageOrigin(page);
+    const midScreen = await logicalToScreen(page, {
+      x: (before.from.x + before.to.x) / 2,
+      y: (before.from.y + before.to.y) / 2,
+    });
+    await page.mouse.click(stage.x + midScreen.x, stage.y + midScreen.y);
+
+    // to 端点 (画面座標) を別位置にドラッグ。logical→screen 変換が必要。
     const fromScreen = await logicalToScreen(page, before.to);
     const toScreen = await logicalToScreen(page, {
       x: before.to.x + 80,

@@ -14,6 +14,7 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { Tool } from '../../hooks/annotationsReducer';
 import { ColorPalette } from './ColorPalette';
+import { FontSizeControl } from './FontSizeControl';
 import { ToolButton } from './ToolButton';
 
 type ToolbarProps = Readonly<{
@@ -24,6 +25,7 @@ type ToolbarProps = Readonly<{
   imageLoaded: boolean;
   canExport: boolean;
   activeColor: string;
+  activeFontSize: number;
   onSetTool: (tool: Tool) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -31,6 +33,8 @@ type ToolbarProps = Readonly<{
   onClearImage: () => void;
   onExport: () => void;
   onPickColor: (color: string) => void;
+  onIncrementFontSize: () => void;
+  onDecrementFontSize: () => void;
   onShowHelp: () => void;
 }>;
 
@@ -61,6 +65,7 @@ export const Toolbar = ({
   imageLoaded,
   canExport,
   activeColor,
+  activeFontSize,
   onSetTool,
   onUndo,
   onRedo,
@@ -68,6 +73,8 @@ export const Toolbar = ({
   onClearImage,
   onExport,
   onPickColor,
+  onIncrementFontSize,
+  onDecrementFontSize,
   onShowHelp,
 }: ToolbarProps) => (
   <TooltipProvider delay={150}>
@@ -119,6 +126,13 @@ export const Toolbar = ({
       </div>
       <Divider />
       <ColorPalette activeColor={activeColor} disabled={!imageLoaded} onPickColor={onPickColor} />
+      <Divider />
+      <FontSizeControl
+        activeFontSize={activeFontSize}
+        disabled={!imageLoaded}
+        onIncrementFontSize={onIncrementFontSize}
+        onDecrementFontSize={onDecrementFontSize}
+      />
       <Divider />
       <div className="flex items-center gap-1">
         <ToolButton

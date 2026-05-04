@@ -23,6 +23,7 @@ const renderToolbar = (overrides: Partial<ToolbarProps> = {}) => {
     canExport: true,
     // biome-ignore lint/style/noNonNullAssertion: palette has fixed length > 0
     activeColor: COLOR_PALETTE[0]!,
+    activeFontSize: 18,
     onSetTool: vi.fn(),
     onUndo: vi.fn(),
     onRedo: vi.fn(),
@@ -30,6 +31,8 @@ const renderToolbar = (overrides: Partial<ToolbarProps> = {}) => {
     onClearImage: vi.fn(),
     onExport: vi.fn(),
     onPickColor: vi.fn(),
+    onIncrementFontSize: vi.fn(),
+    onDecrementFontSize: vi.fn(),
     onShowHelp: vi.fn(),
     ...overrides,
   };
@@ -87,6 +90,21 @@ describe('Toolbar', () => {
       'button[aria-label="ショートカット一覧"]',
     );
     expect(btn?.disabled).toBe(false);
+    m.unmount();
+  });
+
+  it('renders FontSizeControl with the active font size', () => {
+    const m = renderToolbar({ activeFontSize: 24 });
+    expect(m.container.textContent).toContain('24px');
+    m.unmount();
+  });
+
+  it('renders FontSizeControl A+ button with aria-label', () => {
+    const m = renderToolbar({});
+    const btn = m.container.querySelector<HTMLButtonElement>(
+      'button[aria-label="フォントサイズを大きくする"]',
+    );
+    expect(btn).not.toBeNull();
     m.unmount();
   });
 });

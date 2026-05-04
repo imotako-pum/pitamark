@@ -1,4 +1,4 @@
-import type { Annotation, RectangleAnnotation } from '@snap-share/shared';
+import type { Annotation, RectangleAnnotation, TextAnnotation } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import {
   type AnnotationsState,
@@ -17,6 +17,17 @@ const rect: RectangleAnnotation = {
   height: 10,
   color: '#5b6dff',
   strokeWidth: 2,
+};
+
+const text: TextAnnotation = {
+  id: 't1',
+  type: 'text',
+  createdAt: 2,
+  x: 0,
+  y: 0,
+  text: 'hello',
+  fontSize: 18,
+  color: '#202020',
 };
 
 const seedWith = (annotations: ReadonlyArray<Annotation>): AnnotationsState => ({
@@ -196,6 +207,62 @@ describe('annotationsReducer.annotation/set-color', () => {
   });
 });
 
+describe('annotationsReducer.active-font-size/set', () => {
+  it('updates state.activeFontSize', () => {
+    const next = annotationsReducer(initialAnnotationsState, {
+      type: 'active-font-size/set',
+      fontSize: 24,
+    });
+
+    expect(next.activeFontSize).toBe(24);
+  });
+
+  it('does not touch annotations or selection', () => {
+    const seeded: AnnotationsState = { ...seedWith([rect]), selectedId: 'r1' };
+    const next = annotationsReducer(seeded, {
+      type: 'active-font-size/set',
+      fontSize: 24,
+    });
+
+    expect(next.annotations).toBe(seeded.annotations);
+    expect(next.selectedId).toBe('r1');
+  });
+});
+
+describe('annotationsReducer.annotation/set-font-size', () => {
+  it('updates fontSize of the matching text annotation', () => {
+    const next = annotationsReducer(seedWith([text]), {
+      type: 'annotation/set-font-size',
+      id: 't1',
+      fontSize: 24,
+    });
+
+    expect((next.annotations[0] as TextAnnotation).fontSize).toBe(24);
+  });
+
+  it('is a no-op for non-text annotations', () => {
+    const seeded = seedWith([rect]);
+    const next = annotationsReducer(seeded, {
+      type: 'annotation/set-font-size',
+      id: 'r1',
+      fontSize: 24,
+    });
+
+    expect(next.annotations[0]).toBe(rect);
+  });
+
+  it('is a no-op for unknown id', () => {
+    const seeded = seedWith([text]);
+    const next = annotationsReducer(seeded, {
+      type: 'annotation/set-font-size',
+      id: 'zzz',
+      fontSize: 24,
+    });
+
+    expect(next.annotations[0]).toBe(text);
+  });
+});
+
 describe('isCommittingAction', () => {
   it('treats annotation/set-color as a committing action (Undo target)', () => {
     expect(isCommittingAction({ type: 'annotation/set-color', id: 'r1', color: '#abcdef' })).toBe(
@@ -205,5 +272,15 @@ describe('isCommittingAction', () => {
 
   it('treats active-color/set as UI-only (not committed)', () => {
     expect(isCommittingAction({ type: 'active-color/set', color: '#abcdef' })).toBe(false);
+  });
+
+  it('treats annotation/set-font-size as a committing action (Undo target)', () => {
+    expect(isCommittingAction({ type: 'annotation/set-font-size', id: 't1', fontSize: 24 })).toBe(
+      true,
+    );
+  });
+
+  it('treats active-font-size/set as UI-only (not committed)', () => {
+    expect(isCommittingAction({ type: 'active-font-size/set', fontSize: 24 })).toBe(false);
   });
 });

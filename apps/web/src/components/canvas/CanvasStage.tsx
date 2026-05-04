@@ -2,13 +2,14 @@ import type { Annotation, Point } from '@snap-share/shared';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
-import { Stage } from 'react-konva';
+import { Arrow as KonvaArrow, Layer, Stage } from 'react-konva';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
 import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
+import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../../lib/autoNextOffset';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
-import { DEFAULT_FONT_SIZE, DEFAULT_STROKE_WIDTH } from './colors';
+import { ARROW_POINTER_LENGTH, ARROW_POINTER_WIDTH, DEFAULT_STROKE_WIDTH } from './colors';
 import { ImageLayer } from './ImageLayer';
 import type { ArrowEndpointsPatch } from './shapes/ArrowShape';
 import type { HighlightResizePatch } from './shapes/HighlightShape';
@@ -21,7 +22,9 @@ type CanvasStageProps = Readonly<{
   store: AnnotationsStore;
   editingTextId: string | null;
   onTextDoubleClick: (id: string) => void;
-  onStartTextEditing: (id: string) => void;
+  /** Phase 7.8-1: `options.autoNext` が true のときは Auto-next-A 連鎖中であることを
+   *  EditorShell に伝え、text 編集確定/キャンセル後に tool=select に戻すフラグ管理に使う。 */
+  onStartTextEditing: (id: string, options?: { autoNext?: boolean }) => void;
   /** Stage-relative cursor position. Null when the pointer leaves the stage. */
   onCursorMove?: (point: { x: number; y: number } | null) => void;
   /** Extra Konva layers rendered on top of the annotation layer. */
@@ -36,6 +39,16 @@ type CanvasStageProps = Readonly<{
   onPan: (dx: number, dy: number) => void;
   /** ImageLayer から伝播される画像 natural サイズ。null は src 切替リセット。*/
   onImageLoaded?: (size: { width: number; height: number } | null) => void;
+  /** Phase 7.8-2 Auto-next-B: pending 中の既定矢印プレビュー(半透明)を描画する。
+   *  null のときはプレビュー無し。state は EditorShell に置き、ここでは受け取って
+   *  描画するだけ。 */
+  pendingAutoArrow: { from: Point; to: Point; color: string; strokeWidth: number } | null;
+  /** Phase 7.8-2: 矩形 mouseup 直後に呼ばれる。EditorShell が pending state を立てる。 */
+  onAutoNextRectangle: (rect: { x: number; y: number; width: number; height: number }) => void;
+  /** Phase 7.8-2: マウス mousedown 任意座標で pending をキャンセルする経路。
+   *  pending が null のときは no-op、null でないときは EditorShell が pending を null
+   *  にする。CanvasStage はクリア後に通常の mousedown 処理を続行する。 */
+  onCancelAutoArrowIfAny: () => void;
 }>;
 
 const MIN_DRAG_PIXELS = 4;
@@ -105,9 +118,12 @@ export const CanvasStage = ({
   onZoom,
   onPan,
   onImageLoaded,
+  pendingAutoArrow,
+  onAutoNextRectangle,
+  onCancelAutoArrowIfAny,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
-  const { tool, selectedId, annotations, activeColor } = state;
+  const { tool, selectedId, annotations, activeColor, activeFontSize } = state;
   // draft and dragStart live in refs so consecutive mouse events within a single
   // React render cycle (mousedown -> mousemove -> mouseup) always observe the
   // latest values without waiting for state flush. The state mirror keeps the
@@ -187,6 +203,12 @@ export const CanvasStage = ({
         return;
       }
 
+      // Phase 7.8-2: pending Auto-arrow があれば、マウスクリック (任意座標) で
+      // キャンセル。クリック自体は通常の mousedown 処理を続行する (stage クリックで
+      // 選択解除など) → ユーザーが「右下既定矢印が合わない」時に自前で矢印を描き
+      // 始められる。pending が null のときは EditorShell 側で no-op になる。
+      onCancelAutoArrowIfAny();
+
       const isStageClick = e.target === stage;
 
       // Universal deselect rule: empty-stage click clears selection regardless
@@ -213,7 +235,7 @@ export const CanvasStage = ({
           x: pos.x,
           y: pos.y,
           text: '',
-          fontSize: DEFAULT_FONT_SIZE,
+          fontSize: activeFontSize,
           color: activeColor,
         };
         dispatch({ type: 'annotation/add', annotation });
@@ -230,7 +252,16 @@ export const CanvasStage = ({
       };
       dragStartRef.current = start;
     },
-    [tool, dispatch, onStartTextEditing, activeColor, selectedId, setCursor],
+    [
+      tool,
+      dispatch,
+      onStartTextEditing,
+      activeColor,
+      activeFontSize,
+      selectedId,
+      setCursor,
+      onCancelAutoArrowIfAny,
+    ],
   );
 
   const handleMouseMove = useCallback(
@@ -299,12 +330,68 @@ export const CanvasStage = ({
       if (reachedThreshold && currentDraft) {
         dispatch({ type: 'annotation/add', annotation: currentDraft });
         dispatch({ type: 'select/set', id: currentDraft.id });
+
+        // Phase 7.8-2 Auto-next-B: 矩形確定直後に既定矢印プレビューを立てる。
+        // pending state は EditorShell に置き、stopUndoCapture の呼出も
+        // EditorShell 側 (handleAutoNextRectangle 内) に集約。ここでは callback
+        // で通知するだけ。
+        if (currentDraft.type === 'rectangle') {
+          onAutoNextRectangle({
+            x: currentDraft.x,
+            y: currentDraft.y,
+            width: currentDraft.width,
+            height: currentDraft.height,
+          });
+        }
+
+        // Phase 7.8-1 Auto-next-A: 矢印確定直後に終端 +offset で空 text 注釈を
+        // 即時編集モードで起動する。既存の text ツール即時編集パターン
+        // (handleMouseDown の tool === 'text' 分岐, L207 周辺) と同じ shape を、
+        // 座標と tool 切替だけ差し替えて再利用する。EditorShell 側は autoNext=true
+        // を受けて「commit/cancel 後に tool=select に戻す」フラグを立てる。
+        if (currentDraft.type === 'arrow') {
+          // 矢印 add(直前の dispatch)と text add を独立 undo step に分けるための
+          // break point。Yjs UndoManager の captureTimeout(500ms)が原因で、
+          // これを呼ばないと連続操作が 1 step に merge され Cmd+Z 1 回で両方消える。
+          store.stopUndoCapture();
+
+          const offset = computeAutoNextTextOffset(
+            currentDraft.from,
+            currentDraft.to,
+            AUTO_NEXT_TEXT_OFFSET_PX,
+          );
+          const textId = generateId();
+          const textAnnotation: Annotation = {
+            id: textId,
+            type: 'text',
+            createdAt: Date.now(),
+            x: currentDraft.to.x + offset.x,
+            y: currentDraft.to.y + offset.y,
+            text: '',
+            fontSize: activeFontSize,
+            color: activeColor,
+          };
+          dispatch({ type: 'annotation/add', annotation: textAnnotation });
+          dispatch({ type: 'tool/set', tool: 'text' });
+          dispatch({ type: 'select/set', id: textId });
+          onStartTextEditing(textId, { autoNext: true });
+        }
       }
       draftRef.current = null;
       dragStartRef.current = null;
       setDraft(null);
     },
-    [dispatch, setCursor],
+    // store 全体を依存させると毎レンダーで identity が変わって handleMouseUp が
+    // 再生成されるため、Auto-next-A で実際に使う stopUndoCapture のみを依存させる。
+    [
+      dispatch,
+      setCursor,
+      activeColor,
+      activeFontSize,
+      onStartTextEditing,
+      store.stopUndoCapture,
+      onAutoNextRectangle,
+    ],
   );
 
   const handleWheel = useCallback(
@@ -423,6 +510,27 @@ export const CanvasStage = ({
         onResizeHighlight={handleResizeHighlight}
         onArrowEndpoints={handleArrowEndpoints}
       />
+      {pendingAutoArrow && (
+        <Layer listening={false}>
+          <KonvaArrow
+            points={[
+              pendingAutoArrow.from.x,
+              pendingAutoArrow.from.y,
+              pendingAutoArrow.to.x,
+              pendingAutoArrow.to.y,
+            ]}
+            // Phase 7.8-1 の反転を踏襲: 矢じり = from = 矩形右辺中央、尾 = to = 起点。
+            pointerAtBeginning
+            pointerAtEnding={false}
+            pointerLength={ARROW_POINTER_LENGTH}
+            pointerWidth={ARROW_POINTER_WIDTH}
+            stroke={pendingAutoArrow.color}
+            fill={pendingAutoArrow.color}
+            strokeWidth={pendingAutoArrow.strokeWidth}
+            opacity={0.4}
+          />
+        </Layer>
+      )}
       {extraLayers}
     </Stage>
   );

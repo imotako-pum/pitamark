@@ -77,8 +77,35 @@ export const buildSolidPng = (
 };
 
 /**
- * DropZone は <input type="file"> を持たず drag&drop / paste でのみ画像を
- * 受け付ける（apps/web/src/components/empty-state/DropZone.tsx）。E2E では
+ * Phase 7 で導入された invisible Turnstile widget の verification callback が
+ * 走るまで `LocalEditor.handleLoad` は早期 return + toast のみで、画像 drop が
+ * サイレントに無視される。`TurnstileWidget` は callback 完了で container の
+ * `data-turnstile-status="ready"` を立てるので、その立ち上がりを待ってから
+ * drop / paste を発火する。site key 未設定 (status === 'disabled') 経路は
+ * data attribute が立たないので 1s 程度で諦め、本来の挙動 (gate 不要) に進む。
+ */
+async function waitForTurnstileGate(page: Page): Promise<void> {
+  const widget = page.locator('[data-turnstile-status]');
+  try {
+    await widget.first().waitFor({ state: 'attached', timeout: 1_000 });
+  } catch {
+    // 'disabled' (no site key) — widget never mounts. Drop straight away.
+    return;
+  }
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('[data-turnstile-status]');
+      const status = el?.getAttribute('data-turnstile-status');
+      return status === 'ready' || status === 'error';
+    },
+    null,
+    { timeout: 10_000 },
+  );
+}
+
+/**
+ * DropZone は drag&drop / paste / file-picker click のいずれでも画像を受け付け
+ * る（apps/web/src/components/empty-state/DropZone.tsx）。E2E では
  * `page.evaluateHandle` で構築した DataTransfer を locator.dispatchEvent
  * 経由で渡し、React の合成イベント機構に到達させる。
  */
@@ -101,6 +128,7 @@ export async function dropImageBuffer(
   fileName: string,
   mimeType = 'image/png',
 ): Promise<void> {
+  await waitForTurnstileGate(page);
   const base64 = buffer.toString('base64');
 
   const dataTransfer = await page.evaluateHandle(
@@ -121,4 +149,9 @@ export async function dropImageBuffer(
   const dropZone = page.locator('section[aria-labelledby="dropzone-heading"]');
   await dropZone.dispatchEvent('dragover', { dataTransfer });
   await dropZone.dispatchEvent('drop', { dataTransfer });
+}
+
+/** Test helper for the e2e file-picker check itself — also gates on Turnstile. */
+export async function awaitUploadReady(page: Page): Promise<void> {
+  await waitForTurnstileGate(page);
 }

@@ -1,36 +1,25 @@
 import { expect, test } from '@playwright/test';
-import { dropImage, SAMPLE_IMAGE_PATH } from './fixtures/upload';
+import { awaitUploadReady, dropImage, SAMPLE_IMAGE_PATH } from './fixtures/upload';
 
-// Phase 7.6 E2E 拡充 + **新発見バグ既知-4 の固定**:
+// Phase 7.6 E2E 拡充 + Phase 7.8 hotfix で 既知-4 を解消:
 //
 // 単純な validation 分岐 (形式 / サイズ) は src/lib/__tests__/imageValidation.test.ts
 // で unit レベルカバー済。本 spec は「ユーザーから見た drop の振る舞い」を踏み、
-// その過程で見つかった以下のバグを CI で固定する。
+// 既知-4 (Turnstile 有効時に validation エラーがサイレント失敗していたバグ) の
+// 回帰を CI で固定する。
 //
-// **既知-4. Turnstile 有効時、validation エラーが永久に表示されない**
+// **既知-4 (修正済): Turnstile 有効時 validation エラーが消えていた**
 //
-// LocalEditor.handleLoad (apps/web/src/pages/LocalEditor.tsx:56-65) は
-// `loadFromFile(...)` 後に **無条件で `turnstile.reset()`** を呼ぶ。
-// reset で turnstile state が `pending` に戻ると、useTurnstileToken が export
-// する `turnstileBlocking = true` になり、`onLoadFile = undefined` に切り替わる。
-// EditorShell は `onLoadFile === undefined` のとき DropZone を render せず
-// 「画像を読み込んでいます…」の loading hint を出す
-// (EditorShell.tsx:231-237)。
+// 旧実装: `LocalEditor.onLoadFile = blockedByEmptyPassword || turnstileBlocking
+// ? undefined : handleLoad` で、`handleLoad` 内の `turnstile.reset()` が無条件
+// に走ると state が `pending` に戻り、`onLoadFile === undefined` 経路で
+// EditorShell が「画像を読み込んでいます…」の loading hint を出して DropZone
+// 自体がアンマウントされ、error alert も消えていた。
 //
-// Cloudflare Turnstile の invisible widget は外部から `widget.reset()` を
-// 呼ばない限り自動的に re-fire しないため、ユーザーは:
-//   1) 不正なファイルを drop
-//   2) validation がサイレント失敗 (DropZone がアンマウントされ error も消える)
-//   3) "画像を読み込んでいます…" 表示のまま無限に固まる
-// ことになる。**正常な PNG を drop した場合も同じ経路を踏むが、
-//  loadFromFile 内で setSource が成功するため source 経路で CanvasStage に遷移し
-//  「読み込み中」状態は通り抜ける**。
-//
-// 修正方針 (Phase 7.6 で別 task として扱う):
-//   (a) handleLoad 内で `turnstile.reset()` を呼ぶ条件を「アップロード成功時のみ」に
-//   (b) `turnstile.reset()` 内で `window.turnstile.reset(widgetId)` も呼んで
-//       widget 側の token も再発行させる
-//   (c) loading hint に「もう一度ドロップしてください」のフォールバック UI を追加
+// 修正 (Phase 7.8 hotfix): `onLoadFile` を常に `handleLoad` にし、Turnstile /
+// password 未入力の gate を `handleLoad` 内の早期 return + toast に閉じ込めた。
+// これで DropZone は常駐し、validation 失敗時は `useImageSource.error` 経由で
+// alert がそのまま表示される。
 
 const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
   test.skip(
@@ -52,14 +41,12 @@ test.describe('DropZone validation', () => {
     ).toBeHidden();
   });
 
-  test('既知-4 回帰: text/plain drop はサイレント失敗し loading hint で固まる', async ({
+  test('既知-4 回帰: text/plain drop でも DropZone が残り validation エラーが見える', async ({
     page,
   }, testInfo) => {
     skipNonChromium(testInfo);
-    // バグが修正されたら本テストは失敗する。失敗したら以下のいずれかに書き換える:
-    //   - 「validation エラーが画面に表示される」を assert
-    //   - 「DropZone が再表示される」を assert
     await page.goto('/');
+    await awaitUploadReady(page);
     const dropZone = page.locator('section[aria-labelledby="dropzone-heading"]');
     await expect(dropZone).toBeVisible({ timeout: 5_000 });
 
@@ -71,19 +58,21 @@ test.describe('DropZone validation', () => {
     });
     await dropZone.dispatchEvent('drop', { dataTransfer });
 
-    // 想定挙動 (バグ): 「画像を読み込んでいます…」が出てそのまま固まる
-    await expect(page.getByText('画像を読み込んでいます…')).toBeVisible({ timeout: 5_000 });
-    // URL は landing のまま
+    // DropZone は常駐し、URL も landing のまま、validation alert が見えること。
+    await expect(dropZone).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
-    // DropZone (および error alert) は消えている
-    await expect(dropZone).toBeHidden();
+    await expect(
+      page.getByRole('alert').filter({ hasText: '画像ファイルをドロップしてください' }),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('画像を読み込んでいます…')).toBeHidden();
   });
 
-  test('既知-4 回帰: 10MB 超 image/png drop も同様にサイレント失敗する', async ({
+  test('既知-4 回帰: 10MB 超 image/png drop でも DropZone が残りサイズエラーが見える', async ({
     page,
   }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
+    await awaitUploadReady(page);
     const dropZone = page.locator('section[aria-labelledby="dropzone-heading"]');
     await expect(dropZone).toBeVisible({ timeout: 5_000 });
 
@@ -96,8 +85,57 @@ test.describe('DropZone validation', () => {
     });
     await dropZone.dispatchEvent('drop', { dataTransfer });
 
-    await expect(page.getByText('画像を読み込んでいます…')).toBeVisible({ timeout: 5_000 });
+    await expect(dropZone).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
-    await expect(dropZone).toBeHidden();
+    await expect(
+      page.getByRole('alert').filter({ hasText: '画像サイズが大きすぎます' }),
+    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('画像を読み込んでいます…')).toBeHidden();
+  });
+
+  // Phase 7.8 hotfix #1: 旧実装では Turnstile が pending のあいだ
+  // `onLoadFile === undefined` になり、EditorShell が「画像を読み込んでいます…」
+  // を出して DropZone が一瞬ちらついていた。本テストは初回マウント直後から
+  // DropZone が常駐し loading hint が一度も出ないことを保証する。
+  test('hotfix #1: 初回マウント直後に loading hint がちらつかない', async ({ page }, testInfo) => {
+    skipNonChromium(testInfo);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible({
+      timeout: 1_000,
+    });
+    await expect(page.getByText('画像を読み込んでいます…')).toBeHidden();
+  });
+
+  // Phase 7.8 hotfix #2: DropZone クリックで <input type="file"> が伝播し、
+  // ファイルピッカー (Finder) が開く経路の構造を担保する。Playwright で
+  // OS のファイルピッカーは開けないため、`page.on('filechooser')` で
+  // <input type="file"> がトリガされる事実を検証する。
+  test('hotfix #2: DropZone クリックでファイルピッカーが起動する', async ({ page }, testInfo) => {
+    skipNonChromium(testInfo);
+    await page.goto('/');
+    const button = page.getByRole('button', { name: '画像をドロップしてください' });
+    await expect(button).toBeVisible();
+
+    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 5_000 });
+    await button.click();
+    const chooser = await fileChooserPromise;
+    expect(chooser.isMultiple()).toBe(false);
+
+    // 隠し input の accept 属性も確認 (production の MIME 制約と一致するか)
+    const accept = await page.locator('input[type="file"]').first().getAttribute('accept');
+    expect(accept).toBe('image/png,image/jpeg,image/webp,image/svg+xml');
+  });
+
+  // Phase 7.8 hotfix #2: ファイルピッカー経由でも drag&drop と同じ
+  // 経路 (handleLoad → loadFromFile) を通って /r/:id に遷移すること。
+  test('hotfix #2: ファイルピッカー選択でも room が作られる', async ({ page }, testInfo) => {
+    skipNonChromium(testInfo);
+    await page.goto('/');
+    await awaitUploadReady(page);
+
+    // setInputFiles は <input type="file"> に直接 file を流し込むので、
+    // ファイルピッカーを経由しなくても production の onChange が走る。
+    await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_IMAGE_PATH);
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
   });
 });

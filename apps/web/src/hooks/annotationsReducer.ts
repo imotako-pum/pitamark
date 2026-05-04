@@ -1,5 +1,5 @@
 import type { Annotation, Point } from '@snap-share/shared';
-import { DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
+import { DEFAULT_FONT_SIZE, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import {
   addAnnotation,
   moveAnnotation,
@@ -8,6 +8,7 @@ import {
   resizeRectangle,
   setArrowEndpoints,
   setColor,
+  setFontSize,
   setText,
 } from '../domain/annotation/operations';
 
@@ -24,12 +25,17 @@ export type AnnotationsState = Readonly<{
   // switching tools (the swatch ring jumped to a different color), so we
   // collapsed it to one source of truth.
   activeColor: string;
+  // Single active font size for new text annotations. Mirrors activeColor's
+  // SSOT model — Toolbar A-/A+ and `[`/`]` shortcut update this; subsequent
+  // text creation (manual + Auto-next-A + Auto-next-B) reads from this.
+  activeFontSize: number;
 }>;
 
 export type AnnotationsAction =
   | { type: 'tool/set'; tool: Tool }
   | { type: 'select/set'; id: string | null }
   | { type: 'active-color/set'; color: string }
+  | { type: 'active-font-size/set'; fontSize: number }
   | { type: 'annotation/add'; annotation: Annotation }
   | { type: 'annotation/remove'; id: string }
   | { type: 'annotation/move'; id: string; dx: number; dy: number }
@@ -51,13 +57,15 @@ export type AnnotationsAction =
     }
   | { type: 'annotation/set-arrow-endpoints'; id: string; from: Point; to: Point }
   | { type: 'annotation/set-text'; id: string; text: string }
-  | { type: 'annotation/set-color'; id: string; color: string };
+  | { type: 'annotation/set-color'; id: string; color: string }
+  | { type: 'annotation/set-font-size'; id: string; fontSize: number };
 
 export const initialAnnotationsState: AnnotationsState = {
   annotations: [],
   selectedId: null,
   tool: 'select',
   activeColor: DEFAULT_SYNC_COLOR,
+  activeFontSize: DEFAULT_FONT_SIZE,
 };
 
 export const annotationsReducer = (
@@ -71,6 +79,8 @@ export const annotationsReducer = (
       return { ...state, selectedId: action.id };
     case 'active-color/set':
       return { ...state, activeColor: action.color };
+    case 'active-font-size/set':
+      return { ...state, activeFontSize: action.fontSize };
     case 'annotation/add':
       return { ...state, annotations: addAnnotation(state.annotations, action.annotation) };
     case 'annotation/remove':
@@ -123,6 +133,11 @@ export const annotationsReducer = (
         ...state,
         annotations: setColor(state.annotations, action.id, action.color),
       };
+    case 'annotation/set-font-size':
+      return {
+        ...state,
+        annotations: setFontSize(state.annotations, action.id, action.fontSize),
+      };
     default: {
       const _exhaustive: never = action;
       return _exhaustive;
@@ -139,6 +154,7 @@ const COMMITTING_ACTIONS: ReadonlyArray<AnnotationsAction['type']> = [
   'annotation/set-arrow-endpoints',
   'annotation/set-text',
   'annotation/set-color',
+  'annotation/set-font-size',
 ];
 
 export const isCommittingAction = (action: AnnotationsAction): boolean =>

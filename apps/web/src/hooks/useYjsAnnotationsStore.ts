@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import type { Awareness } from 'y-protocols/awareness';
 import { WebsocketProvider } from 'y-websocket';
 import * as Y from 'yjs';
-import { DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
+import { DEFAULT_FONT_SIZE, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import { logger } from '../lib/logger';
 import { resolveWsBaseUrl } from '../lib/yjs-config';
 import type { AnnotationsAction, AnnotationsState, Tool } from './annotationsReducer';
@@ -76,10 +76,11 @@ export const useYjsAnnotationsStore = (
     };
   }, [factory]);
 
-  // Tool / selectedId / activeColor are client-local — do NOT persist via CRDT.
+  // Tool / selectedId / activeColor / activeFontSize are client-local — do NOT persist via CRDT.
   const [tool, setTool] = useStateRef<Tool>('select');
   const [selectedId, setSelectedId, selectedIdRef] = useStateRef<string | null>(null);
   const [activeColor, setActiveColor] = useStateRef<string>(DEFAULT_SYNC_COLOR);
+  const [activeFontSize, setActiveFontSize] = useStateRef<number>(DEFAULT_FONT_SIZE);
 
   const subscribe = useCallback((cb: () => void) => (ctx ? ctx.subscribe(cb) : () => {}), [ctx]);
   const getSnapshot = useCallback(() => (ctx ? ctx.snapshot() : EMPTY_ANNOTATIONS), [ctx]);
@@ -139,6 +140,9 @@ export const useYjsAnnotationsStore = (
         case 'active-color/set':
           setActiveColor(action.color);
           return;
+        case 'active-font-size/set':
+          setActiveFontSize(action.fontSize);
+          return;
         case 'annotation/remove':
           if (selectedIdRef.current === action.id) setSelectedId(null);
           ctx?.applyDataAction(action);
@@ -147,7 +151,7 @@ export const useYjsAnnotationsStore = (
           ctx?.applyDataAction(action);
       }
     },
-    [ctx, setSelectedId, setTool, setActiveColor, selectedIdRef],
+    [ctx, setSelectedId, setTool, setActiveColor, setActiveFontSize, selectedIdRef],
   );
 
   const undo = useCallback(() => {
@@ -161,11 +165,19 @@ export const useYjsAnnotationsStore = (
     setSelectedId(null);
   }, [ctx, setSelectedId]);
 
+  // Phase 7.8-1: Auto-next-A で矢印 add と text add を独立 undo step に分割するため、
+  // Yjs UndoManager の captureTimeout(500ms) を中間でリセットする。これを呼ばないと
+  // 同 LOCAL_ORIGIN の連続操作が 1 step に merge され、Cmd+Z 1 回で両方が消える。
+  const stopUndoCapture = useCallback(() => {
+    ctx?.undoManager.stopCapturing();
+  }, [ctx]);
+
   const state: AnnotationsState = {
     annotations,
     selectedId,
     tool,
     activeColor,
+    activeFontSize,
   };
 
   // y-websocket exposes `awareness` on its provider; tests use a stub that
@@ -180,6 +192,7 @@ export const useYjsAnnotationsStore = (
     undo,
     redo,
     reset,
+    stopUndoCapture,
     status,
     doc: ctx?.doc ?? PLACEHOLDER_DOC,
     awareness: awareness as AwarenessLike | null,

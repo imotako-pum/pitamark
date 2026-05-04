@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react';
 import { useCallback, useId, useState } from 'react';
+import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,29 +50,41 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     store.reset();
   }, [clear, store]);
 
+  // Disable file load while the user has ticked "protect" but left the
+  // password empty — better than silently uploading unprotected.
+  const blockedByEmptyPassword = protect && password.length === 0;
+
   // Wraps `loadFromFile` so the active password (when the user opted in) is
   // forwarded to `POST /rooms`. Empty/whitespace passwords are normalized to
   // unprotected by the api-client layer. The Turnstile token is consumed
   // each call; widget state machine returns empty string in `disabled` mode.
+  //
+  // Gating is done inline (toast + early return) instead of swapping
+  // onLoadFile to undefined — passing undefined collapses EditorShell's
+  // DropZone branch into the room-mode "画像を読み込んでいます…" hint, which
+  // produced a flicker on first paint while Turnstile was still pending.
   const handleLoad = useCallback(
     (file: File) => {
+      if (blockedByEmptyPassword) {
+        toast.error('パスワードを入力してください');
+        return;
+      }
+      if (turnstile.state.status === 'pending') {
+        toast.error('認証中です。少し待ってから再度お試しください');
+        return;
+      }
+      if (turnstile.state.status === 'error') {
+        toast.error('認証に失敗しました。再度お試しください');
+        return;
+      }
       const pw = protect && password.length > 0 ? password : undefined;
       loadFromFile(file, turnstile.consumeToken(), pw);
       // After consuming the (single-use) token, reset so the next upload
       // attempt waits for a fresh one. `disabled` resets back to `disabled`.
       turnstile.reset();
     },
-    [protect, password, loadFromFile, turnstile],
+    [blockedByEmptyPassword, protect, password, loadFromFile, turnstile],
   );
-
-  // Disable file load while the user has ticked "protect" but left the
-  // password empty — better than silently uploading unprotected.
-  const blockedByEmptyPassword = protect && password.length === 0;
-  // Phase 7: also block while Turnstile is still pending or has errored.
-  // `disabled` (no site key) and `ready` are both safe to upload.
-  const turnstileBlocking =
-    turnstile.state.status === 'pending' || turnstile.state.status === 'error';
-  const onLoadFile = blockedByEmptyPassword || turnstileBlocking ? undefined : handleLoad;
 
   return (
     <>
@@ -128,7 +141,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
       <EditorShell
         source={source}
         imageError={error}
-        onLoadFile={onLoadFile}
+        onLoadFile={handleLoad}
         onClearImage={handleClear}
         store={store}
       />

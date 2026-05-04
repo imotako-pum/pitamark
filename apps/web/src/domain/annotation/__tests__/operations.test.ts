@@ -14,6 +14,7 @@ import {
   resizeRectangle,
   setArrowEndpoints,
   setColor,
+  setFontSize,
   setText,
 } from '../operations';
 
@@ -229,6 +230,23 @@ describe('setText', () => {
   it('is a no-op when id matches a non-text annotation', () => {
     const next = setText([rect], 'r1', 'hello');
     expect(next[0]).toBe(rect);
+  });
+});
+
+describe('setFontSize', () => {
+  it('updates fontSize on a text annotation', () => {
+    const next = setFontSize([text], 't1', 24);
+    expect((next[0] as TextAnnotation).fontSize).toBe(24);
+  });
+
+  it('is a no-op when id matches a non-text annotation', () => {
+    const next = setFontSize([rect], 'r1', 24);
+    expect(next[0]).toBe(rect);
+  });
+
+  it('is a no-op for unknown id', () => {
+    const next = setFontSize([text], 'zzz', 24);
+    expect(next[0]).toBe(text);
   });
 });
 

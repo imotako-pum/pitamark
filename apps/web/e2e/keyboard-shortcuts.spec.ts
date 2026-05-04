@@ -71,6 +71,11 @@ test.describe('keyboard shortcuts', () => {
     await page.mouse.move(box.x + 200, box.y + 200, { steps: 5 });
     await page.mouse.up();
 
+    // Phase 7.8-2: 矩形 mouseup 直後に pending Auto-arrow が立つ。Esc は最初に
+    // pending クリアを優先するので、本 spec の「Esc で選択解除」をロックインする
+    // ためには Esc を 2 回押す (1 回目: pending クリア、2 回目: 選択解除)。
+    await page.keyboard.press('Escape');
+
     // exact: true で「注釈をすべて削除」(Eraser) と区別
     const deleteBtn = page.getByRole('button', { name: '削除', exact: true });
     await expect(deleteBtn).toBeEnabled({ timeout: 5_000 });
