@@ -54,7 +54,7 @@
 - [x] Web vs デスクトップ方針 → **Phase 10 では Web 単独確定**、Mac spike は Phase 11+ 候補へ後回し ([ADR-0003 on hold](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md))
 - [x] 収益化スタンス C の撤退条件 → **半年で月 1000 円なし → B 修正検討**、Phase 11 起票時 (Phase 10.G 完了後) に判断
 - [ ] 収益化現実見立て: 観察データに基づく C 維持 / B 修正の最終判断 (Phase 11 起票時)
-- [ ] CHANGELOG 開始時の version 番号 (v0.1.0 / v0.9.0-mvp / v1.0.0、Phase 10.B で確定)
+- [x] CHANGELOG 開始時の version 番号 → **v0.9.0-mvp 起点 → Phase 10 完了で v1.0.0** で確定（Phase 10.B `CHANGELOG.md` 起票、Decisions Log 参照）
 
 ---
 
@@ -205,7 +205,7 @@
 | 7.8 | 次手予測 UX | Auto-next 次手予測（矢印→テキスト / 矩形→矢印）+ フォントサイズ UI + dogfood/Help 準備（4 サブプラン、Smart snap は 7.8-4 として stash 化し見送り） | complete | - | 7.7 | [prd](./phase-7.8-predictive-ux.prd.md) / sub: [7.8-1](../plans/completed/phase-7.8-1-auto-next-arrow-text.plan.md) ・ [7.8-2](../plans/completed/phase-7.8-2-auto-next-rect-arrow.plan.md) ・ [7.8-3](../plans/completed/phase-7.8-3-font-size-ui.plan.md) ・ [7.8-5](../plans/completed/phase-7.8-5-dogfood-help.plan.md) |
 | 8 | 統合レビュー（観察のみ） | リポジトリ全体の SSOT / モダン性 / React ベストプラクティス / Hono ベストプラクティス / その場しのぎ実装 / 型キャスト / 拡張性 / テスト網羅 / a11y / bundle・perf / エラー envelope 一貫性 / PRP 整理状況 / security の 13 観点横断レビュー。実コードの修正は Phase 8.x で別ブランチ・別 PR に切り出す | complete | - | 7.8 | [prd](./phase-8-integration-review.prd.md) / [plan](../plans/completed/phase-8-integration-review.plan.md) / [report](../reports/phase-8-integration-review-report.md) / 14 reviews in `reviews/phase-8-*-review.md` |
 | 9 | (廃止) dogfood & 計測 | **Phase 10 に内包**（process 軽量化方針、公開リリース + Analytics 観察に置換）。当初想定の「2 週間 dogfood + closed beta」は廃止 | superseded | - | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) |
-| 10 | 公開リリース + i18n + ブランディング (Web 単独) | 公開リリース最低限整備 (TOS/プライバシー/通報窓口) + i18n 軽量実装 (日英) + アプリ名/ドメイン取得 + TTL 仕様変更 + CHANGELOG 開始 (v0.9.0-mvp → v1.0.0) + 1 ヶ月 Analytics 観察。**Mac spike は Q9 で Phase 11+ 候補へ後回し** | pending | 10.B/D/E 並走可 | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) / [ADR-0003 (on hold)](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) / [ADR-0004 (accepted)](../../../docs/adr/ADR-0004-i18n-strategy.md) |
+| 10 | 公開リリース + i18n + ブランディング (Web 単独) | 公開リリース最低限整備 (TOS/プライバシー/通報窓口) + i18n 軽量実装 (日英) + アプリ名/ドメイン取得 + TTL 仕様変更 + CHANGELOG 開始 (v0.9.0-mvp → v1.0.0) + 1 ヶ月 Analytics 観察。**Mac spike は Q9 で Phase 11+ 候補へ後回し** | in-progress (10.B 着手中: TTL+CHANGELOG+法務 draft+通報窓口+OGP 完了、10.D/10.E/10.F/10.G 残) | 10.B/D/E 並走可 | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) / [ADR-0003 (on hold)](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) / [ADR-0004 (accepted)](../../../docs/adr/ADR-0004-i18n-strategy.md) / [phase-10-b plan](../plans/phase-10-b-launch-prep.plan.md) |
 | 11 | 次フェーズ確定 (収益化 / 品質 / Mac 再検討) | Phase 10.G 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、次の実装方向 (better-auth + 永続ルーム / Mac spike 再開 / SEO 深掘り 等) を決定 | pending | - | 10 | TBD (Phase 10.G 完了後に起票) |
 
 ### Phase Details
@@ -423,6 +423,8 @@
 | 撤退条件 (Phase 10) | **半年で月 1000 円なし → B (相殺) 修正検討**、Phase 11 起票時 (Phase 10.G 完了後) に判断 | 1 年で月 5 千円 / Phase 11 で総合判断のみ / 設定なし | オーナー指示 (Q8)。タイトだが基準として明確、無限延長を回避 |
 | アプリ名再考の手順 (Phase 10.D) | **Phase 10.D 実行時にブレスト**（事前準備しない、その場感覚優先） | 事前 Q&A / オーナー宿題 / AI 候補 generation | オーナー判断 (Q4)、判断時の鮮度 > 事前準備の効率 |
 | dogfood 残置度 (Phase 10) | **「気が向いたら」残す + 詰まった瞬間メモ継続**、強制 process 廃止 | 完全 0 / 軽量 1 週間版 / 強制 2 週間維持 | オーナー判断 (Q3)。自然利用は restrict しない |
+| CHANGELOG version 起点 (Phase 10.B) | **`v0.9.0-mvp` (2026-05-05) 起点 → Phase 10 完了で `v1.0.0`** | `v0.1.0` 直接 / `v1.0.0` を Phase 8 完了に遡及 / なし | Phase 0-8 で MVP 完成 + 統合レビュー完了 = `0.9.0` で「公開準備完了の節目」、Phase 10 公開リリースで `1.0.0` が SemVer 上自然な区切り。`Unreleased` セクション運用を Phase 10.B 開始時から導入 |
+| Phase 10.B 着手範囲 | **TTL 仕様変更 + CHANGELOG + 法務 draft + 通報窓口 + OGP/meta** の 5 項目を自走実装 (1 PR にまとめる) | 全 6 項目 (Cloudflare Analytics ダッシュボード確認込み) / 各項目を別 PR | feedback memory「PRP は PRD 単位で 1 ブランチ 1 PR」。Cloudflare Analytics 確認はオーナーダッシュボード操作必須、GitHub label 設定も shared state 変更なので人手作業として PR merge 後に分離 |
 
 ---
 
