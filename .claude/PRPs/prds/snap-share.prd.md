@@ -194,8 +194,11 @@
 | 6 | エクスポート + UI仕上げ | PNG export + 日本語UI + レスポンシブ + shadcn適用 | complete | with 5 | 4 | [phase-6-export-ui-polish.plan.md](../plans/completed/phase-6-export-ui-polish.plan.md) / [report](../reports/phase-6-export-ui-polish-report.md) |
 | 7 | 公開準備 | スパム対策 + Cloudflare Analytics + READMEドキュメント | complete | - | 5, 6 | [phase-7-public-launch.plan.md](../plans/completed/phase-7-public-launch.plan.md) / [report](../reports/phase-7-public-launch-report.md) / [review](../reviews/phase-7-public-launch-review.md) |
 | 7.5 | 本番プロビジョニング + 観測 + E2E 拡充 | Cloudflare 本番リソース確定 + KPI/ダッシュボード設計 + クリティカルパス E2E | complete (Track A 実機オペ + smoke / 発見バグの回収は 7.6 へ持ち越し) | - | 7 | [plan](../plans/completed/phase-7.5-production-provisioning.plan.md) / [report](../reports/phase-7.5-production-provisioning-report.md) |
-| 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | in-progress | - | 7.5 | [plan](../plans/phase-7.6-manual-qa-bug-recovery.plan.md) |
-| 8 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 7.6 | - |
+| 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | complete | - | 7.5 | [plan](../plans/completed/phase-7.6-manual-qa-bug-recovery.plan.md) / [report](../reports/phase-7.6-manual-qa-bug-recovery-report.md) / [review](../reviews/phase-7.6-partial-implementation-review.md) |
+| 7.7 | UX 基盤改善 | 注釈リサイズ + 色変更 UI + ズーム/パン/fit-to-viewport + ショートカット完結 + チートシート Modal（4 サブプラン） | complete | - | 7.6 | [prd](./phase-7.7-ux-foundation.prd.md) / sub: [7.7-1](../plans/completed/phase-7.7-1-annotation-resize.plan.md) ・ [7.7-2](../plans/completed/phase-7.7-2-color-palette.plan.md) ・ [7.7-3](../plans/completed/phase-7.7-3-zoom-pan-fit.plan.md) ・ [7.7-4](../plans/completed/phase-7.7-4-shortcut-cheatsheet.plan.md) |
+| 7.8 | 次手予測 UX | Auto-next 次手予測（矢印→テキスト / 矩形→矢印）+ フォントサイズ UI + dogfood/Help 準備（4 サブプラン、Smart snap は 7.8-4 として stash 化し見送り） | complete | - | 7.7 | [prd](./phase-7.8-predictive-ux.prd.md) / sub: [7.8-1](../plans/completed/phase-7.8-1-auto-next-arrow-text.plan.md) ・ [7.8-2](../plans/completed/phase-7.8-2-auto-next-rect-arrow.plan.md) ・ [7.8-3](../plans/completed/phase-7.8-3-font-size-ui.plan.md) ・ [7.8-5](../plans/completed/phase-7.8-5-dogfood-help.plan.md) |
+| 8 | 統合レビュー（観察のみ） | リポジトリ全体の SSOT / モダン性 / React ベストプラクティス / Hono ベストプラクティス / その場しのぎ実装 / 型キャスト / 拡張性 / テスト網羅 / a11y / bundle・perf / エラー envelope 一貫性 / PRP 整理状況 / security の 13 観点横断レビュー。実コードの修正は Phase 8.x で別ブランチ・別 PR に切り出す | complete | - | 7.8 | [prd](./phase-8-integration-review.prd.md) / [plan](../plans/completed/phase-8-integration-review.plan.md) / [report](../reports/phase-8-integration-review-report.md) / 14 reviews in `reviews/phase-8-*-review.md` |
+| 9 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 8 | - |
 
 ### Phase Details
 
@@ -327,7 +330,38 @@
   - 観測 KPI の実値レビュー（Phase 8 で初回計測）
   - パフォーマンス最適化（CLS / LCP 等の数値改善は Phase 8 で観測してから判断）
 
-**Phase 8: dogfood & 計測（〜2週間）**
+**Phase 7.7: UX 基盤改善（4 サブプラン）**
+- Goal: Phase 7.6 dogfood で発覚した「業界標準の基本操作の欠落（リサイズ / 色 / ズーム / キーボード完結）」を埋め、Phase 7.8 予測 UX の土台を作る
+- Scope:
+  - 7.7-1: 注釈リサイズ（Konva `Transformer` + Arrow 端点ハンドル）
+  - 7.7-2: 色変更 UI（5-7 色固定パレット）+ Schema 統一（`stroke`/`fill` → `color`）
+  - 7.7-3: ズーム / パン / fit-to-viewport（Stage transform、Cmd+0/1、Space+drag、wheel/Shift+wheel）
+  - 7.7-4: ショートカット網羅 + `?` キーで起動するチートシート Modal
+- Success signal: マウスを 1 度も握らずに「画像投入 → 注釈 4 種配置 → 色変更 → リサイズ → PNG エクスポート」の golden path を完遂できる / 5000×5000 px 画像でも初期表示が viewport にフィット
+- 詳細: [phase-7.7-ux-foundation.prd.md](./phase-7.7-ux-foundation.prd.md)
+
+**Phase 7.8: 次手予測 UX（4 サブプラン、7.8-4 は見送り）**
+- Goal: 業界標準を満たした Phase 7.7 の上で「画像注釈に特化した『使いたくなる』」体験へ引き上げる、半歩先回りの予測 UX を導入
+- Scope:
+  - 7.8-1: 矢印 → テキスト Auto-next 次手予測（矢印終端から空テキスト即時作成 + IME 起動）
+  - 7.8-2: 矩形 → 矢印 Auto-next 次手予測（矩形右辺中央にヤジリ固定で矢印ツールへ自動切替）
+  - 7.8-3: フォントサイズ変更 UI（`[A-][18px][A+]` + `/` shortcut）
+  - 7.8-4: Smart snap — plan 作成済だが実装見送り、stash 化（複雑度に対して 7.8 のスコープ感「半歩先回り」を超えると判断）
+  - 7.8-5: HelpModal「次手予測」セクション追記 + dogfood 準備
+- Success signal: 「画像投入 → 矢印+テキスト 3 連発 → エクスポート」を 15 秒以内に完遂 / 次手予測が「邪魔」と感じる頻度 1 セッション 1 回未満
+- 詳細: [phase-7.8-predictive-ux.prd.md](./phase-7.8-predictive-ux.prd.md)
+
+**Phase 8: 統合レビュー（観察のみ）**
+- Goal: MVP がほぼ完成した時点で、肥大化したコードベースを一度俯瞰し、Phase 9 dogfood に進む前に「Claude Code 主体で書かれたコードが、人間の実装者にとっても改修しやすいか」を文書化する
+- Scope:
+  - 13 観点の横断レビュー: SSOT 遵守 / モダン性（2026 ベスト寄りのライブラリ選定・API 利用）/ React ベストプラクティス（hooks 規律・状態管理パターン・`useState` vs `useRef` の使い分け・React 19 idioms / `react-konva` 連携）/ Hono ベストプラクティス（`createRoute({ middleware })` 配線・`@hono/zod-openapi` 利用・`hc<AppType>` 型安全クライアント・Workers binding 利用・middleware composition 順序）/ その場しのぎ実装の有無（TODO/FIXME/`@ts-ignore` 残置・回避策の固定化）/ 型の健全性（`any`/`unknown`/`as` キャストの不必要な使用）/ 将来拡張性（annotation/collab/API 追加の容易性）/ テスト網羅（unit/integration/e2e、golden path カバレッジ）/ a11y（キーボード操作・ARIA・reduced-motion）/ bundle・perf（web のサイズ予算・Konva/Yjs の遅延ロード余地）/ ログ・エラー envelope の一貫性（`apps/api/src/lib/error.ts` 体系遵守）/ `.claude/PRPs/` 配下の整理状況（命名・cleanup・review 漏れ）/ security（CSP・入力検証・R2/Worker 周辺の権限境界）
+  - 観点ごとの review レポート（`.claude/PRPs/reviews/phase-8-{観点}.md`）+ 統合 report（`.claude/PRPs/reports/phase-8-integration-review-report.md`）の生成
+- Success signal: CRITICAL / HIGH / MEDIUM / LOW すべて 0 件まで観察文書化されている（= 修正対象 issue が一意に特定でき、Phase 8.x で着手できる状態）
+- 非スコープ:
+  - 実コードの修正 — Phase 8.x で別ブランチ・別 PR に切り出す（memory: 1 Phase = 1 ブランチ = 1 PR）
+  - dogfood 実走 — Phase 9 で扱う
+
+**Phase 9: dogfood & 計測（〜2週間）**
 - Goal: 仮説の一次検証
 - Scope: オーナー自身の業務利用、コア指標の集計、必要な小修正
 - Success signal: オーナーが「日常的に使える」と判断、月3回利用が達成
