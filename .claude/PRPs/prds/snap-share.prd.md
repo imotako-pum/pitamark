@@ -44,11 +44,17 @@
 
 ## Open Questions
 
-- [ ] パスワード保護の実装位置: ルーム作成時オプション or 全ルーム必須
-- [ ] ルームTTL: 24時間 / 7日 / オーナー指定の妥当値
-- [ ] PNG エクスポート時の元画像解像度保持の方針
-- [ ] スパム/悪用対策: Cloudflare Turnstile / レート制限 / SHA-256 ハッシュブラックリストの優先度
-- [ ] アナリティクス選定: Cloudflare Web Analytics（無料・cookieless）で十分か
+- [x] パスワード保護の実装位置: **ルーム作成時オプション** で確定（Phase 5 で実装済、Decisions Log 参照）
+- [x] ルームTTL: **デフォルト 24h / max 7d、フリーミアムで無制限** で確定（Phase 10 で仕様変更、Decisions Log 参照）
+- [ ] PNG エクスポート時の元画像解像度保持の方針 (dogfood/公開後の数字で判断)
+- [ ] スパム/悪用対策: Cloudflare Turnstile / レート制限 / SHA-256 ハッシュブラックリストの優先度 (公開後の実発生で判断)
+- [ ] アナリティクス選定: Cloudflare Web Analytics（無料・cookieless）で十分か (Phase 10.G 観察期間で判断)
+- [ ] 公開ドメイン候補 + アプリ名再考 (Phase 10.D で商標 / .com / .app / .jp 空き調査、[ADR-0003](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) 確定後)
+- [x] i18n 戦略の確定 → **軽量自作 dict + 日英 2 言語** ([ADR-0004 accepted](../../../docs/adr/ADR-0004-i18n-strategy.md))、Phase 10.E で実装
+- [x] Web vs デスクトップ方針 → **Phase 10 では Web 単独確定**、Mac spike は Phase 11+ 候補へ後回し ([ADR-0003 on hold](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md))
+- [x] 収益化スタンス C の撤退条件 → **半年で月 1000 円なし → B 修正検討**、Phase 11 起票時 (Phase 10.G 完了後) に判断
+- [ ] 収益化現実見立て: 観察データに基づく C 維持 / B 修正の最終判断 (Phase 11 起票時)
+- [ ] CHANGELOG 開始時の version 番号 (v0.1.0 / v0.9.0-mvp / v1.0.0、Phase 10.B で確定)
 
 ---
 
@@ -198,7 +204,9 @@
 | 7.7 | UX 基盤改善 | 注釈リサイズ + 色変更 UI + ズーム/パン/fit-to-viewport + ショートカット完結 + チートシート Modal（4 サブプラン） | complete | - | 7.6 | [prd](./phase-7.7-ux-foundation.prd.md) / sub: [7.7-1](../plans/completed/phase-7.7-1-annotation-resize.plan.md) ・ [7.7-2](../plans/completed/phase-7.7-2-color-palette.plan.md) ・ [7.7-3](../plans/completed/phase-7.7-3-zoom-pan-fit.plan.md) ・ [7.7-4](../plans/completed/phase-7.7-4-shortcut-cheatsheet.plan.md) |
 | 7.8 | 次手予測 UX | Auto-next 次手予測（矢印→テキスト / 矩形→矢印）+ フォントサイズ UI + dogfood/Help 準備（4 サブプラン、Smart snap は 7.8-4 として stash 化し見送り） | complete | - | 7.7 | [prd](./phase-7.8-predictive-ux.prd.md) / sub: [7.8-1](../plans/completed/phase-7.8-1-auto-next-arrow-text.plan.md) ・ [7.8-2](../plans/completed/phase-7.8-2-auto-next-rect-arrow.plan.md) ・ [7.8-3](../plans/completed/phase-7.8-3-font-size-ui.plan.md) ・ [7.8-5](../plans/completed/phase-7.8-5-dogfood-help.plan.md) |
 | 8 | 統合レビュー（観察のみ） | リポジトリ全体の SSOT / モダン性 / React ベストプラクティス / Hono ベストプラクティス / その場しのぎ実装 / 型キャスト / 拡張性 / テスト網羅 / a11y / bundle・perf / エラー envelope 一貫性 / PRP 整理状況 / security の 13 観点横断レビュー。実コードの修正は Phase 8.x で別ブランチ・別 PR に切り出す | complete | - | 7.8 | [prd](./phase-8-integration-review.prd.md) / [plan](../plans/completed/phase-8-integration-review.plan.md) / [report](../reports/phase-8-integration-review-report.md) / 14 reviews in `reviews/phase-8-*-review.md` |
-| 9 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 8 | - |
+| 9 | (廃止) dogfood & 計測 | **Phase 10 に内包**（process 軽量化方針、公開リリース + Analytics 観察に置換）。当初想定の「2 週間 dogfood + closed beta」は廃止 | superseded | - | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) |
+| 10 | 公開リリース + i18n + ブランディング (Web 単独) | 公開リリース最低限整備 (TOS/プライバシー/通報窓口) + i18n 軽量実装 (日英) + アプリ名/ドメイン取得 + TTL 仕様変更 + CHANGELOG 開始 (v0.9.0-mvp → v1.0.0) + 1 ヶ月 Analytics 観察。**Mac spike は Q9 で Phase 11+ 候補へ後回し** | pending | 10.B/D/E 並走可 | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) / [ADR-0003 (on hold)](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) / [ADR-0004 (accepted)](../../../docs/adr/ADR-0004-i18n-strategy.md) |
+| 11 | 次フェーズ確定 (収益化 / 品質 / Mac 再検討) | Phase 10.G 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、次の実装方向 (better-auth + 永続ルーム / Mac spike 再開 / SEO 深掘り 等) を決定 | pending | - | 10 | TBD (Phase 10.G 完了後に起票) |
 
 ### Phase Details
 
@@ -404,6 +412,17 @@
 | `apps/web/.env.production` の取り扱い（Phase 7.5） | **commit せず Pages build env のみで管理** | リポジトリにコミットして履歴で追跡 | site key / analytics token は public bundle に焼かれるので秘匿性は低いが、本番 URL を git 履歴に残す副作用を避ける。`.env.example` にエントリは残し、本番値は Pages settings に投入する |
 | E2E プロジェクト構成（Phase 7.5） | **chromium + mobile-chrome（Pixel 5 emulation）** | Firefox / WebKit を同時追加 | Phase 7.5 の主目的は本番プロビジョニングと観測設計。webServer multi-process 化と新 spec 4 件追加と同時に WebKit を入れると flake リスクが上がる。Firefox / WebKit は Phase 8 dogfood 後に判断 |
 | 観測手段（Phase 7.5） | **Cloudflare Web Analytics + `wrangler tail` のみ** | Sentry / Datadog / Workers Logpush | 月額 $0〜$30 制約と「最小限を最小限に」の方針。dogfood 規模での十分性を docs/observability.md で言語化、必要が顕在化したら Phase 8 follow-up で再評価 |
+| 収益化スタンス（Phase 10） | **C（本気の事業化）を当面維持** | A（趣味・OSS のみ）/ B（インフラ相殺だけ） | オーナー発言「目標ないと今後のやる気がね」。撤退条件は Phase 11 PRD で明文化（"半年で月千円なし → B 修正" 等の数字基準） |
+| ランニングコスト現実（Phase 10） | **月 $5 以下が実体**（PRD 当初 $30 想定の 17%） | $30 上限を維持し process を厚く積む | Cloudflare Workers/R2/Pages free tier 内、DO も dogfood 規模で $0、カスタムドメインのみ年 2-3k 円。コスト現実に process 軽量化を整合させる |
+| dogfood の取り扱い（Phase 10） | **「2 週間 dogfood + closed beta」は廃止**、公開リリース + Analytics 観察 1 ヶ月に置換 | 純 dogfood 維持 / closed beta 必須化 | コスト $5/月で重い process は釣り合わない、公開直行の方が判断材料早い。Phase 9 を superseded、Phase 10 に内包 |
+| TTL 仕様（Phase 10） | **デフォルト 24h / max 7d / フリーミアムで無制限** | 現行 hardcoded 7d 維持 / オーナー指定一律 | オーナー指示。フリーミアム伏線、`POST /rooms` body の `ttlMs` optional 化で実装、Phase 10.B でコード変更 |
+| CHANGELOG 運用開始（Phase 10） | **Keep a Changelog 形式 + semver タグ運用** | 開始しない / 別形式 (Conventional Changelog 自動生成等) | オーナー指示。手動運用で「人間が読む差分」を優先、Phase 0〜10 milestone を遡及記録 |
+| 通報窓口（Phase 10） | **当面 GitHub Issue label `report-abuse` or 個人メアド**、将来 Google Forms 等 | 即フォーム化 / 不要論 | 公開初期は spam リスク低、シンプル運用を優先。公開拡大時に再判断 |
+| 形態方針（Phase 10、初版） | ~~Phase 10.C で Tauri Mac spike 1-2 週間 → ADR-0003 で確定~~ → **Q9 で Web 単独確定、Mac spike は Phase 11+ 候補へ後回し** ([ADR-0003 on hold](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md)) | spike 必須 / 即 Mac 主軸 / 永久 Web のみ | オーナー判断 (2026-05-05): 「Mac はやっぱ後回し、一旦全部 Web で、製品化は確実に Web が先」。Phase 10 集中度確保 + 公開後の数字で再判断 |
+| i18n 戦略（Phase 10） | **Phase 10.E で軽量自作 dict + 日英 2 言語を実装** ([ADR-0004 accepted](../../../docs/adr/ADR-0004-i18n-strategy.md))、3 言語以上で i18next 移行 | 即 i18next / 即 lingui / やらない / Phase 11 送り | snap-share 規模 (推定 100-200 キー) で OSS 依存追加の overkill 回避、段階拡張可能。Q9 で Web 単独確定し独立実行可になった |
+| 撤退条件 (Phase 10) | **半年で月 1000 円なし → B (相殺) 修正検討**、Phase 11 起票時 (Phase 10.G 完了後) に判断 | 1 年で月 5 千円 / Phase 11 で総合判断のみ / 設定なし | オーナー指示 (Q8)。タイトだが基準として明確、無限延長を回避 |
+| アプリ名再考の手順 (Phase 10.D) | **Phase 10.D 実行時にブレスト**（事前準備しない、その場感覚優先） | 事前 Q&A / オーナー宿題 / AI 候補 generation | オーナー判断 (Q4)、判断時の鮮度 > 事前準備の効率 |
+| dogfood 残置度 (Phase 10) | **「気が向いたら」残す + 詰まった瞬間メモ継続**、強制 process 廃止 | 完全 0 / 軽量 1 週間版 / 強制 2 週間維持 | オーナー判断 (Q3)。自然利用は restrict しない |
 
 ---
 
