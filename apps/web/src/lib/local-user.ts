@@ -1,8 +1,12 @@
 import { AWARENESS_USER_PALETTE } from '../components/canvas/colors';
+import { translateSync } from '../i18n';
 import { generateId } from './id';
 
 const STORAGE_KEY = 'snap-share/user-v1';
-const DEFAULT_NAME_PREFIX = 'ゲスト-';
+// Phase 10.E: localized prefix at first-creation time. The display name is
+// persisted in localStorage so lang changes after the fact don't rename
+// existing users — that's intentional, names are stable identifiers.
+const getDefaultNamePrefix = (): string => translateSync('localUser.namePrefix');
 // Defensive fallback if AWARENESS_USER_PALETTE is ever emptied. Matches
 // `tokens.css --color-presence-1` so the visual identity is preserved.
 const FALLBACK_PRESENCE_COLOR = '#5b6dff';
@@ -48,7 +52,7 @@ export const getOrCreateLocalUser = (storage: Storage = window.localStorage): Lo
   const userId = generateId();
   const user: LocalUser = {
     userId,
-    displayName: `${DEFAULT_NAME_PREFIX}${userId.slice(0, 4)}`,
+    displayName: `${getDefaultNamePrefix()}${userId.slice(0, 4)}`,
     color: colorForUser(userId),
   };
   storage.setItem(STORAGE_KEY, JSON.stringify(user));

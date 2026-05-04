@@ -1,5 +1,6 @@
 import type { TextAnnotation } from '@snap-share/shared';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from '../../i18n';
 import { OUTLINE_ACCENT } from './colors';
 
 type TextEditorOverlayProps = Readonly<{
@@ -21,6 +22,7 @@ export const TextEditorOverlay = ({
   onCommit,
   onCancel,
 }: TextEditorOverlayProps) => {
+  const t = useTranslation();
   const ref = useRef<HTMLTextAreaElement>(null);
   const armedRef = useRef(false);
 
@@ -41,7 +43,7 @@ export const TextEditorOverlay = ({
     <textarea
       ref={ref}
       defaultValue={annotation.text}
-      aria-label="注釈テキストを編集"
+      aria-label={t('canvas.textEditor.aria')}
       style={{
         position: 'absolute',
         left: stageContainerRect.left + annotation.x * transform.scale + transform.x - PADDING,

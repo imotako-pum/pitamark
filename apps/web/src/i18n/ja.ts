@@ -72,6 +72,8 @@ export const ja = {
   'connection.disconnected': '再接続中…',
 
   // Room password gate.
+  'gate.heading': 'このルームはパスワードで保護されています',
+  'gate.password.label': 'パスワード',
   'gate.password.placeholder': 'パスワード',
   'gate.password.aria': 'ルームのパスワード',
   'gate.button.submit': '入室',
@@ -80,6 +82,9 @@ export const ja = {
   'gate.error.rateLimited': 'しばらく経ってからお試しください（試行回数が多すぎます）',
   'gate.error.network': 'ネットワークエラーが発生しました',
   'gate.error.unexpected': '入室処理に失敗しました',
+  // LocalEditor (画像未読込画面) のパスワード保護パネル。Phase 5+ で追加。
+  'localEditor.protectPassword.label': 'パスワードで保護する（任意）',
+  'localEditor.protectPassword.required': 'パスワードを入力してください',
   'gate.toast.passwordRequired': 'パスワードを入力してください',
   'gate.toast.authenticating': '認証中です。少し待ってから再度お試しください',
   'gate.toast.authFailed': '認証に失敗しました。再度お試しください',

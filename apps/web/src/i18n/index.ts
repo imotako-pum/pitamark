@@ -76,6 +76,21 @@ const subscribe = (cb: () => void): (() => void) => {
 const getSnapshot = (): Lang => currentLang;
 const getServerSnapshot = (): Lang => 'ja';
 
+// Phase 10.E: synchronous accessor for non-React contexts (e.g. one-time
+// module-level initializers like `local-user.ts` that run before any hook).
+// Components inside the React tree should prefer `useCurrentLang()` so they
+// re-render on lang change.
+export const getLangSync = (): Lang => currentLang;
+
+// Phase 10.E: synchronous translator for non-React contexts. Intentionally
+// lighter than `useTranslation()` — no `<html lang>` sync, no subscription.
+// Use only at module-load time or in detached async callbacks where holding
+// onto a React-bound `t` would couple lifetimes.
+export const translateSync = (key: I18nKey): string => {
+  const dict = dicts[currentLang];
+  return dict[key] ?? (key as string);
+};
+
 export const useCurrentLang = (): Lang =>
   useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 

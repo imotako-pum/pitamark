@@ -1,6 +1,7 @@
 import type Konva from 'konva';
-import { type RefObject, useCallback } from 'react';
+import { type RefObject, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { useTranslation } from '../i18n';
 import { buildExportFilename, stageToBlob, triggerDownload } from '../lib/exportPng';
 import { logger } from '../lib/logger';
 
@@ -34,6 +35,12 @@ export const useExportPng = ({
   pixelRatio = 2,
   imageSize = null,
 }: UseExportPngParams): (() => Promise<void>) => {
+  const t = useTranslation();
+  // Translation function via ref so the export callback's deps don't include
+  // `t` (which changes identity on every lang switch). Toast messages always
+  // pull the **current** language at the time the toast fires.
+  const tRef = useRef(t);
+  tRef.current = t;
   return useCallback(async () => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -64,12 +71,12 @@ export const useExportPng = ({
         : undefined;
       const blob = await stageToBlob(stage, pixelRatio, bounds);
       triggerDownload(blob, buildExportFilename(new Date(), roomId));
-      toast.success('PNG を保存しました');
+      toast.success(tRef.current('toast.export.success'));
     } catch (e: unknown) {
       logger.warn('export failed', {
         error: e instanceof Error ? e.message : String(e),
       });
-      toast.error('PNG の保存に失敗しました');
+      toast.error(tRef.current('toast.export.error'));
     } finally {
       if (mutated) {
         stage.scaleX(savedScaleX);

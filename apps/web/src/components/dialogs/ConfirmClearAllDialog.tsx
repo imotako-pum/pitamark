@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTranslation } from '../../i18n';
 
 type Props = Readonly<{
   open: boolean;
@@ -15,21 +16,22 @@ type Props = Readonly<{
   onConfirm: () => void;
 }>;
 
-export const ConfirmClearAllDialog = ({ open, onOpenChange, onConfirm }: Props) => (
-  <AlertDialog open={open} onOpenChange={onOpenChange}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>ルーム内の注釈をすべて削除しますか？</AlertDialogTitle>
-        <AlertDialogDescription>
-          この操作は他の参加者にも反映されます。元に戻すことはできません。
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>キャンセル</AlertDialogCancel>
-        <AlertDialogAction variant="destructive" onClick={onConfirm}>
-          削除する
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
+export const ConfirmClearAllDialog = ({ open, onOpenChange, onConfirm }: Props) => {
+  const t = useTranslation();
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('dialog.clearAll.title')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('dialog.clearAll.description')}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('dialog.clearAll.cancel')}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            {t('dialog.clearAll.confirm')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};

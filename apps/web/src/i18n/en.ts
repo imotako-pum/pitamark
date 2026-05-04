@@ -71,6 +71,8 @@ export const en: Record<I18nKey, string> = {
   'connection.disconnected': 'Reconnecting…',
 
   // Room password gate.
+  'gate.heading': 'This room is password-protected',
+  'gate.password.label': 'Password',
   'gate.password.placeholder': 'Password',
   'gate.password.aria': 'Room password',
   'gate.button.submit': 'Enter',
@@ -79,6 +81,9 @@ export const en: Record<I18nKey, string> = {
   'gate.error.rateLimited': 'Too many attempts. Please wait a moment and try again.',
   'gate.error.network': 'A network error occurred',
   'gate.error.unexpected': 'Failed to enter the room',
+  // LocalEditor (no-image screen) password protection panel.
+  'localEditor.protectPassword.label': 'Protect with password (optional)',
+  'localEditor.protectPassword.required': 'Please enter a password',
   'gate.toast.passwordRequired': 'Please enter a password',
   'gate.toast.authenticating': 'Authenticating — please wait a moment before retrying',
   'gate.toast.authFailed': 'Authentication failed. Please try again.',

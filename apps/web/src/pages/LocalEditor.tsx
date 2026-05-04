@@ -8,6 +8,7 @@ import { TurnstileWidget } from '../components/turnstile/TurnstileWidget';
 import { useAnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useImageSource } from '../hooks/useImageSource';
 import { useTurnstileToken } from '../hooks/useTurnstileToken';
+import { useTranslation } from '../i18n';
 import { setRoomIdInUrl } from '../lib/url-room';
 import { EditorShell } from './EditorShell';
 
@@ -27,6 +28,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
  * the parent App then swaps in `RoomEditor`.
  */
 export const LocalEditor = ({ onRoomIdChange }: Props) => {
+  const t = useTranslation();
   const handleRoomCreated = useCallback(
     (roomId: string) => {
       setRoomIdInUrl(roomId);
@@ -35,9 +37,13 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     [onRoomIdChange],
   );
 
-  const { source, error, loadFromFile, clear } = useImageSource({
+  const { source, errorKey, loadFromFile, clear } = useImageSource({
     onRoomCreated: handleRoomCreated,
   });
+  // Translate at render time so lang switches mid-error update the message
+  // shown in <DropZone>. `errorKey` is the source of truth; the translation
+  // is derived state.
+  const error = errorKey ? t(errorKey) : null;
   const store = useAnnotationsStore();
   const turnstile = useTurnstileToken(TURNSTILE_SITE_KEY);
   const [protect, setProtect] = useState(false);
@@ -67,15 +73,15 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
   const handleLoad = useCallback(
     (file: File) => {
       if (blockedByEmptyPassword) {
-        toast.error('パスワードを入力してください');
+        toast.error(t('gate.toast.passwordRequired'));
         return;
       }
       if (turnstile.state.status === 'pending') {
-        toast.error('認証中です。少し待ってから再度お試しください');
+        toast.error(t('gate.toast.authenticating'));
         return;
       }
       if (turnstile.state.status === 'error') {
-        toast.error('認証に失敗しました。再度お試しください');
+        toast.error(t('gate.toast.authFailed'));
         return;
       }
       const pw = protect && password.length > 0 ? password : undefined;
@@ -84,7 +90,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
       // attempt waits for a fresh one. `disabled` resets back to `disabled`.
       turnstile.reset();
     },
-    [blockedByEmptyPassword, protect, password, loadFromFile, turnstile],
+    [blockedByEmptyPassword, protect, password, loadFromFile, turnstile, t],
   );
 
   return (
@@ -108,25 +114,25 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
               />
               <Lock aria-hidden="true" className="h-4 w-4 text-(--color-accent)" />
               <Label htmlFor={checkboxId} className="cursor-pointer">
-                パスワードで保護する（任意）
+                {t('localEditor.protectPassword.label')}
               </Label>
             </div>
             {protect && (
               <Input
                 id={passwordId}
                 type="password"
-                placeholder="パスワード"
+                placeholder={t('gate.password.placeholder')}
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                aria-label="ルームのパスワード"
+                aria-label={t('gate.password.aria')}
                 aria-invalid={blockedByEmptyPassword || undefined}
                 aria-describedby={blockedByEmptyPassword ? errorId : undefined}
               />
             )}
             {blockedByEmptyPassword && (
               <p id={errorId} className="text-xs text-destructive">
-                パスワードを入力してください
+                {t('localEditor.protectPassword.required')}
               </p>
             )}
           </div>
