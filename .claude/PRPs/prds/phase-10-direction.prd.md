@@ -116,17 +116,17 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 
 ## Open Questions
 
-> 本 PRD のメイン論点。Plan 着手 or 各 ADR 確定の前に答えを出す必要がある。
+> 本 PRD のメイン論点。2026-05-05 conversation で全 9 件 decide 済（Decisions Log 参照）。
 
-- [ ] **Mac 版 spike を Phase 10 のスコープに含めるか?**（スパイク自体の go/no-go）
-- [ ] **公開リリースを spike より先に踏むか同時か?**（直列 / 並列）
-- [ ] **dogfood を本当に 0 にするか / "気が向いたら" 残すか?**（process 軽量化の徹底度）
-- [ ] **アプリ名再考 — 候補リストアップとドメイン空き調査の手順**（オーナー直感 + 商標 + SEO）
-- [ ] **i18n を Phase 10 でやるか Phase 11 送りか?**（Mac spike と並走できるかリソース判断）
-- [ ] **カスタムドメイン取得タイミング**（公開リリースと同時 / アプリ名確定後 / Phase 11 で）
-- [ ] **CHANGELOG 開始時の version 番号**（v0.1.0 / v0.9.0-mvp / v1.0.0）
-- [ ] **収益化スタンス C は **どこまで** 維持するか**（"半年やって月千円超えなければ B 修正" のような明示撤退条件）
-- [ ] **Mac spike が 3 形態のどれを支持しても進める覚悟があるか**（spike 結果で「やめる」判断もあり得る）
+- [x] **Mac 版 spike を Phase 10 のスコープに含めるか?** → **NO（Phase 11+ 候補へ後回し、一旦全部 Web で進行）** ★方針大転換
+- [x] **公開リリースを spike より先に踏むか同時か?** → **意味消失**（Mac spike 削除のため、Web 単独で公開リリース直行）
+- [x] **dogfood を本当に 0 にするか / "気が向いたら" 残すか?** → **"気が向いたら" 残す**（強制 dogfood は廃止、詰まった瞬間メモのみ継続）
+- [ ] **アプリ名再考 — 候補リストアップとドメイン空き調査の手順** → **Phase 10.D 実行時にブレスト**（事前に詰めない、その場で）
+- [x] **i18n を Phase 10 でやるか Phase 11 送りか?** → **Phase 10.E で実装確定**（Mac spike 削除で待ち条件解消、Web 単独で独立 track）
+- [x] **カスタムドメイン取得タイミング** → **アプリ名確定後 (Phase 10.D 完了後)**、公開リリース (Phase 10.F) は pages.dev でも可
+- [x] **CHANGELOG 開始時の version 番号** → **v0.9.0-mvp 経由 → Phase 10 完了で v1.0.0**
+- [x] **収益化スタンス C は どこまで 維持するか** → **半年で月 1000 円なし → B 修正**（タイトだが基準として明確、Phase 11 起票時に判断）
+- [x] **Mac spike が 3 形態のどれを支持しても進める覚悟があるか** → **意味消失**（Mac spike 自体を後回し）
 
 ---
 
@@ -155,60 +155,60 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 
 ## Solution Detail
 
-### Track 構成（並走可）
+### Track 構成（並走可、Q9 反映後）
 
 | Track | Goal | 期間 | 並走可 |
 |---|---|---|---|
-| **A. Mac spike** | Tauri で「キャプチャ → 注釈 → 共有 URL」golden path のみ動作 | 1-2 週間 | with B, C |
-| **B. 公開リリース最低限整備** | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 / CHANGELOG | 1 週間 | with A, C |
-| **C. i18n 軽量実装** | 自作 dict + 日英 2 言語 | 1 週間 | with A, B (要 ADR-0004 確定後) |
-| **D. アプリ名 + ドメイン** | 候補出し + 商標調査 + 取得 | 数日（並走） | with all |
-| **E. 観察期間** | 公開後 1 ヶ月 Analytics 蓄積、オーナーの「詰まった瞬間メモ」 | 1 ヶ月 | A 完了後の判断材料 |
+| ~~A. Mac spike~~ | ~~Tauri で「キャプチャ → 注釈 → 共有 URL」~~ → **Phase 11+ 候補へ後回し** | — | — |
+| **B. 公開リリース最低限整備** | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 / CHANGELOG | 1 週間 | with C, D |
+| **C. i18n 軽量実装** | 自作 dict + 日英 2 言語 | 1 週間 | with B, D |
+| **D. アプリ名 + ドメイン** | ブレスト + 商標調査 + 取得 | 数日（並走） | with B, C |
+| **E. 観察期間** | 公開後 1 ヶ月 Analytics 蓄積、オーナーの「詰まった瞬間メモ」 | 1 ヶ月 | F 完了後の判断材料 |
+
+**Q9 反映の影響**: A 削除で Phase 10 全体期間が **1-2 週間短縮**、3 track (B/C/D) すべて並走可で集中度高まる。
 
 ### MoSCoW（Phase 10 全体）
 
 | Priority | Capability | Rationale |
 |----------|------------|-----------|
-| Must | ADR-0003（Web vs Desktop）の Status: Accepted 化 | 本 PRD のゴール |
-| Must | ADR-0004（i18n 戦略）の Status: Accepted 化 | 本 PRD のゴール |
+| Must | ADR-0003（Web vs Desktop）の Status: on hold 化 | Q9 で Phase 10 から削除、Phase 11+ 候補に格下げを明記 |
+| Must | ADR-0004（i18n 戦略）の Status: Accepted 化 | Phase 10.E で軽量自作 dict 実装 |
 | Must | 公開リリース最低限整備（TOS / プライバシー / 通報窓口） | 法的・倫理的に公開する瞬間から要 |
 | Must | TTL 仕様変更（hardcoded 7d → デフォルト 24h / max 7d） | オーナー指示 + フリーミアム伏線 |
-| Must | CHANGELOG.md 開始 | オーナー指示 |
+| Must | CHANGELOG.md 開始（v0.9.0-mvp 起点 → Phase 10 完了で v1.0.0） | オーナー指示 |
 | Must | snap-share.prd.md の Decisions Log + Open Questions 更新 | 確定分の織込み |
-| Should | Mac spike 完了 | 形態判断の核心、ただし spike 不要判断もあり得る |
-| Should | i18n 軽量実装 | C スタンス維持時のみ価値、Phase 11 送り可 |
-| Should | カスタムドメイン取得 | 公開拡大時に必要、dogfood 中は pages.dev で十分 |
-| Could | 公開後 Analytics 1 ヶ月観察 | Phase 11 起票判断の根拠、Phase 10 完了条件には含めず |
+| Must | **i18n 軽量実装（10.E）** | Q9 で Web 単独確定、TAM 拡大に直結 |
+| Must | アプリ名再考 + カスタムドメイン取得 | 公開拡大の前提、Phase 10.D |
+| Should | 公開後 Analytics 1 ヶ月観察 | Phase 11 起票判断の根拠、Phase 10 完了条件には含めず |
+| Won't | **Mac spike (Tauri)** | Q9 で Phase 11+ 候補へ後回し、一旦全部 Web で進行 |
 | Won't | better-auth / 決済 / フリーミアム機能実装 | Phase 11 以降 |
 | Won't | dogfood 2 週間 + closed beta | process 軽量化方針 |
 | Won't | i18n 3 言語以上 / ライブラリ化 | Phase 11 以降 |
-| Won't | App Store 配布 | self-distribution まで |
+| Won't | App Store 配布 | (Phase 11+ Mac 検討時に判断) |
 
-### MVP Scope（Phase 10 として "踏み終わった" と言える最小単位）
+### MVP Scope（Phase 10 として "踏み終わった" と言える最小単位、Q9 反映後）
 
-1. ADR-0003 と ADR-0004 が **Status: Accepted** で記録されている
-2. 公開リリースされている（pages.dev でも可）
+1. ADR-0003 が **Status: on hold** で Phase 11+ 候補に明記されている、ADR-0004 が **Status: Accepted** で記録されている
+2. 公開リリースされている（カスタムドメイン取得済 or pages.dev でも可）
 3. TOS / プライバシー / 通報窓口が公開ページから到達可能
-4. TTL 仕様変更がコードに反映されている
-5. CHANGELOG.md が存在し、Phase 0〜10 までの milestone が記録されている
-6. snap-share.prd.md の Open Questions / Decisions Log / Phase ladder が現実と一致している
+4. TTL 仕様変更がコードに反映されている (default 24h / max 7d)
+5. CHANGELOG.md が存在し、Phase 0〜10 までの milestone が記録されている (v0.9.0-mvp → v1.0.0)
+6. **i18n 軽量実装が動作し、日本語/英語で UI 切替できる**
+7. **アプリ名 + カスタムドメインが取得・適用済（または pages.dev で公開し name は次フェーズ）**
+8. snap-share.prd.md の Open Questions / Decisions Log / Phase ladder が現実と一致している
 
-### Decision Flow（クリティカルパス）
+### Decision Flow（クリティカルパス、Q9 反映後）
 
 ```
 [本 PRD 確定（=Status: DRAFT → Validated）]
    ↓
-[ADR-0003 / ADR-0004 を Proposed で起票]
+[ADR-0003 を on hold（Phase 11+ 候補）で記録 / ADR-0004 を Accepted で起票]
    ↓
-[Track A (Mac spike) と Track B (公開準備) を並走スタート]
-   ↓ A 完了
-[Mac spike 体感 → ADR-0003 を Accepted へ]
-   ↓ B 完了
-[公開リリース → Track E (Analytics 観察 1 ヶ月) スタート]
-   ↓ C 着手判断
-[ADR-0004 を Accepted へ → Track C (i18n) 実装]
+[Track B (公開準備) + Track C (i18n) + Track D (アプリ名/ドメイン) を並走スタート]
+   ↓ B/C/D 完了
+[公開リリース (10.F) → Track E (Analytics 観察 1 ヶ月) スタート]
    ↓ E 完了
-[Phase 11 PRD 起票（数字 + 体感根拠付き）]
+[Phase 11 PRD 起票（数字 + 体感根拠付き、Mac spike を再検討候補として明示）]
 ```
 
 ---
@@ -250,15 +250,15 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
-| 10.0 | 本 PRD 確定 + ADR-0003/0004 起票 | 議論結果の文書化、Open Questions 9 件の最終確認 | pending | - | Phase 8.x | (本 PRD) |
-| 10.A | snap-share.prd.md 更新 | 確定分（TTL / CHANGELOG / 通報窓口）を Decisions Log + Open Questions に織込み | pending | with 10.0 | 10.0 確定後 | TBD |
-| 10.B | 公開リリース最低限整備 | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 / CHANGELOG | pending | with 10.C | 10.A | TBD |
-| 10.C | Mac spike (Tauri) | キャプチャ → 注釈 → 共有 URL の golden path | pending | with 10.B | 10.A | TBD |
-| 10.D | アプリ名 + ドメイン取得 | 候補出し + 商標調査 + 取得 + Turnstile site 切替 | pending | with 10.B/C | 10.A | TBD |
-| 10.E | i18n 軽量実装 | 自作 dict + 日英 2 言語（ADR-0004 Accepted 後） | pending | - | 10.C 完了 + ADR-0004 | TBD |
-| 10.F | 公開リリース実走 | pages.dev or カスタムドメインで公開、Analytics 観察開始 | pending | - | 10.B + 10.D | TBD |
+| 10.0 | 本 PRD 確定 + ADR-0003/0004 起票 | 議論結果の文書化、Open Questions 9 件 decide 完了 | complete | - | Phase 8.x | (本 PRD) |
+| 10.A | snap-share.prd.md 更新 | 確定分（TTL / CHANGELOG / 通報窓口 / Q9 Mac spike 後回し / 撤退条件）を Decisions Log + Open Questions に織込み | complete | with 10.0 | 10.0 確定後 | (commit b8978a0) |
+| 10.B | 公開リリース最低限整備 | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 / CHANGELOG | pending | with 10.C/10.D | 10.A | TBD |
+| ~~10.C~~ | ~~Mac spike (Tauri)~~ | **Q9 で削除、Phase 11+ 候補へ後回し** | removed | — | — | [ADR-0003](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) (on hold) |
+| 10.D | アプリ名 + ドメイン取得 | ブレスト + 商標調査 + 取得 + Turnstile site 切替 | pending | with 10.B/E | 10.A | TBD |
+| 10.E | i18n 軽量実装 | 自作 dict + 日英 2 言語、Q9 で待ち条件解消し独立実行可 | pending | with 10.B/D | 10.A | TBD |
+| 10.F | 公開リリース実走 | pages.dev or カスタムドメインで公開、Analytics 観察開始 | pending | - | 10.B + 10.D + 10.E | TBD |
 | 10.G | 観察期間（1 ヶ月） | Analytics 蓄積 + オーナーの「詰まった瞬間メモ」 | pending | - | 10.F | (ad-hoc) |
-| 11.0 | Phase 11 PRD 起票 | 観察結果 + Mac spike 結論で C スタンス維持 / B 修正を確定、次の実装方向を確定 | pending | - | 10.G | TBD |
+| 11.0 | Phase 11 PRD 起票 | 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、Mac spike 再検討含む実装方向確定 | pending | - | 10.G | TBD |
 
 ### Phase Details
 
@@ -290,17 +290,12 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
   - CHANGELOG.md 新設（Keep a Changelog 形式、Phase 0〜10 の milestone 遡及記録）
 - Success signal: 上記すべて完了 + `pnpm build` 緑 + 本番 URL（pages.dev でも可）で踏める
 
-**Phase 10.C: Mac spike (Tauri)**
-- Goal: 「キャプチャ → 注釈 → 共有 URL」golden path のみ動作させ、形態判断材料を得る
-- Scope:
-  - Tauri 2.0 プロジェクト初期化（`apps/desktop/` 新設）
-  - 既存 `apps/web` を webview に統合
-  - グローバルホットキー（Cmd+Shift+4 相当）
-  - ScreenCaptureKit 連携（Rust bridge）
-  - 注釈 → クリップボード PNG 戻し
-  - 「URL 共有」ボタン → 既存 `apps/api` に POST
-  - 1 週目で go/no-go gate（70% 流用が嘘でないか）
-- Success signal: macOS 上で screenshot → 注釈 → 共有 URL 取得 → クリップボード PNG が動く / ADR-0003 を Accepted に書き換えできる材料が揃う
+**~~Phase 10.C: Mac spike (Tauri)~~ — Q9 で削除、Phase 11+ 候補へ後回し**
+- 元 Goal: 「キャプチャ → 注釈 → 共有 URL」golden path のみ動作させ、形態判断材料を得る
+- Q9 反映理由（オーナー発言 2026-05-05）: 「Mac はやっぱ後回しだな。一旦全部 Web で。」
+- 後回し方針: ADR-0003 を Status: on hold で記録、Phase 11 起票時 (Phase 10.G 完了後) に再検討候補として挙げる
+- Phase 10 期間短縮効果: 1-2 週間
+- 既存 spike 設計 (Tauri 2.0 + 70% 流用 + Go/No-Go Gate) は ADR-0003 に保存済み、Phase 11+ で再開時に流用可能
 
 **Phase 10.D: アプリ名 + ドメイン取得**
 - Goal: 公開拡大に向けた最低限のブランディング基盤
@@ -346,10 +341,11 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
   - 「B スタンス修正」→ Phase 11 = SEO + 品質深掘り、収益化フェーズは無期限延期
 - Success signal: Phase 11 PRD が `prp-prd` で起票される
 
-### Parallelism Notes
+### Parallelism Notes（Q9 反映後）
 
-- **10.B / 10.C / 10.D は並走可**: 異なる workspace（web / desktop / config / DNS）に touch するため独立
-- **10.E は 10.C と直列推奨**: Mac spike 中に i18n を入れると Tauri webview の文字列同期が二重作業
+- **10.B / 10.D / 10.E は完全並走可**: 異なる surface（公開 docs / DNS / i18n dict）に touch するため独立
+- **10.E が独立実行可になった**: Q9 で Mac spike 削除、Tauri webview 文字列同期問題が解消
+- **10.F は逐次**: 10.B + 10.D + 10.E 全完了が前提
 - **10.G は逐次**: 10.F の公開後でないと数字が取れない
 
 ---
@@ -367,8 +363,12 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 | CHANGELOG | **開始する**（Keep a Changelog 形式） | 開始しない / 別形式 | オーナー指示 |
 | dogfood の取扱 | **2 週間 dogfood + closed beta は廃止**、公開リリース + Analytics 観察に置換 | 純 dogfood 維持 / closed beta 必須 | コスト $5/月で重い process は釣り合わない、公開直行の方が早い |
 | Phase 9 の扱い | **「公開リリース + Analytics 観察」として Phase 10 内に内包**、独立 Phase 9 は廃止 | 独立 Phase 9 維持 | process 軽量化方針 |
-| 形態判断方法 | **Mac spike 1-2 週間 で 3 形態（Web 単独 / Mac 単独 / ハイブリッド）から選択** | Web 単独で確定 / 即 Mac 主軸 | spike 体感が最も信頼できる判断材料、1-2 週で踏める |
-| i18n 戦略 | **当面 ADR-0004 Proposed、Phase 10.E で実装方針確定** | 即 i18next / 即不要 | C スタンス維持のため必要だが、Mac spike 結果次第で優先度変動 |
+| 形態判断方法 (初版) | ~~Mac spike 1-2 週間 で 3 形態から選択~~ → **Q9 で Web 単独確定、Mac spike Phase 11+ 後回し** | Web 単独で確定 / 即 Mac 主軸 / spike 必須 | オーナー判断 (2026-05-05): 「Mac はやっぱ後回し」「一旦全部 Web で」「製品化は確実に Web が先」 |
+| i18n 戦略 | **Phase 10.E で軽量自作 dict + 日英 2 言語を実装** (ADR-0004 Accepted へ) | 即 i18next / 即不要 / Phase 11 送り | Q9 で Web 単独確定し独立実行可、C スタンス維持の TAM 拡大に直結 |
+| 撤退条件 (Q8) | **半年で月 1000 円なし → B 修正検討** | 1 年で月 5 千円なし / Phase 11 起票時に総合判断 / 設定なし | オーナー指示。タイトだが基準として明確、Phase 11 起票時 (Phase 10.G 完了後) に判断 |
+| アプリ名再考の手順 (Q4) | **Phase 10.D 実行時にブレスト** | 事前に詰める / オーナー宿題 / 候補 generation 自動 | その場感覚で決めたい、事前準備の効率より判断時の鮮度優先 |
+| dogfood 残置度 (Q3) | **「気が向いたら」残す + 詰まった瞬間メモ継続** | 完全 0 / 軽量 1 週間版 / 強制 2 週間維持 | 強制 process は廃止、自然利用は restrict しない |
+| version 番号 (Q7) | **v0.9.0-mvp 起点 → Phase 10 完了で v1.0.0** | v0.1.0 / v1.0.0 直接 / なし | Phase 0-8 で MVP 完成 + Phase 10 公開 = v1.0.0 が自然な区切り |
 
 ---
 
