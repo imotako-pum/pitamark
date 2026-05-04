@@ -51,17 +51,29 @@ export const TurnstileWidget = ({ siteKey, onSuccess, onError }: TurnstileWidget
         attempts += 1;
         if (attempts > 50) {
           // ~5s of polling at 100ms each — give up rather than hang forever.
+          container.dataset.turnstileStatus = 'error';
           onError?.();
           return;
         }
         pollTimer = setTimeout(tryRender, 100);
         return;
       }
+      // `data-turnstile-status` is the only test-visible signal that the
+      // verification callback has fired — useful for E2E that needs to drop
+      // a file *after* the upload gate becomes unblocked. Production code
+      // never reads it.
+      container.dataset.turnstileStatus = 'pending';
       widgetIdRef.current = ts.render(container, {
         sitekey: siteKey,
         size: 'invisible',
-        callback: onSuccess,
-        'error-callback': onError,
+        callback: (token) => {
+          container.dataset.turnstileStatus = 'ready';
+          onSuccess(token);
+        },
+        'error-callback': () => {
+          container.dataset.turnstileStatus = 'error';
+          onError?.();
+        },
       });
     };
 
