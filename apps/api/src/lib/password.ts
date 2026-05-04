@@ -29,8 +29,12 @@ export const derivePbkdf2 = async (
     false,
     ['deriveBits'],
   );
+  // Phase 8.x modernity bump #2 H1: TS 6 narrows `BufferSource` so generic
+  // `Uint8Array<ArrayBufferLike>` no longer satisfies it directly. The
+  // simplest patch is a `BufferSource` cast at the call seam — the runtime
+  // bytes are unchanged.
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
+    { name: 'PBKDF2', hash: 'SHA-256', salt: salt as BufferSource, iterations },
     keyMaterial,
     HASH_BITS,
   );
