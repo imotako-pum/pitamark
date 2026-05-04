@@ -55,6 +55,14 @@ export type CreateRoomResult =
  * Empty/whitespace `password` is normalized to undefined so the resulting
  * room stays unprotected. `turnstileToken` is sent verbatim — the API
  * decides whether to verify it or short-circuit via `BYPASS_TURNSTILE`.
+ *
+ * Phase 8.x Hono review #4 M2: this is the one fetch deliberately NOT
+ * routed through `hc<AppType>`. The hc typed form client requires
+ * pre-shaped `multipart/form-data` objects whose field-by-field types
+ * match the server `uploadFormSchema`, but `image: z.instanceof(File)` is
+ * not representable in hc's runtime form shape. Other endpoints
+ * (`fetchRoom` / `authenticateRoom` / `requestWsTicket` / `fetchProtectedImage`)
+ * use hc — only this one keeps raw fetch.
  */
 export const createRoom = async (
   file: File,
@@ -103,11 +111,12 @@ export const createRoom = async (
 
 export const fetchRoom = async (id: string): Promise<RoomPublic | null> => {
   try {
-    const res = await fetch(`${baseUrl}/rooms/${encodeURIComponent(id)}`);
+    // Phase 8.x Hono review #4 M2: routed via the typed `hc<AppType>` client
+    // so a path/shape drift between api workspace and web is caught at
+    // typecheck time. Runtime shape is still validated via Zod safeParse —
+    // hc gives us *type* inference, not runtime guarantees.
+    const res = await api.rooms[':id'].$get({ param: { id } });
     if (res.status !== 200) return null;
-    // Phase 8.x SSOT review #1 H1: see `createRoom`. The refine on
-    // `RoomPublicSchema` enforces `protected ↔ image` exclusivity so
-    // downstream rendering can rely on the discriminator.
     const raw: unknown = await res.json();
     const parsed = RoomPublicSchema.safeParse(raw);
     if (!parsed.success) {
@@ -138,10 +147,12 @@ export type AuthResult = { ok: true; token: string } | { ok: false; reason: Auth
  */
 export const authenticateRoom = async (id: string, password: string): Promise<AuthResult> => {
   try {
-    const res = await fetch(`${baseUrl}/rooms/${encodeURIComponent(id)}/auth`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ password }),
+    // Phase 8.x Hono review #4 M2: hc<AppType> でパス + json body 型推論。
+    // password 制約 (`min(1).max(256)`) は server schema 側にあり、ここは
+    // call site の型として string を受けるだけで済む。
+    const res = await api.rooms[':id'].auth.$post({
+      param: { id },
+      json: { password },
     });
     if (res.status === 200) {
       // Phase 8.x SSOT review #1 M1: shared `AuthResponseSchema` replaces
@@ -184,9 +195,12 @@ export type WsTicketResult = { ok: true; ticket: string } | { ok: false; reason:
 
 export const requestWsTicket = async (roomId: string, token: string): Promise<WsTicketResult> => {
   try {
-    const res = await fetch(`${baseUrl}/rooms/${encodeURIComponent(roomId)}/ws-ticket`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token}` },
+    // Phase 8.x Hono review #4 M2: hc<AppType> 経由。`ws-ticket` は path
+    // セグメントに `-` が含まれるため bracket 記法。Authorization header は
+    // server schema で optional なので header object に渡しても型が通る。
+    const res = await api.rooms[':id']['ws-ticket'].$post({
+      param: { id: roomId },
+      header: { authorization: `Bearer ${token}` },
     });
     if (res.status === 201) {
       const body = (await res.json()) as { ticket: string };
@@ -229,8 +243,12 @@ export const fetchProtectedImage = async (
   token: string,
 ): Promise<ImageFetchResult> => {
   try {
-    const res = await fetch(`${baseUrl}/rooms/${encodeURIComponent(roomId)}/image`, {
-      headers: { authorization: `Bearer ${token}` },
+    // Phase 8.x Hono review #4 M2: hc<AppType> 経由。binary レスポンスは
+    // 200 デフォルト schema を持たない (createRoute で content 省略) が、
+    // hc client は `Response` を返すので `.blob()` で取れる。
+    const res = await api.rooms[':id'].image.$get({
+      param: { id: roomId },
+      header: { authorization: `Bearer ${token}` },
     });
     if (res.status === 200) {
       const blob = await res.blob();

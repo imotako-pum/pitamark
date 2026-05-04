@@ -42,8 +42,17 @@ app.use(
 const routed = app
   .get('/health', (c) => c.json({ ok: true, service: 'snap-share-api', ts: Date.now() }))
   .route('/rooms', roomsRoute)
-  .route('/rooms', imagesRoute)
-  .route('/sync', syncRoute);
+  .route('/rooms', imagesRoute);
+
+// Phase 8.x Hono review #4 M1: `syncRoute` is mounted on `app` (not `routed`)
+// for the same reason `app.doc31` / Scalar UI are mounted there: it's a
+// WebSocket upgrade path consumed only by `y-websocket`'s `WebsocketProvider`
+// (see `useYjsAnnotationsStore.ts`), never by the `hc<AppType>` typed client.
+// Excluding `/sync` from `AppType` keeps the typed RPC tree clean and makes
+// the Decisions Log policy ("OpenAPIHono.use() chain forbidden") apply only
+// to AppType-exposed routes — `syncRoute` stays as `Hono` + `.use()` because
+// it never reaches `hc`.
+app.route('/sync', syncRoute);
 
 // OpenAPI 3.1 spec + Scalar UI. Mounted on `app` (not `routed`) so they don't
 // pollute the AppType used for the `hc` typed client.

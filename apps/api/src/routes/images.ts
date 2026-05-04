@@ -1,4 +1,4 @@
-import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { logger } from '../lib/logger';
@@ -12,7 +12,19 @@ const getImageRoute = createRoute({
   method: 'get',
   path: '/{id}/image',
   tags: ['images'],
-  request: { params: idParamSchema },
+  request: {
+    params: idParamSchema,
+    // Phase 8.x Hono review #4 M2: declare the optional Bearer header here
+    // so `hc<AppType>` clients can pass it via the typed `header` field
+    // (otherwise web's `fetchProtectedImage` would have to fall back to
+    // raw fetch). Server-side handler still reads the header via
+    // `c.req.header('authorization')` so this is purely a typing hook.
+    headers: z.object({
+      authorization: z.string().optional().openapi({
+        description: 'Bearer <jwt> for protected rooms; absent for public rooms.',
+      }),
+    }),
+  },
   // 200 deliberately omits `content` so the handler can return a raw Response
   // carrying the R2 binary stream + custom cache/disposition headers.
   responses: {

@@ -4,16 +4,30 @@ import { api, authenticateRoom, createRoom, fetchRoom } from '../api-client';
 // Smoke test: verifies the hc<AppType> client is wired and the route tree
 // is reachable. We do NOT make real network calls here — the server is not
 // running during unit tests.
+//
+// Phase 8.x Hono review #4 M2: every web → api fetch (other than `createRoom`,
+// which uses raw multipart) routes through `hc<AppType>`. Each smoke
+// expectation below corresponds to one production call site in
+// `api-client.ts` so an API path rename surfaces as a typecheck failure
+// here first.
 describe('api client (smoke)', () => {
-  it('exposes POST /rooms via api.rooms.$post', () => {
+  it('exposes POST /rooms via api.rooms.$post (createRoom — raw multipart)', () => {
     expect(typeof api.rooms.$post).toBe('function');
   });
 
-  it('exposes GET /rooms/:id via api.rooms[":id"].$get', () => {
+  it('exposes GET /rooms/:id via api.rooms[":id"].$get (fetchRoom)', () => {
     expect(typeof api.rooms[':id'].$get).toBe('function');
   });
 
-  it('exposes GET /rooms/:id/image via api.rooms[":id"].image.$get', () => {
+  it('exposes POST /rooms/:id/auth via api.rooms[":id"].auth.$post (authenticateRoom)', () => {
+    expect(typeof api.rooms[':id'].auth.$post).toBe('function');
+  });
+
+  it('exposes POST /rooms/:id/ws-ticket via api.rooms[":id"]["ws-ticket"].$post (requestWsTicket)', () => {
+    expect(typeof api.rooms[':id']['ws-ticket'].$post).toBe('function');
+  });
+
+  it('exposes GET /rooms/:id/image via api.rooms[":id"].image.$get (fetchProtectedImage)', () => {
     expect(typeof api.rooms[':id'].image.$get).toBe('function');
   });
 

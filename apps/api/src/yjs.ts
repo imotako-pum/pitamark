@@ -74,6 +74,14 @@ const buildRoomReadService = (env: Bindings) =>
 // Validate room existence + (when protected) token authorization before
 // letting yRoute upgrade the connection. ROOM_ID_REGEX rejects malformed
 // paths (path-traversal etc.) before we touch storage.
+//
+// Phase 8.x Hono review #4 M1: `syncRoute` stays as plain `Hono` + `.use()`
+// chain (NOT `OpenAPIHono` + `createRoute({ middleware })`) because it is
+// a WebSocket upgrade path consumed only by `y-websocket`'s
+// `WebsocketProvider` (see `apps/web/src/hooks/useYjsAnnotationsStore.ts`).
+// Mounted on `app` (not `routed`) in `apps/api/src/index.ts` so it does not
+// leak into `AppType` — the Decisions Log "no .use() chain" policy applies
+// only to AppType-exposed routes, which require typed `hc<AppType>` shape.
 export const syncRoute = new Hono<{ Bindings: Bindings }>()
   .use('/:id', async (c, next) => {
     const id = c.req.param('id');
