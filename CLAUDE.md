@@ -89,6 +89,8 @@ Slash commands used regularly: `/everything-claude-code:prp-prd`, `:prp-plan`, `
 
 ## API conventions
 
-- All failing API responses use the envelope `{ ok: false, error: { code, message } }` with codes `INVALID_REQUEST` (400), `UNSUPPORTED_MEDIA_TYPE` (415), `PAYLOAD_TOO_LARGE` (413), `NOT_FOUND` (404), `INTERNAL` (500). Defined in `apps/api/src/lib/error.ts`.
+- All failing API responses use the envelope `{ ok: false, error: { code, message } }` with codes `INVALID_REQUEST` (400), `UNAUTHORIZED` (401), `PAYLOAD_TOO_LARGE` (413), `NOT_FOUND` (404), `UNSUPPORTED_MEDIA_TYPE` (415), `UNPROCESSABLE_ENTITY` (422), `RATE_LIMITED` (429), `INTERNAL` (500). Defined in `apps/api/src/lib/error.ts`.
+- API response Zod schemas (`RoomCreatedSchema`, `RoomPublicSchema`, `AuthResponseSchema`, ...) live in `packages/shared/src/`, not in `apps/api/src/routes/*`. Web and api workspaces import the same schema so the response contract is single-sourced — server side `parse`s before sending and web side `safeParse`s after receiving. New API response schemas MUST be added to `packages/shared` rather than route-local.
+- WebSocket auth uses one-shot 30s tickets, not the 24h JWT directly. Web calls `POST /rooms/:id/ws-ticket` with `Authorization: Bearer <jwt>` to exchange the JWT for a 32-hex ticket, then opens `wss://.../sync/:id?ticket=<hex>`. The server consumes the ticket from KV (`WS_TICKETS`) on first use so platform access logs only see the short-lived ticket. JWTs never appear on WS upgrade URLs.
 - The R2 binding `IMAGES` (`apps/api/wrangler.toml`) is in-memory under `wrangler dev` — no real bucket needed locally. Real bucket creation and Pages deployment land in Phase 7.
 - Phase 2 endpoints (`POST /rooms`, `GET /rooms/:id`, `GET /rooms/:id/image`) are documented with curl examples in `README.md`. Auth, rate limiting, and TTL enforcement land in Phase 5/7.

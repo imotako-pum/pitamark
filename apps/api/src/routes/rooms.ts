@@ -9,12 +9,14 @@ import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { extractClientIp } from '../lib/ip';
 import { logger } from '../lib/logger';
+import { extractBearerToken } from '../lib/token';
 import { withRateLimit } from '../middleware/rate-limit';
 import { createImageBlocklistService } from '../services/image-blocklist-service';
 import { createPasswordService } from '../services/password-service';
 import { createRoomService } from '../services/room-service';
 import { createTokenService } from '../services/token-service';
 import { createTurnstileService } from '../services/turnstile-service';
+import { createWsTicketService } from '../services/ws-ticket-service';
 import { createR2ImageStorage } from '../storage/r2-image-storage';
 import { createR2MetaStorage } from '../storage/r2-meta-storage';
 
@@ -39,6 +41,13 @@ const authBodySchema = z.object({
 
 const authResponseSchema = z.object({
   token: z.string(),
+});
+
+// Phase 8.x security review #13 H1: WS upgrade tickets are 32 hex chars
+// (128-bit random) — pinned in the schema so the OpenAPI doc does not
+// describe them as arbitrary strings.
+const wsTicketResponseSchema = z.object({
+  ticket: z.string().regex(/^[0-9a-f]{32}$/),
 });
 
 const buildPasswordService = () => createPasswordService();
@@ -124,6 +133,60 @@ const getRoomRoute = createRoute({
     404: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
       description: 'Room not found',
+    },
+  },
+});
+
+// Phase 8.x security review #13 H1: clients call this AFTER they have a
+// valid 24h JWT (from password auth or upload response) and BEFORE opening
+// the WebSocket. The returned ticket is consumed by `/sync/:id` so the JWT
+// itself never appears in the WS upgrade URL — and therefore never lands in
+// `wrangler tail` or any L7 proxy access log. RL_AUTH is reused: a client
+// that brute-forces ticket issuance would have already brute-forced the JWT.
+const wsTicketRoute = createRoute({
+  method: 'post',
+  path: '/{id}/ws-ticket',
+  tags: ['rooms'],
+  middleware: [
+    withRateLimit({
+      binding: (env) => env.RL_AUTH,
+      keyFn: (c) => `rooms-ws-ticket:${c.req.param('id')}:${extractClientIp(c.req.raw)}`,
+      routeId: 'rooms-ws-ticket',
+    }),
+  ] as const,
+  request: {
+    params: idParamSchema,
+    // `authorization` is intentionally `optional()` so a missing header maps
+    // to `401 UNAUTHORIZED` from the handler rather than `400 INVALID_REQUEST`
+    // from the Zod validator. The contract is "auth required" not
+    // "header malformed".
+    headers: z.object({
+      authorization: z.string().optional().openapi({
+        description: 'Bearer <jwt> — same JWT issued by `POST /rooms/:id/auth`.',
+      }),
+    }),
+  },
+  responses: {
+    201: {
+      content: { 'application/json': { schema: wsTicketResponseSchema } },
+      description:
+        '30s one-shot ticket bound to the room. Pass it as `?ticket=<hex>` on the WS upgrade.',
+    },
+    400: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Invalid room ID or unprotected room',
+    },
+    401: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Missing or invalid bearer token',
+    },
+    404: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Room not found',
+    },
+    429: {
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+      description: 'Rate limit exceeded',
     },
   },
 });
@@ -243,6 +306,42 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
     (result, c) => {
       if (!result.success) {
         return c.json(errorEnvelope('INVALID_REQUEST', 'Invalid request body or room ID'), 400);
+      }
+      return undefined;
+    },
+  )
+  .openapi(
+    wsTicketRoute,
+    async (c) => {
+      const { id } = c.req.valid('param');
+      const room = await buildRoomService(c.env).get(id); // throws 404 if missing
+      // Unprotected rooms hit RL_SYNC directly on the WS upgrade — they do
+      // not need a ticket. Returning 400 keeps the contract narrow: web
+      // clients only call this when `room.protected` is true.
+      if (!room.auth) {
+        throw new AppError(400, 'INVALID_REQUEST', 'Room is not password-protected', { id });
+      }
+      const bearer = extractBearerToken(c.req.header('authorization'));
+      if (!bearer) {
+        // Public message must not vary on bearer absence vs invalid format.
+        logger.warn('ws-ticket denied: missing bearer', { id });
+        throw new AppError(401, 'UNAUTHORIZED', 'Bearer token required', { id });
+      }
+      const tokenSvc = createTokenService({ secret: c.env.ROOM_TOKEN_SECRET });
+      const verify = await tokenSvc.verify(bearer, id);
+      if (!verify.ok) {
+        logger.warn('ws-ticket denied: invalid bearer', { id, reason: verify.reason });
+        throw new AppError(401, 'UNAUTHORIZED', 'Invalid bearer token', { id });
+      }
+      const ws = createWsTicketService({ kv: c.env.WS_TICKETS });
+      const { ticket } = await ws.issue(id);
+      // Never log the ticket — only an issued boolean.
+      logger.info('ws-ticket issued', { id, issued: true });
+      return c.json({ ticket }, 201);
+    },
+    (result, c) => {
+      if (!result.success) {
+        return c.json(errorEnvelope('INVALID_REQUEST', 'Invalid room ID or headers'), 400);
       }
       return undefined;
     },

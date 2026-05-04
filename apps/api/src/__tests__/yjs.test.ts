@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import app from '../index';
-import { issueRoomToken } from '../lib/token';
-import { buildEnv, DEFAULT_ROOM_TOKEN_SECRET } from './helpers/build-env';
+import { createWsTicketService } from '../services/ws-ticket-service';
+import { buildEnv } from './helpers/build-env';
 import { createStubRateLimit } from './helpers/in-memory-rl';
 
 type ErrorBody = { ok: false; error: { code: string; message: string } };
@@ -75,8 +75,8 @@ const createProtectedRoomViaApi = async (
   return (await res.json()) as { id: string };
 };
 
-describe('GET /sync/:id (Phase 5 — query token authorization)', () => {
-  it('passes through unprotected rooms even without a token', async () => {
+describe('GET /sync/:id (Phase 8.x — one-shot ticket authorization)', () => {
+  it('passes through unprotected rooms even without a ticket', async () => {
     const env = buildEnv();
     const created = await createUnprotectedRoom(env);
     const res = await app.request(`/sync/${created.id}`, undefined, env);
@@ -84,7 +84,7 @@ describe('GET /sync/:id (Phase 5 — query token authorization)', () => {
     expect(res.status).not.toBe(404);
   });
 
-  it('returns 401 when a protected room is accessed without ?token=', async () => {
+  it('returns 401 when a protected room is accessed without ?ticket=', async () => {
     const env = buildEnv();
     const created = await createProtectedRoomViaApi(env, 'letmein');
     const res = await app.request(`/sync/${created.id}`, undefined, env);
@@ -93,28 +93,78 @@ describe('GET /sync/:id (Phase 5 — query token authorization)', () => {
     expect(body.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('returns 401 when ?token= carries an invalid JWT', async () => {
+  it('returns 401 when ?ticket= is malformed (not 32 hex chars)', async () => {
     const env = buildEnv();
     const created = await createProtectedRoomViaApi(env, 'letmein');
-    const res = await app.request(`/sync/${created.id}?token=garbage`, undefined, env);
+    const res = await app.request(`/sync/${created.id}?ticket=garbage`, undefined, env);
     expect(res.status).toBe(401);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('passes the middleware when ?token= is a valid room-bound JWT', async () => {
+  // Phase 8.x security review #13 H1: the long-lived 24h JWT must NOT grant
+  // direct WS access — only one-shot tickets do. A leaked JWT in `?token=`
+  // would otherwise be exploitable for the JWT's full lifetime.
+  it('does not accept the legacy ?token=<JWT> query — JWT alone cannot upgrade', async () => {
     const env = buildEnv();
     const created = await createProtectedRoomViaApi(env, 'letmein');
-    const token = await issueRoomToken(created.id, DEFAULT_ROOM_TOKEN_SECRET);
+    const res = await app.request(`/sync/${created.id}?token=anything`, undefined, env);
+    expect(res.status).toBe(401);
+  });
+
+  it('passes the middleware when ?ticket= matches a freshly issued one-shot ticket', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoomViaApi(env, 'letmein');
+    const ws = createWsTicketService({ kv: env.WS_TICKETS });
+    const { ticket } = await ws.issue(created.id);
+
     const res = await app.request(
-      `/sync/${created.id}?token=${encodeURIComponent(token)}`,
+      `/sync/${created.id}?ticket=${encodeURIComponent(ticket)}`,
       undefined,
       env,
     );
+
     // Same as the unprotected passthrough check: not a 4xx envelope from
     // our middleware; yRoute is allowed to respond however it wants.
     expect(res.status).not.toBe(401);
     expect(res.status).not.toBe(404);
+  });
+
+  it('burns the ticket on first use — replay returns 401', async () => {
+    const env = buildEnv();
+    const created = await createProtectedRoomViaApi(env, 'letmein');
+    const ws = createWsTicketService({ kv: env.WS_TICKETS });
+    const { ticket } = await ws.issue(created.id);
+
+    const first = await app.request(
+      `/sync/${created.id}?ticket=${encodeURIComponent(ticket)}`,
+      undefined,
+      env,
+    );
+    expect(first.status).not.toBe(401);
+
+    const replay = await app.request(
+      `/sync/${created.id}?ticket=${encodeURIComponent(ticket)}`,
+      undefined,
+      env,
+    );
+    expect(replay.status).toBe(401);
+  });
+
+  it('rejects a ticket bound to a different roomId (sub mismatch)', async () => {
+    const env = buildEnv();
+    const a = await createProtectedRoomViaApi(env, 'letmein');
+    const b = await createProtectedRoomViaApi(env, 'letmein');
+    const ws = createWsTicketService({ kv: env.WS_TICKETS });
+    const { ticket } = await ws.issue(a.id);
+
+    const res = await app.request(
+      `/sync/${b.id}?ticket=${encodeURIComponent(ticket)}`,
+      undefined,
+      env,
+    );
+
+    expect(res.status).toBe(401);
   });
 });
 

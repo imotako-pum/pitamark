@@ -12,11 +12,17 @@
 #   not VITE_API_WS_URL points to a different origin.
 # - style-src `'unsafe-inline'` because Tailwind v4 emits inline <style> for
 #   class layer ordering during hydration; tightening this requires a bundler
-#   rework and is a Phase 8 follow-up.
+#   rework. Phase 8.x で security review (#13 L1) として再評価したが、Vite
+#   plugin による nonce 注入は設計変更の規模が大きく、本 phase では `_headers`
+#   コメント整理に留める。CSP nonce 化は Phase 9 dogfood 完了後に独立 PR で扱う。
+# - HSTS: `preload` ディレクティブを追加 (Phase 8.x、security review #13 H2)。
+#   hstspreload.org への登録申請は production deploy 後に owner 判断。
+#   preload 取り消しに数ヶ月かかるため、サブドメイン全体の HTTPS 運用を確認した
+#   状態でのみ申請する。
 
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
-  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin

@@ -131,6 +131,15 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 1: Security hardening)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **M1** `assertValidTtlMs` の publicMessage が `ROOM_TTL_MS` を漏洩 (= #13 M1) | security review で master, ここでは cross-ref 解消。publicMessage は `'Internal server error'`、env 名は logContext.cause へ | `apps/api/src/services/room-service.ts` |
+| L1 CLAUDE.md envelope codes の Phase 7 追加 3 コード未記載 | `CLAUDE.md` の API conventions 節を 5 → 8 codes に更新 (`UNAUTHORIZED` 401 / `UNPROCESSABLE_ENTITY` 422 / `RATE_LIMITED` 429 を追記) | `CLAUDE.md` |
+
+(L2 二重ログ / L3 ErrorEnvelope テスト型は theme 4 quality cleanup で対応予定)
+
 (Phase 8 は観察のみ。修正は Phase 8.x で別 PR)
 
 ---

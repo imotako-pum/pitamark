@@ -78,7 +78,12 @@ const assertAllowedMime = (type: string): AllowedImageMimeType => {
 
 const assertValidTtlMs = (ttlMs: number): void => {
   if (!Number.isFinite(ttlMs) || !Number.isInteger(ttlMs) || ttlMs <= 0) {
-    throw new AppError(500, 'INTERNAL', 'Server is misconfigured: invalid ROOM_TTL_MS', { ttlMs });
+    // Public message stays generic — env var name belongs in logContext, not
+    // in the response body. Phase 8.x security review #13 M1 / #11 M1.
+    throw new AppError(500, 'INTERNAL', 'Internal server error', {
+      cause: 'invalid ROOM_TTL_MS',
+      ttlMs,
+    });
   }
 };
 

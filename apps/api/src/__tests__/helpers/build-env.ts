@@ -36,6 +36,8 @@ export const buildEnv = (overrides: Partial<Bindings> = {}): Bindings => ({
   RL_AUTH: createStubRateLimit(),
   RL_SYNC: createStubRateLimit(),
   IMAGE_BLOCKLIST: createInMemoryKv(),
+  // Phase 8.x: WS upgrade ticket exchange KV namespace (security review #13 H1).
+  WS_TICKETS: createInMemoryKv(),
   TURNSTILE_SITE_KEY: DEFAULT_TURNSTILE_DEV_SITE_KEY,
   TURNSTILE_SECRET_KEY: DEFAULT_TURNSTILE_DEV_SECRET,
   BYPASS_TURNSTILE: 'true',

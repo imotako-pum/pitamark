@@ -7,7 +7,7 @@ import { extractClientIp, redactIp } from './lib/ip';
 import { logger } from './lib/logger';
 import { createPasswordService } from './services/password-service';
 import { createRoomService } from './services/room-service';
-import { createTokenService } from './services/token-service';
+import { createWsTicketService } from './services/ws-ticket-service';
 import { createR2ImageStorage } from './storage/r2-image-storage';
 import { createR2MetaStorage } from './storage/r2-meta-storage';
 
@@ -85,22 +85,27 @@ export const syncRoute = new Hono<{ Bindings: Bindings }>()
       return c.json(errorEnvelope('NOT_FOUND', 'Room not found'), 404);
     }
     if (room.auth) {
-      // WebSocket cannot send Authorization headers — token rides as a query
-      // param. Never log the token; only `tokenPresent`.
-      const token = c.req.query('token');
-      if (!token) {
-        logger.warn('sync ws denied: missing token', { id, tokenPresent: false });
-        return c.json(errorEnvelope('UNAUTHORIZED', 'Token required'), 401);
+      // Phase 8.x security review #13 H1: protected rooms now exchange a
+      // 32-hex one-shot ticket here, not the long-lived JWT. The web client
+      // calls `POST /rooms/:id/ws-ticket` first, then opens the WS with
+      // `?ticket=<hex>`. The ticket is consumed (deleted from KV) on first
+      // use so URL leaks (wrangler tail, Referer, browser history) cannot
+      // be replayed beyond the 30s TTL window. Never log the ticket itself;
+      // `ticketPresent` and the consume reason are sufficient for triage.
+      const ticket = c.req.query('ticket');
+      if (!ticket) {
+        logger.warn('sync ws denied: missing ticket', { id, ticketPresent: false });
+        return c.json(errorEnvelope('UNAUTHORIZED', 'Ticket required'), 401);
       }
-      const tokenSvc = createTokenService({ secret: c.env.ROOM_TOKEN_SECRET });
-      const result = await tokenSvc.verify(token, id);
-      if (!result.ok) {
-        logger.warn('sync ws denied: invalid token', {
+      const wsTickets = createWsTicketService({ kv: c.env.WS_TICKETS });
+      const consumed = await wsTickets.consume(ticket, id);
+      if (!consumed.ok) {
+        logger.warn('sync ws denied: invalid ticket', {
           id,
-          reason: result.reason,
-          tokenPresent: true,
+          reason: consumed.reason,
+          ticketPresent: true,
         });
-        return c.json(errorEnvelope('UNAUTHORIZED', 'Invalid token'), 401);
+        return c.json(errorEnvelope('UNAUTHORIZED', 'Invalid ticket'), 401);
       }
     } else {
       // Phase 7: protected rooms already pay PBKDF2 + token verify, which is

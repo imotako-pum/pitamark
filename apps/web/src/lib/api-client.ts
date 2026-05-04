@@ -133,6 +133,44 @@ export const authenticateRoom = async (id: string, password: string): Promise<Au
   }
 };
 
+// Phase 8.x security review #13 H1: web exchanges its long-lived JWT for a
+// 30s one-shot ticket here. The ticket — not the JWT — rides on the
+// WebSocket upgrade URL so platform access logs (wrangler tail, CDN logs)
+// never see the JWT. `network` covers both fetch errors and unexpected
+// shapes; `unauthorized` covers JWT expiry / sub mismatch.
+export type WsTicketFailure = 'unauthorized' | 'not-found' | 'rate-limited' | 'network';
+
+export type WsTicketResult = { ok: true; ticket: string } | { ok: false; reason: WsTicketFailure };
+
+export const requestWsTicket = async (roomId: string, token: string): Promise<WsTicketResult> => {
+  try {
+    const res = await fetch(`${baseUrl}/rooms/${encodeURIComponent(roomId)}/ws-ticket`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (res.status === 201) {
+      const body = (await res.json()) as { ticket: string };
+      // Defense in depth: the API only emits 32-hex tickets; a different
+      // shape means an upstream broke contract — fall back to network.
+      if (typeof body.ticket !== 'string' || !/^[0-9a-f]{32}$/.test(body.ticket)) {
+        logger.warn('requestWsTicket: unexpected ticket shape');
+        return { ok: false, reason: 'network' };
+      }
+      return { ok: true, ticket: body.ticket };
+    }
+    if (res.status === 401) return { ok: false, reason: 'unauthorized' };
+    if (res.status === 404) return { ok: false, reason: 'not-found' };
+    if (res.status === 429) return { ok: false, reason: 'rate-limited' };
+    logger.warn('requestWsTicket: unexpected status', { status: res.status });
+    return { ok: false, reason: 'network' };
+  } catch (e: unknown) {
+    logger.warn('requestWsTicket: network error', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return { ok: false, reason: 'network' };
+  }
+};
+
 export type ImageFetchFailure = 'unauthorized' | 'not-found' | 'network';
 
 export type ImageFetchResult =
