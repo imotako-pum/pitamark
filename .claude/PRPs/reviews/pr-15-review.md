@@ -145,7 +145,7 @@ None.
 
 Phase 9 dogfood の Conditional Go 条件 (security + perf 完了) はすでに commit 1+2 で達成済み。残り 6 commit は code-quality 整備 + extensibility refactor で、いずれも regression なく green。M1 は方針整合性の問題で、merge を妨げない (defense-in-depth が runtime 安全性を担保している) ため **APPROVE with comments**。
 
-## Self-review follow-up (commit 9: `<sha>`)
+## Self-review follow-up (commit 9: `f66a468`)
 
 | Finding | Status |
 |---|---|
@@ -153,6 +153,23 @@ Phase 9 dogfood の Conditional Go 条件 (security + perf 完了) はすでに 
 | **L2** `Object.entries(TOOL_KEYS) as Array<[Tool, string]>` cast | **Resolved** — `TOOLS.map((t) => [TOOL_KEYS[t], t] as const)` で cast 撤廃 |
 | L1 `yMapToAnnotation` の `as Annotation['type']` cast | (deferred) runtime 安全性は維持、型 lie のみ。別 PR で扱う |
 | L3 window hatch の `useEffect` cleanup なし | (deferred) 既存 `__SNAP_SHARE_*` 5 件と一斉統一を別 PR で |
+
+## CI E2E fail 解消 (commit 10: `257c482`)
+
+PR #15 で初めて Playwright E2E が CI で動いた結果、3 件の問題が surface した:
+
+| Issue | Severity | Status |
+|---|---|---|
+| `WS_TICKET_TTL_SEC = 30` が Cloudflare KV `expirationTtl` 最小値 60s 違反 | **CRITICAL** (production も壊れる) | **Resolved** — 60s に修正。in-memory mock が制約を re-implement していなかったため unit test では発覚せず。security 影響なし (burn-on-consume で有効寿命は最初の WS upgrade まで) |
+| `help-modal.spec.ts:33,64` が `React.lazy(EditorPage)` (commit 2) load race で hard fail | **HIGH** | **Resolved** — `waitForEditorReady` helper (Toolbar visible 待機) を追加 |
+| `annotation-tools:140` / `auto-next-rect-arrow:83` が同 race で flaky (retry 1 回で pass) | MED | **Resolved** — `dropImage` fixture で DropZone visible 待機を追加 |
+
+**CI 結果 (post-commit 10)**:
+- `Lint / Typecheck / Test / Build`: pass (44s)
+- `Playwright E2E`: **pass (2m59s)**
+- `Cloudflare Pages`: pass
+
+これで PR は merge 可能状態 (全 check green)。
 
 ---
 *Generated: 2026-05-04*
