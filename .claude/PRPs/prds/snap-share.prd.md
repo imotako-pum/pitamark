@@ -197,7 +197,7 @@
 | 7.6 | 手動 QA + バグ回収 + E2E 強化 | 本番環境での網羅的な手動探索テスト + 検出したバグ全件 hotfix + 再発防止のための E2E 拡充 | complete | - | 7.5 | [plan](../plans/completed/phase-7.6-manual-qa-bug-recovery.plan.md) / [report](../reports/phase-7.6-manual-qa-bug-recovery-report.md) / [review](../reviews/phase-7.6-partial-implementation-review.md) |
 | 7.7 | UX 基盤改善 | 注釈リサイズ + 色変更 UI + ズーム/パン/fit-to-viewport + ショートカット完結 + チートシート Modal（4 サブプラン） | complete | - | 7.6 | [prd](./phase-7.7-ux-foundation.prd.md) / sub: [7.7-1](../plans/completed/phase-7.7-1-annotation-resize.plan.md) ・ [7.7-2](../plans/completed/phase-7.7-2-color-palette.plan.md) ・ [7.7-3](../plans/completed/phase-7.7-3-zoom-pan-fit.plan.md) ・ [7.7-4](../plans/completed/phase-7.7-4-shortcut-cheatsheet.plan.md) |
 | 7.8 | 次手予測 UX | Auto-next 次手予測（矢印→テキスト / 矩形→矢印）+ フォントサイズ UI + dogfood/Help 準備（4 サブプラン、Smart snap は 7.8-4 として stash 化し見送り） | complete | - | 7.7 | [prd](./phase-7.8-predictive-ux.prd.md) / sub: [7.8-1](../plans/completed/phase-7.8-1-auto-next-arrow-text.plan.md) ・ [7.8-2](../plans/completed/phase-7.8-2-auto-next-rect-arrow.plan.md) ・ [7.8-3](../plans/completed/phase-7.8-3-font-size-ui.plan.md) ・ [7.8-5](../plans/completed/phase-7.8-5-dogfood-help.plan.md) |
-| 8 | 統合レビュー（観察のみ） | リポジトリ全体の SSOT / モダン性 / その場しのぎ実装 / 型キャスト / 拡張性 / テスト網羅 / a11y / bundle・perf / エラー envelope 一貫性 / PRP 整理状況 / security の 11 観点横断レビュー。実コードの修正は Phase 8.x で別ブランチ・別 PR に切り出す | pending | - | 7.8 | TBD |
+| 8 | 統合レビュー（観察のみ） | リポジトリ全体の SSOT / モダン性 / React ベストプラクティス / Hono ベストプラクティス / その場しのぎ実装 / 型キャスト / 拡張性 / テスト網羅 / a11y / bundle・perf / エラー envelope 一貫性 / PRP 整理状況 / security の 13 観点横断レビュー。実コードの修正は Phase 8.x で別ブランチ・別 PR に切り出す | pending | - | 7.8 | TBD |
 | 9 | dogfood & 計測 | オーナー自身が2週間業務利用、メトリクス改善 | pending | - | 8 | - |
 
 ### Phase Details
@@ -354,7 +354,7 @@
 **Phase 8: 統合レビュー（観察のみ）**
 - Goal: MVP がほぼ完成した時点で、肥大化したコードベースを一度俯瞰し、Phase 9 dogfood に進む前に「Claude Code 主体で書かれたコードが、人間の実装者にとっても改修しやすいか」を文書化する
 - Scope:
-  - 11 観点の横断レビュー: SSOT 遵守 / モダン性（2026 ベスト寄りのライブラリ選定・API 利用）/ その場しのぎ実装の有無（TODO/FIXME/`@ts-ignore` 残置・回避策の固定化）/ 型の健全性（`any`/`unknown`/`as` キャストの不必要な使用）/ 将来拡張性（annotation/collab/API 追加の容易性）/ テスト網羅（unit/integration/e2e、golden path カバレッジ）/ a11y（キーボード操作・ARIA・reduced-motion）/ bundle・perf（web のサイズ予算・Konva/Yjs の遅延ロード余地）/ ログ・エラー envelope の一貫性（`apps/api/src/lib/error.ts` 体系遵守）/ `.claude/PRPs/` 配下の整理状況（命名・cleanup・review 漏れ）/ security（CSP・入力検証・R2/Worker 周辺の権限境界）
+  - 13 観点の横断レビュー: SSOT 遵守 / モダン性（2026 ベスト寄りのライブラリ選定・API 利用）/ React ベストプラクティス（hooks 規律・状態管理パターン・`useState` vs `useRef` の使い分け・React 19 idioms / `react-konva` 連携）/ Hono ベストプラクティス（`createRoute({ middleware })` 配線・`@hono/zod-openapi` 利用・`hc<AppType>` 型安全クライアント・Workers binding 利用・middleware composition 順序）/ その場しのぎ実装の有無（TODO/FIXME/`@ts-ignore` 残置・回避策の固定化）/ 型の健全性（`any`/`unknown`/`as` キャストの不必要な使用）/ 将来拡張性（annotation/collab/API 追加の容易性）/ テスト網羅（unit/integration/e2e、golden path カバレッジ）/ a11y（キーボード操作・ARIA・reduced-motion）/ bundle・perf（web のサイズ予算・Konva/Yjs の遅延ロード余地）/ ログ・エラー envelope の一貫性（`apps/api/src/lib/error.ts` 体系遵守）/ `.claude/PRPs/` 配下の整理状況（命名・cleanup・review 漏れ）/ security（CSP・入力検証・R2/Worker 周辺の権限境界）
   - 観点ごとの review レポート（`.claude/PRPs/reviews/phase-8-{観点}.md`）+ 統合 report（`.claude/PRPs/reports/phase-8-integration-review-report.md`）の生成
 - Success signal: CRITICAL / HIGH / MEDIUM / LOW すべて 0 件まで観察文書化されている（= 修正対象 issue が一意に特定でき、Phase 8.x で着手できる状態）
 - 非スコープ:
