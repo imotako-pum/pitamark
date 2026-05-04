@@ -3,7 +3,9 @@ import { createInMemoryKv } from './in-memory-kv';
 import { createInMemoryR2 } from './in-memory-r2';
 import { createStubRateLimit } from './in-memory-rl';
 
-export const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Phase 10.B: helper now mirrors the production default (24h). Tests that
+// need the previous 7-day window pin it explicitly via `MAX_ROOM_TTL_MS`.
+export const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 // Tests need a stable secret long enough to satisfy HS256 (>= 32 bytes).
 export const DEFAULT_ROOM_TOKEN_SECRET = 'test-secret-32-bytes-min-padding-aaa';
 // Cloudflare's documented "always passes" Turnstile dev secret. Safe to commit.

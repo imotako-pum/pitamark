@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-export const DEFAULT_ROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Phase 10.B: TTL 仕様変更。default 24h / max 7d。フリーミアムで無制限化する伏線。
+// Server (`apps/api`) defaults via `wrangler.toml` ROOM_TTL_MS env var; clients
+// can override per-room via `POST /rooms` ttlMs (capped at MAX_ROOM_TTL_MS).
+export const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
+export const MAX_ROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const ROOM_ID_LENGTH = 21;
 export const ROOM_ID_REGEX = /^[A-Za-z0-9_-]{21}$/;

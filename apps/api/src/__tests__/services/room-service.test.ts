@@ -1,4 +1,4 @@
-import { MAX_IMAGE_BYTES } from '@snap-share/shared';
+import { MAX_IMAGE_BYTES, MAX_ROOM_TTL_MS } from '@snap-share/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '../../lib/error';
 import { createPasswordService } from '../../services/password-service';
@@ -8,7 +8,9 @@ import { createR2MetaStorage, metaKey } from '../../storage/r2-meta-storage';
 import { createInMemoryR2WithControls } from '../helpers/in-memory-r2';
 
 const FIXED_NOW = 1_714_435_200_000; // synthetic Unix epoch ms; not a real timestamp
-const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Phase 10.B: tests still default to the 7-day TTL (= MAX) to maximize the
+// surface area exercised. Per-room overrides are covered separately below.
+const TTL_MS = MAX_ROOM_TTL_MS;
 
 const buildService = () => {
   const { bucket, store } = createInMemoryR2WithControls();
@@ -257,5 +259,88 @@ describe('roomService.create — TTL configuration guard', () => {
     const file = makeFile(new Uint8Array([1]), 'image/png');
     const error = await service.create(file).catch((e) => e);
     expect(error.message).not.toContain('ROOM_TTL_MS');
+  });
+});
+
+// Phase 10.B: per-room TTL override. The server still owns the default via
+// `deps.ttlMs` (env-supplied 24h), but callers can request a longer TTL up to
+// MAX_ROOM_TTL_MS. Anything else is a 400.
+describe('roomService.create — per-room ttlMs override', () => {
+  const buildSvc = (ttlMs: number = TTL_MS) => {
+    const { bucket } = createInMemoryR2WithControls();
+    return createRoomService({
+      images: createR2ImageStorage(bucket),
+      meta: createR2MetaStorage(bucket),
+      now: () => FIXED_NOW,
+      ttlMs,
+      password: createPasswordService(),
+    });
+  };
+
+  it('accepts an explicit ttlMs within MAX and stores it on the room', async () => {
+    const service = buildSvc(24 * 60 * 60 * 1000);
+    const file = makeFile(new Uint8Array([1, 2, 3]), 'image/png');
+    const requested = 3 * 24 * 60 * 60 * 1000; // 3 days
+    const room = await service.create(file, { ttlMs: requested });
+    expect(room.ttlMs).toBe(requested);
+  });
+
+  it('falls back to deps.ttlMs (env default) when ttlMs is omitted', async () => {
+    const envDefault = 24 * 60 * 60 * 1000;
+    const service = buildSvc(envDefault);
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    const room = await service.create(file);
+    expect(room.ttlMs).toBe(envDefault);
+  });
+
+  it('accepts ttlMs exactly at MAX_ROOM_TTL_MS', async () => {
+    const service = buildSvc();
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    const room = await service.create(file, { ttlMs: MAX_ROOM_TTL_MS });
+    expect(room.ttlMs).toBe(MAX_ROOM_TTL_MS);
+  });
+
+  it('rejects ttlMs > MAX_ROOM_TTL_MS as 400 INVALID_REQUEST', async () => {
+    const service = buildSvc();
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    await expect(service.create(file, { ttlMs: MAX_ROOM_TTL_MS + 1 })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST',
+    });
+  });
+
+  it('rejects non-positive ttlMs as 400 INVALID_REQUEST', async () => {
+    const service = buildSvc();
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    await expect(service.create(file, { ttlMs: 0 })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST',
+    });
+    await expect(service.create(file, { ttlMs: -1 })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST',
+    });
+  });
+
+  it('rejects non-integer / NaN ttlMs as 400 INVALID_REQUEST', async () => {
+    const service = buildSvc();
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    await expect(service.create(file, { ttlMs: 1.5 })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST',
+    });
+    await expect(service.create(file, { ttlMs: Number.NaN })).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_REQUEST',
+    });
+  });
+
+  it('does not echo the requested ttlMs in the public 400 message', async () => {
+    const service = buildSvc();
+    const file = makeFile(new Uint8Array([1]), 'image/png');
+    const sentinel = MAX_ROOM_TTL_MS + 999_999;
+    const error = await service.create(file, { ttlMs: sentinel }).catch((e) => e);
+    expect(error).toBeInstanceOf(AppError);
+    expect(String(error.message)).not.toContain(String(sentinel));
   });
 });

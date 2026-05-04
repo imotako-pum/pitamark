@@ -78,7 +78,10 @@ binding = "WS_TICKETS"
 id = "REPLACE_WITH_PRODUCTION_KV_ID"
 
 [vars]
-ROOM_TTL_MS = "604800000" # 7 days
+# Phase 10.B: default room TTL = 24h. Clients can request a longer TTL via
+# `POST /rooms` (multipart `ttlMs` field) up to MAX_ROOM_TTL_MS (= 7 days)
+# defined in `packages/shared/src/room.ts`. フリーミアム実装時に MAX を緩める伏線。
+ROOM_TTL_MS = "86400000" # 24 hours (default; max 7d via per-room ttlMs)
 # Public Turnstile site key. The default is the always-passes dev test key
 # so `wrangler dev` and CI work without contacting Cloudflare. Phase 7.5:
 # replace with the production widget site key (`dashboard.cloudflare.com`

@@ -4,6 +4,7 @@ import {
   DEFAULT_ROOM_TTL_MS,
   isExpired,
   MAX_IMAGE_BYTES,
+  MAX_ROOM_TTL_MS,
   type Room,
   type RoomAuth,
   type RoomImage,
@@ -33,8 +34,15 @@ describe('isExpired', () => {
   it('returns true when now exceeds createdAt + ttlMs', () => {
     expect(isExpired(room, 2_500)).toBe(true);
   });
-  it('uses 7 days as default ttl', () => {
-    expect(DEFAULT_ROOM_TTL_MS).toBe(7 * 24 * 60 * 60 * 1000);
+  it('uses 24 hours as default ttl', () => {
+    // Phase 10.B: 24h default + 7d max; フリーミアムで無制限化する伏線。
+    expect(DEFAULT_ROOM_TTL_MS).toBe(24 * 60 * 60 * 1000);
+  });
+  it('caps ttl at 7 days via MAX_ROOM_TTL_MS', () => {
+    expect(MAX_ROOM_TTL_MS).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+  it('keeps default <= max so the default value is always accepted', () => {
+    expect(DEFAULT_ROOM_TTL_MS).toBeLessThanOrEqual(MAX_ROOM_TTL_MS);
   });
 });
 
