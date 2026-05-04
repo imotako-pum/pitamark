@@ -87,6 +87,24 @@ This repo follows a PRP (PRD → Plan → Implement → Report → Review → PR
 
 Slash commands used regularly: `/everything-claude-code:prp-prd`, `:prp-plan`, `:prp-implement`, `:code-review`, `:prp-pr`. Conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`, ...) — see `.claude/rules/common/git-workflow.md`.
 
+### umbrella plan vs sub-plan の選択基準 (Phase 8.x で明文化)
+
+親 Phase が複数 sub-step に分かれるとき、Plan の粒度を以下で決める:
+
+- **umbrella plan (1 ファイル)**: sub-step が密結合（前 step の出力 → 次 step の入力 / 同 PR で merge / 単独で価値が出ない）。例: Phase 7.6 manual QA bug recovery、Phase 8 integration review。
+- **sub-plan 分割 (`phase-N-{1,2,...}.plan.md`)**: sub-feature が独立に merge 可能 / それぞれ単独で価値を出す。例: Phase 7.7 / 7.8。
+
+### umbrella report の必須化 (Phase 9 以降)
+
+親 Phase が複数 sub-phase に分かれた場合 (例: Phase 7.7-1〜7.7-4)、各 sub-phase report に加えて親 Phase の **umbrella report** を `reports/phase-N-umbrella-report.md` として作成する。内容:
+
+- Phase 全体の Acceptance Criteria 達成度 (table)
+- 全 sub-phase の deliverable 概要 + report への link
+- Phase 内で発見された未解決事項 / 次フェーズへの引き継ぎ
+- 工数 (commit 数 + LOC + duration) の retrospective
+
+Phase 7.7 / 7.8 については retroactive 作成しない (Phase 8 PRD で NOT Building 明示)。Phase 9 以降から適用。
+
 ## API conventions
 
 - All failing API responses use the envelope `{ ok: false, error: { code, message } }` with codes `INVALID_REQUEST` (400), `UNAUTHORIZED` (401), `PAYLOAD_TOO_LARGE` (413), `NOT_FOUND` (404), `UNSUPPORTED_MEDIA_TYPE` (415), `UNPROCESSABLE_ENTITY` (422), `RATE_LIMITED` (429), `INTERNAL` (500). Defined in `apps/api/src/lib/error.ts`.

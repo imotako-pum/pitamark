@@ -54,5 +54,12 @@ export default defineConfig({
         inline: [/y-durableobjects/],
       },
     },
+    // Phase 8.x tests review #8 M1: see apps/web/vite.config.ts.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/__tests__/**'],
+    },
   },
 });

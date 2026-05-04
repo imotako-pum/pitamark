@@ -3,11 +3,11 @@
   --color-text: oklch(18% 0 0);
   --color-accent: oklch(68% 0.21 250);
 
-  /* Phase 3 — annotation tools */
-  --color-tool-rect: oklch(60% 0.18 250);
-  --color-tool-arrow: oklch(60% 0.2 30);
-  --color-tool-text: oklch(20% 0 0);
-  --color-highlight-yellow: oklch(85% 0.18 95);
+  /* Phase 3 — toolbar surfaces. Per-tool color tokens were removed in
+     Phase 8.x SSOT review #1 M2: annotation colors collapsed to the single
+     `activeColor` source of truth (Phase 7.7-2), and Konva-side hex
+     constants live in `components/canvas/colors.ts` per CLAUDE.md
+     cross-cutting rule 4. The CSS tokens were vestigial. */
   --color-toolbar-bg: oklch(98% 0 0 / 0.86);
   --color-toolbar-border: oklch(85% 0 0);
 
@@ -47,7 +47,11 @@
   --secondary: oklch(96% 0 0);
   --secondary-foreground: var(--color-text);
   --muted: oklch(96% 0 0);
-  --muted-foreground: oklch(50% 0 0);
+  /* Phase 8.x a11y review #9 M1: was oklch(50%) which sat at 4.5:1 against
+     `--color-surface` (98%) — exactly on the SC 1.4.3 boundary. Lowering
+     to 42% pushes the contrast to ~7:1 (AAA), keeping HelpModal's
+     DialogDescription readable for low-vision users. */
+  --muted-foreground: oklch(42% 0 0);
   --accent: oklch(94% 0.04 250);
   --accent-foreground: var(--color-text);
   --destructive: oklch(54% 0.22 27);

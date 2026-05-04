@@ -58,7 +58,11 @@ export class SnapShareYDO extends YDurableObjects<{ Bindings: Bindings }> {
 // references `YDurableObjects` (legacy migrations, debug logs) keeps resolving.
 export { YDurableObjects, yRoute };
 
-const buildRoomService = (env: Bindings) =>
+// Phase 8.x Hono review #4 L2: renamed from `buildRoomService` to make it
+// unambiguous that this WS-side factory is read-only (no `turnstile` /
+// `blocklist` deps because we never `create` from this path). The
+// rooms.ts factory keeps its full-featured name.
+const buildRoomReadService = (env: Bindings) =>
   createRoomService({
     images: createR2ImageStorage(env.IMAGES),
     meta: createR2MetaStorage(env.IMAGES),
@@ -76,7 +80,7 @@ export const syncRoute = new Hono<{ Bindings: Bindings }>()
     if (!ROOM_ID_REGEX.test(id)) {
       return c.json(errorEnvelope('INVALID_REQUEST', 'Invalid room ID'), 400);
     }
-    const service = buildRoomService(c.env);
+    const service = buildRoomReadService(c.env);
     let room: Awaited<ReturnType<typeof service.get>>;
     try {
       room = await service.get(id);

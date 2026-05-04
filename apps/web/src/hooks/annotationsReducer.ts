@@ -133,11 +133,17 @@ export const annotationsReducer = (
         ...state,
         annotations: setColor(state.annotations, action.id, action.color),
       };
-    case 'annotation/set-font-size':
-      return {
-        ...state,
-        annotations: setFontSize(state.annotations, action.id, action.fontSize),
-      };
+    case 'annotation/set-font-size': {
+      // Phase 8.x tests review #8 M2: when `setFontSize` returns the same
+      // array reference (no-op for non-text or unknown id), preserve the
+      // outer state identity too. Without this, `historyReducer` sees a
+      // freshly-allocated wrapper and appends an empty undo step — Phase
+      // 7.8-3 already gated this from the handler side; this is the
+      // belt-and-suspenders reducer-level guarantee.
+      const nextAnnotations = setFontSize(state.annotations, action.id, action.fontSize);
+      if (nextAnnotations === state.annotations) return state;
+      return { ...state, annotations: nextAnnotations };
+    }
     default: {
       const _exhaustive: never = action;
       return _exhaustive;

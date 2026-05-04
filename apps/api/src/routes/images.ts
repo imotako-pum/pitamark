@@ -1,16 +1,12 @@
-import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
-import { ROOM_ID_REGEX } from '@snap-share/shared';
+import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { logger } from '../lib/logger';
+import { idParamSchema } from '../lib/schemas';
 import { extractBearerToken } from '../lib/token';
 import { createTokenService } from '../services/token-service';
 import { createR2ImageStorage } from '../storage/r2-image-storage';
 import { createR2MetaStorage } from '../storage/r2-meta-storage';
-
-const idParamSchema = z.object({
-  id: z.string().regex(ROOM_ID_REGEX),
-});
 
 const getImageRoute = createRoute({
   method: 'get',
@@ -48,20 +44,26 @@ export const imagesRoute = new OpenAPIHono<{ Bindings: Bindings }>().openapi(
     // rooms keep their original public behavior so existing share flows stay
     // unchanged.
     if (meta.auth) {
+      // Phase 8.x error-envelope review #11 L2: collapse explicit
+      // `logger.warn` + `AppError` pairs into single AppError throws —
+      // `onAppError` consumes `logContext` and writes one warn line per
+      // failure (was two before).
       const token = extractBearerToken(c.req.header('authorization'));
       if (!token) {
-        logger.warn('image fetch denied: missing token', { id, tokenPresent: false });
-        throw new AppError(401, 'UNAUTHORIZED', 'Token required', { id });
+        throw new AppError(401, 'UNAUTHORIZED', 'Token required', {
+          id,
+          event: 'image_fetch_denied',
+          reason: 'missing_token',
+        });
       }
       const tokenSvc = createTokenService({ secret: c.env.ROOM_TOKEN_SECRET });
       const result = await tokenSvc.verify(token, id);
       if (!result.ok) {
-        logger.warn('image fetch denied: invalid token', {
+        throw new AppError(401, 'UNAUTHORIZED', 'Invalid token', {
           id,
+          event: 'image_fetch_denied',
           reason: result.reason,
-          tokenPresent: true,
         });
-        throw new AppError(401, 'UNAUTHORIZED', 'Invalid token', { id });
       }
     }
 

@@ -76,5 +76,16 @@ export default defineConfig(({ mode }) => ({
     globals: false,
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    // Phase 8.x tests review #8 M1: 80% coverage target was previously
+    // unmeasurable because `@vitest/coverage-v8` was not installed.
+    // Wiring it here makes `pnpm -F @snap-share/web test:coverage`
+    // emit lcov + text summaries; the actual gate-on-threshold lands
+    // alongside Phase 9 once the realistic baseline is known.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/vite-env.d.ts'],
+    },
   },
 }));

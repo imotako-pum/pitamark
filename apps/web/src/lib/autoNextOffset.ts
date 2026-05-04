@@ -2,7 +2,7 @@ import type { Point } from '@snap-share/shared';
 
 // Phase 7.8-1 Auto-next-A: 矢印終端から空 text を生成する位置の offset。矢印方向の
 // 単位ベクトルに distance を掛けるシンプル設計で、矢印の延長線上に text が並ぶ。
-// dogfood で 8/12/16 のどれが快適かは Phase 5 で再評価する。
+// dogfood で 8/12/16 のどれが快適かは Phase 9 dogfood で再評価する。
 export const AUTO_NEXT_TEXT_OFFSET_PX = 8;
 
 const MIN_VECTOR_LENGTH = 1;

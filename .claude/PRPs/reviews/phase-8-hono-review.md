@@ -135,6 +135,14 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4: quality cleanup)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **L1** `idParamSchema` 重複 | `apps/api/src/lib/schemas.ts` に集約、`rooms.ts` / `images.ts` から import に切替 | `apps/api/src/lib/schemas.ts` (new) / `apps/api/src/routes/rooms.ts` / `apps/api/src/routes/images.ts` |
+| **L2** `buildRoomService` 名前衝突 | `yjs.ts` 内を `buildRoomReadService` にリネーム + コメントで read-only 明記 | `apps/api/src/yjs.ts` |
+| M1 syncRoute Hono + .use() / M2 hc<AppType> 未使用 | (deferred) 設計判断レベルで Phase 8.x 単独 PR の射程超過 — `syncRoute` を `routed` から外す `境界明確化案` は WS 接続の smoke test を再実装する必要があり、theme 4 の他改修との bisect 困難リスクが大きいため Phase 9 後に独立 PR で扱う | — |
+
 (Phase 8.x で修正された後、Phase 8.x 着手側の Plan/Implement で追記)
 
 ---

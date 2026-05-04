@@ -258,20 +258,28 @@ export const EditorShell = ({
 
   // Expose the transform on window so E2E can poll it without coupling to the
   // canvas DOM. Mirrors the existing __SNAP_SHARE_ANNOTATIONS__ pattern.
+  // Phase 8.x band-aids review #5 H1: gated on `import.meta.env.DEV` so
+  // production bundles strip the assignment via Vite tree-shaking — same
+  // pattern as `useYjsAnnotationsStore.ts:106`.
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_STAGE_TRANSFORM__ = stageTransform;
   }, [stageTransform]);
 
   // Phase 7.8-1: Auto-next-A の検証で tool 状態を E2E から polling 確認するために
   // 公開する。Toolbar の active 表示で代替できるが、E2E の安定度は window expose
   // の方が高いため既存パターンに揃える。
+  // Phase 8.x band-aids review #5 H1: DEV-only.
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_TOOL__ = store.state.tool;
   }, [store.state.tool]);
 
   // Phase 7.8-2: pending Auto-arrow を E2E から poll するため公開。null = pending なし、
   // object = プレビュー中。Toolbar に出ない情報なので window expose のみが現実的。
+  // Phase 8.x band-aids review #5 H1: DEV-only.
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_PENDING_AUTO_ARROW__ =
       pendingAutoArrow;
   }, [pendingAutoArrow]);
@@ -282,7 +290,13 @@ export const EditorShell = ({
   // transform pipeline by calling these directly. The keyboard binding
   // itself is small and covered by the existing keyboard-shortcuts.spec.ts
   // pattern (V / R / A / T / H + Cmd+S).
+  // Phase 8.x band-aids review #5 H1: DEV-only. Critically, this hatch
+  // exposes function references (fitToViewport / setHundredPercent /
+  // zoomBy / panBy) — without the gate, third-party scripts on a
+  // production page could call them. The gate strips the entire
+  // assignment in production via Vite tree-shaking.
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_TRANSFORM_ACTIONS__ = {
       fitToViewport,
       setHundredPercent,

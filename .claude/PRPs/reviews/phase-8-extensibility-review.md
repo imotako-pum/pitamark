@@ -174,6 +174,17 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4)
+
+(deferred to a follow-up PR after Phase 9 dogfood)
+
+| Finding | Status | 理由 |
+|---|---|---|
+| M1 (案 A yMapToAnnotation switch / 案 B Record<Tool> 化 / 案 C COMMITTING_ACTIONS switch) | deferred | 80-150 LOC の cross-cutting refactor。1 PR の theme 4 commit 内に詰めると他 finding (a11y / band-aids / typesafety) との bisect 不可能化が大きい。新 annotation 種を実際に追加する Phase で同時にやる方が pull-request の単位として自然。Phase 9 後の "extensibility friction reduction" PR に切り出す |
+| L3 CanvasStage `buildDraftFactory` | deferred | 同上。CanvasStage (537 LOC) の中核 refactor で local 影響大 |
+| L4 ANNOTATION_TYPES ↔ TOOLS 手動同期 | deferred | M1 案 B と一緒に処理する方が touch unit として自然 |
+| L1 / L2 (HF=false) | Backlog | — |
+
 (Phase 8.x で M1 / L3 を fix する Plan が立った時点で更新)
 
 ---

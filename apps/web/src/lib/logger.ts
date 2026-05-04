@@ -1,4 +1,4 @@
-// biome-ignore-all lint/suspicious/noConsole: this module is the single console wrapper for the web app; replace with a structured logger in Phase 5+.
+// biome-ignore-all lint/suspicious/noConsole: this module is the single console wrapper for the web app; the move to a structured logger (e.g. pino-browser) is parked for re-evaluation after Phase 9 dogfood — production traffic will determine whether the simplicity of console wins out.
 const PREFIX = '[web]';
 
 type Meta = Record<string, unknown>;

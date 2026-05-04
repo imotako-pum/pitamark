@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import app from '../index';
+import type { ErrorEnvelope } from '../lib/error';
 import { createWsTicketService } from '../services/ws-ticket-service';
 import { buildEnv } from './helpers/build-env';
 import { createStubRateLimit } from './helpers/in-memory-rl';
 
-type ErrorBody = { ok: false; error: { code: string; message: string } };
+// Phase 8.x error-envelope review #11 L3: see rooms.test.ts.
+type ErrorBody = ErrorEnvelope;
 type CreatedRoom = { id: string };
 // Phase 7: every multipart upload must carry `cf-turnstile-response`.
 const TEST_TS_TOKEN = 'test-turnstile-token';

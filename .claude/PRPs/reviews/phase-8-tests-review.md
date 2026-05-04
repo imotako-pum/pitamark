@@ -174,6 +174,15 @@ None.
 
 ## Resolution Update
 
+### Phase 8.x branch `fix/phase-8-x-fixes` (theme 4: quality cleanup)
+
+| Finding | Resolution | Files touched |
+|---|---|---|
+| **M1** `@vitest/coverage-v8` 未インストール | catalog に追加、`apps/web` / `apps/api` の `package.json` に `catalog:` 参照、`vite.config.ts` / `vitest.config.ts` の `test.coverage` block + `test:coverage` script を追加。`pnpm test:coverage` でレポート生成可能 | `pnpm-workspace.yaml` / `apps/web/package.json` / `apps/api/package.json` / `apps/web/vite.config.ts` / `apps/api/vitest.config.ts` |
+| **M2** `annotation/set-font-size` non-text identity test | `annotationsReducer.test.ts` に identity 検証 2 件追加 (non-text id / unknown id)。reducer + `setFontSize` operation 双方を short-circuit 化して green | `apps/web/src/hooks/__tests__/annotationsReducer.test.ts` / `apps/web/src/hooks/annotationsReducer.ts` / `apps/web/src/domain/annotation/operations.ts` |
+| M3 `waitForTimeout(700)` E2E flaky | (deferred) test の deterministic 化は `yjs-annotations-context.ts` に test-only `captureTimeout` option 追加 + E2E refactor が必要で theme 4 commit に詰めると別の bisect リスク。Phase 9 開始前に独立で扱う | — |
+| L1 / L2 / L3 / L4 (HF=false) | Backlog | — |
+
 (Phase 8.x で修正された後、Phase 8.x 着手側の Plan/Implement で追記)
 
 ---

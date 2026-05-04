@@ -1,6 +1,7 @@
 import { MAX_IMAGE_BYTES } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
+import type { ErrorEnvelope } from '../lib/error';
 import { buildEnv } from './helpers/build-env';
 import { createInMemoryKv } from './helpers/in-memory-kv';
 import { createStubRateLimit } from './helpers/in-memory-rl';
@@ -21,7 +22,10 @@ const formWithImage = (file: File, extra: Record<string, string> = {}): FormData
   return form;
 };
 
-type ErrorBody = { ok: false; error: { code: string; message: string } };
+// Phase 8.x error-envelope review #11 L3: re-use the shared `ErrorEnvelope`
+// so the test asserts against the actual `ErrorCode` union — a typo or
+// removed code surfaces as a compile error here.
+type ErrorBody = ErrorEnvelope;
 type PublicRoom = {
   id: string;
   createdAt: number;

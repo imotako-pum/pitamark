@@ -1,7 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 import {
   AuthResponseSchema,
-  ROOM_ID_REGEX,
   RoomCreatedSchema,
   RoomPublicSchema,
   toPublicRoom,
@@ -10,6 +9,7 @@ import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { extractClientIp } from '../lib/ip';
 import { logger } from '../lib/logger';
+import { idParamSchema } from '../lib/schemas';
 import { extractBearerToken } from '../lib/token';
 import { withRateLimit } from '../middleware/rate-limit';
 import { createImageBlocklistService } from '../services/image-blocklist-service';
@@ -20,10 +20,6 @@ import { createTurnstileService } from '../services/turnstile-service';
 import { createWsTicketService } from '../services/ws-ticket-service';
 import { createR2ImageStorage } from '../storage/r2-image-storage';
 import { createR2MetaStorage } from '../storage/r2-meta-storage';
-
-const idParamSchema = z.object({
-  id: z.string().regex(ROOM_ID_REGEX),
-});
 
 // File field is rendered as `string($binary)` in OpenAPI 3.1.
 // `password` is optional — empty string or absent ⇒ unprotected room.
@@ -292,9 +288,15 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
       }
       const ok = await passwordService.verify(password, room.auth);
       if (!ok) {
-        // Public message must not vary on failure mode (timing). Never log password.
-        logger.warn('auth failed', { id });
-        throw new AppError(401, 'UNAUTHORIZED', 'Invalid password', { id });
+        // Phase 8.x error-envelope review #11 L2: rely on AppError's
+        // logContext (warned once by `onAppError`) instead of a separate
+        // explicit `logger.warn` that produced two ledger entries for one
+        // event. Public message stays uniform regardless of failure mode
+        // so it cannot leak timing.
+        throw new AppError(401, 'UNAUTHORIZED', 'Invalid password', {
+          id,
+          event: 'auth_failed',
+        });
       }
       const token = await tokenService.issue(id);
       logger.info('auth success', { id });
