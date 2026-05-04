@@ -10,16 +10,26 @@
       name="description"
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:site_name" content="snap-share" />
     <meta property="og:title" content="snap-share — 画像URL一発で共同注釈" />
     <meta
       property="og:description"
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
     <meta property="og:url" content="%VITE_PUBLIC_URL%" />
-    <meta property="og:image" content="%VITE_PUBLIC_URL%/og-image.png" />
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Phase 10.B: og:image / twitter:card=summary_large_image はアプリ名 + ロゴ
+         確定 (Phase 10.D) → og-image.png 作成 (Phase 10.F) のタイミングで追加。
+         不在資産を参照すると SNS スクレイパが破損プレビューを生成するため、
+         今は summary カード (画像なし) で fallback する。 -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="snap-share — 画像URL一発で共同注釈" />
+    <meta
+      name="twitter:description"
+      content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
+    />
     <!-- Phase 7: Cloudflare Turnstile loader. Site key is read at runtime by the React widget. -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>
