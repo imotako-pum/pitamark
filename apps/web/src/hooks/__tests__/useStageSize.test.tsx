@@ -1,7 +1,6 @@
-// Phase 8.x perf review #10 M2 regression test: useStageSize must NOT
-// register a `window.resize` listener (which previously fired alongside
-// EditorShell's own resize handler, doubling the re-render count). It
-// observes `document.documentElement` via ResizeObserver instead.
+// regression test: useStageSize は `window.resize` listener を登録してはいけない
+// (EditorShell の resize handler と二重発火して再レンダー数を倍増させていた)。
+// 代わりに `document.documentElement` を ResizeObserver で監視する仕様。
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';

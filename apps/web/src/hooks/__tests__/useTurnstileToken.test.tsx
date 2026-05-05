@@ -3,9 +3,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type UseTurnstileTokenResult, useTurnstileToken } from '../useTurnstileToken';
 
-// Capture the hook's return value into an outer ref so tests can poke at it
-// without depending on @testing-library/react (this repo uses raw
-// react-dom/client + happy-dom — see useKeyboardShortcuts.test.tsx).
+// hook の返り値を outer ref にキャプチャして、@testing-library/react に頼らずに
+// テストから操作する (本 repo は raw react-dom/client + happy-dom 構成 —
+// useKeyboardShortcuts.test.tsx 参照)。
 const renderHookCapture = <T,>(useHook: () => T) => {
   let captured: T | null = null;
   const Harness = () => {

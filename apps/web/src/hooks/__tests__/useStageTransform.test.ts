@@ -30,9 +30,9 @@ describe('clampScale', () => {
 describe('computeFitTransform', () => {
   it('shrinks a 5000x5000 image into a 1000x800 viewport', () => {
     const t = computeFitTransform({ width: 5000, height: 5000 }, { width: 1000, height: 800 });
-    // Limited by height: 800 / 5000 = 0.16
+    // 高さで律速: 800 / 5000 = 0.16
     expect(t.scale).toBeCloseTo(0.16);
-    // Centered horizontally: image rendered width = 5000 * 0.16 = 800 → x = (1000 - 800)/2 = 100
+    // 水平方向に center: 描画幅 = 5000 * 0.16 = 800 → x = (1000 - 800)/2 = 100
     expect(t.x).toBeCloseTo(100);
     expect(t.y).toBeCloseTo(0);
   });
@@ -47,7 +47,7 @@ describe('computeFitTransform', () => {
   it('handles a portrait image (height-limited)', () => {
     const t = computeFitTransform({ width: 500, height: 3000 }, { width: 1000, height: 800 });
     expect(t.scale).toBeCloseTo(800 / 3000);
-    // Centered horizontally
+    // 水平方向に center
     expect(t.x).toBeCloseTo((1000 - 500 * (800 / 3000)) / 2);
     expect(t.y).toBeCloseTo(0);
   });
@@ -83,8 +83,8 @@ describe('zoomAtPointer', () => {
     const pointer = { x: 500, y: 400 };
     const next = zoomAtPointer(start, pointer, 2);
     expect(next.scale).toBe(2);
-    // The point under the cursor in logical coords was (500, 400).
-    // After scaling, screen position should still be (500, 400).
+    // cursor 直下の logical 座標は (500, 400)。scale 変更後も screen 位置は
+    // (500, 400) に固定されているはず。
     const logicalAfter = {
       x: (pointer.x - next.x) / next.scale,
       y: (pointer.y - next.y) / next.scale,
@@ -117,9 +117,8 @@ describe('clampPan', () => {
   const viewport = { width: 800, height: 600 };
 
   it('passes through transforms inside the bounds', () => {
-    // Identity-ish placement at scale 1; virtual area is 2x the image, viewport
-    // is smaller than the image, so the image fully covers the viewport with
-    // plenty of margin → no clamping should fire.
+    // scale 1 でほぼ identity 配置。仮想領域は画像の 2 倍、viewport は画像より小さい
+    // ので画像が viewport を完全に覆い、十分な余白がある → clamp は発火しないはず。
     const t = { scale: 1, x: 0, y: 0 };
     const clamped = clampPan(t, image, viewport);
     expect(clamped.x).toBe(0);
@@ -127,19 +126,19 @@ describe('clampPan', () => {
   });
 
   it('snaps back when virtual right edge crosses the viewport left edge', () => {
-    // Drag image far to the left → virtual maxX in screen space falls below 0.
+    // 画像を大きく左にドラッグ → 仮想 maxX が screen space で 0 を下回る。
     const t = { scale: 1, x: -5000, y: 0 };
     const clamped = clampPan(t, image, viewport);
-    // Virtual maxX (logical) = 1000 * 1.5 = 1500.
-    // After clamp: maxX_screen = 1500 + clamped.x must equal viewport.width (800).
+    // 仮想 maxX (logical) = 1000 * 1.5 = 1500。
+    // clamp 後: maxX_screen = 1500 + clamped.x が viewport.width (800) と等しいはず。
     expect(1500 + clamped.x).toBeCloseTo(viewport.width);
   });
 
   it('snaps back when virtual left edge crosses the viewport right edge (positive overflow)', () => {
     const t = { scale: 1, x: 5000, y: 0 };
     const clamped = clampPan(t, image, viewport);
-    // Virtual minX (logical) = -1000 * 0.5 = -500.
-    // After clamp: minX_screen = -500 + clamped.x must equal 0.
+    // 仮想 minX (logical) = -1000 * 0.5 = -500。
+    // clamp 後: minX_screen = -500 + clamped.x が 0 と等しいはず。
     expect(-500 + clamped.x).toBeCloseTo(0);
   });
 
