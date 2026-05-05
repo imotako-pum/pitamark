@@ -1,4 +1,4 @@
-import type { Annotation, Point, TextAnnotation } from '@snap-share/shared';
+import type { Annotation, Point, TextAnnotation } from '@pitamark/shared';
 import type Konva from 'konva';
 import {
   type ReactNode,

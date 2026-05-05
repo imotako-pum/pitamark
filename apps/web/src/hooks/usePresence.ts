@@ -1,4 +1,4 @@
-import type { UserPresence } from '@snap-share/shared';
+import type { UserPresence } from '@pitamark/shared';
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { LocalUser } from '../lib/local-user';
 import {

@@ -1,4 +1,4 @@
-import type { TextAnnotation } from '@snap-share/shared';
+import type { TextAnnotation } from '@pitamark/shared';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from '../../i18n';
 import { OUTLINE_ACCENT } from './colors';

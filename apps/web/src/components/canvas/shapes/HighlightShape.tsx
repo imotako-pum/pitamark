@@ -1,4 +1,4 @@
-import type { HighlightAnnotation } from '@snap-share/shared';
+import type { HighlightAnnotation } from '@pitamark/shared';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useEffect, useRef } from 'react';

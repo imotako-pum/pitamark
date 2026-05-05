@@ -1,4 +1,4 @@
-import type { Point } from '@snap-share/shared';
+import type { Point } from '@pitamark/shared';
 
 // Phase 7.8-1 Auto-next-A: 矢印終端から空 text を生成する位置の offset。矢印方向の
 // 単位ベクトルに distance を掛けるシンプル設計で、矢印の延長線上に text が並ぶ。

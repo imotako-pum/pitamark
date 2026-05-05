@@ -1,4 +1,4 @@
-import type { Annotation, RectangleAnnotation, TextAnnotation } from '@snap-share/shared';
+import type { Annotation, RectangleAnnotation, TextAnnotation } from '@pitamark/shared';
 import { describe, expect, it } from 'vitest';
 import {
   type AnnotationsState,

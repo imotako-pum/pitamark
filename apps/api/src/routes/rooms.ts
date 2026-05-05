@@ -5,7 +5,7 @@ import {
   RoomPublicSchema,
   toPublicRoom,
   WsTicketResponseSchema,
-} from '@snap-share/shared';
+} from '@pitamark/shared';
 import type { Bindings } from '../lib/bindings';
 import { AppError, ErrorResponseSchema, errorEnvelope } from '../lib/error';
 import { extractClientIp } from '../lib/ip';

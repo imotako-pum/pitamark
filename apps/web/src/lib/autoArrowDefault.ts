@@ -1,4 +1,4 @@
-import type { Point, RectangleAnnotation } from '@snap-share/shared';
+import type { Point, RectangleAnnotation } from '@pitamark/shared';
 
 // Phase 7.8-2 Auto-next-B: 矩形確定時の既定矢印プレビューの長さ。右下 45° 方向に
 // この距離だけ尾(to)を伸ばす。dogfood で長すぎ/短すぎが出れば Phase 9 dogfood で再評価。

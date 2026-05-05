@@ -1,4 +1,4 @@
-import type { Annotation } from '@snap-share/shared';
+import type { Annotation } from '@pitamark/shared';
 import type Konva from 'konva';
 import { type ReactNode, type Ref, useCallback, useEffect, useState } from 'react';
 import { AwarenessLayer } from '../components/canvas/AwarenessLayer';

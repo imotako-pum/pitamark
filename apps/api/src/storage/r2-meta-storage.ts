@@ -1,4 +1,4 @@
-import { type Room, RoomSchema } from '@snap-share/shared';
+import { type Room, RoomSchema } from '@pitamark/shared';
 import { AppError } from '../lib/error';
 import { logger } from '../lib/logger';
 

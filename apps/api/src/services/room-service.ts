@@ -4,7 +4,7 @@ import {
   MAX_IMAGE_BYTES,
   MAX_ROOM_TTL_MS,
   type Room,
-} from '@snap-share/shared';
+} from '@pitamark/shared';
 import { AppError } from '../lib/error';
 import { generateRoomId } from '../lib/id';
 import { logger } from '../lib/logger';

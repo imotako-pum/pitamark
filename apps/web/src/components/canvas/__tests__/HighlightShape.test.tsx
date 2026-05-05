@@ -1,4 +1,4 @@
-import type { HighlightAnnotation } from '@snap-share/shared';
+import type { HighlightAnnotation } from '@pitamark/shared';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

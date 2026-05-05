@@ -6,7 +6,7 @@
 // of truth at the route boundary too.
 
 import { z } from '@hono/zod-openapi';
-import { ROOM_ID_REGEX } from '@snap-share/shared';
+import { ROOM_ID_REGEX } from '@pitamark/shared';
 
 /** `{ id: string }` URL param shared by every `/rooms/:id*` route. */
 export const idParamSchema = z.object({

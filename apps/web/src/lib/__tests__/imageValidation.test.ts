@@ -1,4 +1,4 @@
-import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from '@snap-share/shared';
+import { ALLOWED_IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from '@pitamark/shared';
 import { describe, expect, it } from 'vitest';
 import { validateImageFile } from '../imageValidation';
 

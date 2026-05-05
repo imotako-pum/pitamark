@@ -1,4 +1,4 @@
-import { type UserPresence, UserPresenceSchema } from '@snap-share/shared';
+import { type UserPresence, UserPresenceSchema } from '@pitamark/shared';
 import type { Awareness } from 'y-protocols/awareness';
 import type { LocalUser } from '../lib/local-user';
 

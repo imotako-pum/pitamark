@@ -1,4 +1,4 @@
-import { MAX_IMAGE_BYTES, MAX_ROOM_TTL_MS } from '@snap-share/shared';
+import { MAX_IMAGE_BYTES, MAX_ROOM_TTL_MS } from '@pitamark/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
 import type { ErrorEnvelope } from '../lib/error';

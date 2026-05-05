@@ -1,4 +1,4 @@
-import type { Annotation, Point } from '@snap-share/shared';
+import type { Annotation, Point } from '@pitamark/shared';
 import type * as Y from 'yjs';
 import { annotationToYMap } from './yjs-codec';
 

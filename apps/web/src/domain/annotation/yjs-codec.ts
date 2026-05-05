@@ -1,4 +1,4 @@
-import { type Annotation, AnnotationSchema } from '@snap-share/shared';
+import { type Annotation, AnnotationSchema } from '@pitamark/shared';
 import * as Y from 'yjs';
 
 export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {

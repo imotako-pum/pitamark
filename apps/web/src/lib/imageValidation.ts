@@ -2,7 +2,7 @@ import {
   ALLOWED_IMAGE_MIME_TYPES,
   type AllowedImageMimeType,
   MAX_IMAGE_BYTES,
-} from '@snap-share/shared';
+} from '@pitamark/shared';
 import type { I18nKey } from '../i18n';
 
 export type ValidImage = Readonly<{

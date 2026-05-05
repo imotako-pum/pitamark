@@ -1,4 +1,4 @@
-import type { ArrowAnnotation, Point } from '@snap-share/shared';
+import type { ArrowAnnotation, Point } from '@pitamark/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Circle, Arrow as KonvaArrow } from 'react-konva';
 import {
