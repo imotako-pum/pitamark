@@ -75,7 +75,7 @@ id = "750e562861214964ab8e157b79a1d42d"
 # does not require provisioning.
 [[kv_namespaces]]
 binding = "WS_TICKETS"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
+id = "620c0c91f9394dd593a3ca5027ba348d"
 
 [vars]
 # Phase 10.B: default room TTL = 24h. Clients can request a longer TTL via
