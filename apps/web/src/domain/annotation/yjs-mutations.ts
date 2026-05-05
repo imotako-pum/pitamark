@@ -7,7 +7,7 @@ import { annotationToYMap } from './yjs-codec';
 // `trackedOrigins: new Set([LOCAL_ORIGIN])` then tracks ONLY local mutations
 // — remote merges (origin null) are skipped, so undo never strips peers' work.
 // Identity-sensitive: callers must import this exact symbol, not re-create it.
-export const LOCAL_ORIGIN = Symbol('snap-share/local');
+export const LOCAL_ORIGIN = Symbol('pitamark/local');
 
 type YAnnotations = Y.Map<Y.Map<unknown>>;
 

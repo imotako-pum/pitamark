@@ -40,7 +40,7 @@ app.use(
 );
 
 const routed = app
-  .get('/health', (c) => c.json({ ok: true, service: 'snap-share-api', ts: Date.now() }))
+  .get('/health', (c) => c.json({ ok: true, service: 'pitamark-api', ts: Date.now() }))
   .route('/rooms', roomsRoute)
   .route('/rooms', imagesRoute);
 

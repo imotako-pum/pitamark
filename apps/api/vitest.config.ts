@@ -14,7 +14,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [
     {
-      name: 'snap-share/virtualize-cloudflare-workers',
+      name: 'pitamark/virtualize-cloudflare-workers',
       enforce: 'pre',
       resolveId(id) {
         if (id === 'cloudflare:workers') {
