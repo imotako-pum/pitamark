@@ -256,7 +256,8 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 | ~~10.C~~ | ~~Mac spike (Tauri)~~ | **Q9 で削除、Phase 11+ 候補へ後回し** | removed | — | — | [ADR-0003](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) (on hold) |
 | 10.D | リネーム + 公開準備 (ドメイン非依存) | リネーム実装 (`snap-share` → `pitamark`) + ADR-0005 起票 + OGP/favicon アセット作成 + SEO 雛形 (robots.txt / sitemap.xml / JSON-LD / canonical) + 法務文書英訳 (terms-en / privacy-en draft) + i18n 化漏れ追跡。**2026-05-05 再分割: 旧 10.D「ドメイン取得 + Turnstile 切替 + Pages カスタムドメイン設定」は 10.F に移動** | complete (workspace package + 可視 UI + Export PNG prefix + localStorage migration + ADR-0005 + OGP+apple-touch-icon + SEO 雛形 + 法務 ja rename + en draft + i18n 漏れ追跡。Cloudflare リソース + CHANGELOG 起票は 10.F へ意図的に残置) | with 10.B/E | 10.A | [phase-10-d-rename-launch-prep.plan.md](../plans/phase-10-d-rename-launch-prep.plan.md) |
 | 10.E | i18n 軽量実装 | 自作 dict + 日英 2 言語、Q9 で待ち条件解消し独立実行可 | complete (apps/web/src/i18n/ + ~80 keys + LangToggle UI + 305 unit + 4 e2e、英訳 draft はオーナー後続レビュー) | with 10.B/D | 10.A | [phase-10-e-i18n.plan.md](../plans/phase-10-e-i18n.plan.md) |
-| 10.F | ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ | Cloudflare Registrar で `pitamark.app` + `.com` 取得 / Pages カスタムドメイン設定 / Workers `CORS_ALLOWED_ORIGINS` 更新 / Turnstile site key 切替 / Cloudflare Web Analytics token 本番値設定 / 法務運営者連絡先 + 確定ドメイン埋込 / `og:url` + canonical + sitemap.xml URL 確定値置換 / 本番デプロイ + v1.0.0 タグ + GitHub Release / `CHANGELOG.md` 初版起票 (Phase 0〜10 milestone 遡及記録) / HSTS preload 申請判断 | pending | - | 10.B + 10.D + 10.E | TBD |
+| 10.H | ランディング条件付き拡張 + AdSense slot 予約 | 画像未投入時に `LocalEditor` 内で Hero/機能/使い方/FAQ を `<DropZone>` 周辺に追加 + page shell に `<aside>` ad slot 2 種 (lg+ 左右レール / lg 未満 下部静的、`min-height` 固定で CLS < 0.1 担保、placeholder のみで AdSense script は注入しない)。**2026-05-06 新設: 公開直前の第一印象 + 後付け CLS 悪化回避を先払い、Phase 10.F の前段に配置** | in-progress (PRD draft 完了 + plan draft 完了、実装 pending) | - (umbrella plan 1 本) | 10.E | [phase-10-h-landing-and-ad-slots.prd.md](./phase-10-h-landing-and-ad-slots.prd.md) / [plan](../plans/phase-10-h-landing-and-ad-slots.plan.md) |
+| 10.F | ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ | Cloudflare Registrar で `pitamark.app` + `.com` 取得 / Pages カスタムドメイン設定 / Workers `CORS_ALLOWED_ORIGINS` 更新 / Turnstile site key 切替 / Cloudflare Web Analytics token 本番値設定 / 法務運営者連絡先 + 確定ドメイン埋込 / `og:url` + canonical + sitemap.xml URL 確定値置換 / 本番デプロイ + v1.0.0 タグ + GitHub Release / `CHANGELOG.md` 初版起票 (Phase 0〜10 milestone 遡及記録) / HSTS preload 申請判断 | pending | - | 10.B + 10.D + 10.E + 10.H | TBD |
 | 10.G | 観察期間（1 ヶ月） | Analytics 蓄積 + オーナーの「詰まった瞬間メモ」 | pending | - | 10.F | (ad-hoc) |
 | 11.0 | Phase 11 PRD 起票 | 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、Mac spike 再検討含む実装方向確定 | pending | - | 10.G | TBD |
 
@@ -320,6 +321,19 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
   - `<html lang>` を OS 言語 or ユーザー切替に追従
   - 全 UI 文言を dict 化、ハードコード排除
 - Success signal: 言語切替で UI が完全に日↔英で切り替わる + テスト追加
+
+**Phase 10.H: ランディング条件付き拡張 + AdSense slot 予約**
+
+> 2026-05-06 新設: Phase 10.F (公開リリース) の前段に、第一印象 (初訪問者の D&D 実行率) と将来収益化準備 (AdSense 後付け CLS 悪化回避) を同時に整える sub-phase を追加。詳細 PRD は [phase-10-h-landing-and-ad-slots.prd.md](./phase-10-h-landing-and-ad-slots.prd.md)。
+
+- Goal: 公開直前に「初訪問者が 5〜10 秒で価値を理解 → D&D に手を伸ばす」面と「将来 AdSense を貼り込んでもレイアウトが壊れない slot」を先に作る
+- Scope:
+  - **ランディング条件付き拡張**: `LocalEditor` 内で `useImageSource.source === null` 時に Hero (見出し + 価値 1 行 + 実 UI 視覚 + 中央 D&D) / 機能 3 点 / 使い方 1 行例 / FAQ (Could) を `<DropZone>` 周辺に追加。ルート分割なし、条件付きレンダリングで吸収
+  - **AdSense slot 予約**: page shell に `<aside>` 2 つ追加、Tailwind v4 の `lg:` で「`lg:` 以上 = 左右レール / `lg:` 未満 = 下部静的 (non-sticky)」を切替。`min-height` 固定で CLS 0 を担保、placeholder のみ (AdSense script 注入は Phase 11+)
+  - **i18n + a11y + E2E**: `landing.*` / `ad.*` keys を `keys.ts` / `ja.ts` / `en.ts` に追加、`apps/web/e2e/landing.spec.ts` を 2 ケース拡張、axe-core で a11y AA、Lighthouse 4 軸 90+
+  - **環境変数 placeholder pattern**: `index.html` に `%VITE_ADSENSE_CLIENT_ID%` を仕込む (script は注入しない、Phase 11+ 用の準備のみ)
+- Success signal: 画像未投入時にランディングが表示 / lg+ で左右レール、lg 未満で下部静的に slot 表示 / Lighthouse Performance/Best Practices/SEO/Accessibility 90+ / CLS p75 < 0.1 / E2E 緑 / axe critical/serious 0 件
+- 非スコープ (Phase 11+ 行き): AdSense script 実注入 / `<ins>` タグ / `adsbygoogle.push` / ads.txt / cookie 同意バナー / loop 動画 / motion library
 
 **Phase 10.F: ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ**
 

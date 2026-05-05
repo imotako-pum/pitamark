@@ -1,9 +1,10 @@
 import { Lock } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import { type ReactNode, useCallback, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LandingShell } from '../components/landing/LandingShell';
 import { TurnstileWidget } from '../components/turnstile/TurnstileWidget';
 import { useAnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useImageSource } from '../hooks/useImageSource';
@@ -93,13 +94,17 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     [blockedByEmptyPassword, protect, password, loadFromFile, turnstile, t],
   );
 
-  // Phase 7.6 既知-2 fix の改修 (横幅狭時 wrap バグ): 旧実装は `top-16` 固定で
-  // パネルを Toolbar 直下に逃がしていたが、Toolbar が flex-wrap で 2 行になると
-  // パネルが Toolbar の後ろに隠れる回帰があった。EditorShell の `belowHeader`
-  // slot に流すことで、ResizeObserver で測定された動的 `headerHeight` に追従。
+  // Phase 10.H: protect-password panel renders **inline** within the landing
+  // flow (right under DropZone) instead of as a floating overlay below the
+  // header. The earlier `belowHeader` overlay design (Phase 7.6 既知-2 fix)
+  // collided with the new Hero h2 when source === null, because Hero starts
+  // at the top of the stage area and the floating panel sat on top of it.
+  // Inline placement removes the overlap, keeps the password panel close to
+  // the upload action it modifies, and frees `belowHeader` for editor-mode
+  // floating chrome should it be needed in the future.
   const protectPanel =
     source === null ? (
-      <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+      <div className="flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5">
         <div className="flex items-center gap-2">
           <Checkbox
             id={checkboxId}
@@ -151,7 +156,16 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
         onLoadFile={handleLoad}
         onClearImage={handleClear}
         store={store}
-        belowHeader={protectPanel}
+        landingSlot={(dropzone: ReactNode) => (
+          <LandingShell
+            dropzone={
+              <>
+                {dropzone}
+                {protectPanel}
+              </>
+            }
+          />
+        )}
       />
     </>
   );

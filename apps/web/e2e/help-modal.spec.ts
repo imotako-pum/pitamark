@@ -35,10 +35,15 @@ const dispatchHelpKey = (page: import('@playwright/test').Page) =>
 // can race the lazy chunk: the Suspense fallback is still mounted when the
 // `?` event fires and the `useKeyboardShortcuts` listener (declared in
 // `EditorShell`, which lives inside the lazy boundary) is not attached
-// yet. Wait for the toolbar to appear — that guarantees `EditorShell` has
-// mounted and its listeners are wired up.
+// yet. Wait for the DropZone heading — it lives inside `EditorShell` and
+// guarantees mount + keyboard listeners are wired.
+//
+// Phase 10.H: was previously waiting on the editor toolbar, but the
+// toolbar is now hidden on landing (source === null). DropZone heading is
+// the most stable mount-completed signal that survives the toolbar-hidden
+// landing redesign.
 const waitForEditorReady = (page: import('@playwright/test').Page) =>
-  page.getByRole('toolbar', { name: '編集ツール' }).waitFor({ state: 'visible' });
+  page.getByRole('heading', { name: '画像をドロップしてください' }).waitFor({ state: 'visible' });
 
 test.describe('HelpModal', () => {
   test('? キーで開いて Esc で閉じる (画像未投入でも動く)', async ({ page }, testInfo) => {

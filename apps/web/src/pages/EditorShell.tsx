@@ -9,11 +9,13 @@ import {
   useRef,
   useState,
 } from 'react';
+import { AdSlot, BOTTOM_HEIGHT_PX, RAIL_WIDTH_PX } from '../components/ad/AdSlot';
 import { CanvasStage } from '../components/canvas/CanvasStage';
 import { DEFAULT_STROKE_WIDTH } from '../components/canvas/colors';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
 import { HelpModal } from '../components/dialogs/HelpModal';
 import { DropZone } from '../components/empty-state/DropZone';
+import { LangToggle } from '../components/lang-toggle/LangToggle';
 import { Toolbar } from '../components/toolbar/Toolbar';
 import type { Tool } from '../hooks/annotationsReducer';
 import type { AnnotationsStore } from '../hooks/useAnnotationsStore';
@@ -69,6 +71,12 @@ export type EditorShellProps = Readonly<{
    *  don't occlude the slot. Used by LocalEditor for the optional protect-password
    *  panel — see Phase 7.6 既知-2 fix for the original z-index gotcha. */
   belowHeader?: ReactNode;
+  /** Phase 10.H: When `source === null`, the wrapper this returns replaces
+   *  the bare `<DropZone>` with a fuller landing experience (Hero / Features
+   *  / HowTo / FAQ). Receives the configured `<DropZone>` as a child slot so
+   *  the primary CTA stays in the same place. RoomEditor does not pass this
+   *  (room mode never shows an empty state). */
+  landingSlot?: (dropzone: ReactNode) => ReactNode;
   /** roomId for export filename; null in local mode. */
   roomId?: string | null;
 }>;
@@ -85,6 +93,7 @@ export const EditorShell = ({
   toolbarRight,
   floatingExtras,
   belowHeader,
+  landingSlot,
   roomId = null,
 }: EditorShellProps) => {
   const t = useTranslation();
@@ -227,7 +236,23 @@ export const EditorShell = ({
     }
   }, [setPendingAutoArrow]);
 
-  const stageHeight = Math.max(stageSize.height - headerHeight, MIN_STAGE_HEIGHT);
+  // Phase 10.H: On `lg:` breakpoint (>= 1024px) the page shell reserves two
+  // 160px ad rails on the sides. The Konva stage receives the *inner* width
+  // (viewport - rails) so the canvas does not overflow into the rails. The
+  // CSS-side inset of the stage container uses `lg:left-40 lg:right-40` to
+  // match `RAIL_WIDTH_PX` exactly. Below `lg:` the rails are display:none so
+  // the stage uses the full viewport width — but a fixed 100px bottom
+  // AdSlot sits over the bottom of the viewport, so the stage container
+  // also reserves `BOTTOM_HEIGHT_PX` of bottom inset on narrow widths.
+  const isLgViewport = stageSize.width >= 1024;
+  const stageInnerWidth = isLgViewport
+    ? Math.max(stageSize.width - RAIL_WIDTH_PX * 2, 0)
+    : stageSize.width;
+  const stageBottomInset = isLgViewport ? 0 : BOTTOM_HEIGHT_PX;
+  const stageHeight = Math.max(
+    stageSize.height - headerHeight - stageBottomInset,
+    MIN_STAGE_HEIGHT,
+  );
   // Destructure once so each handler / effect depends on a stable function
   // reference rather than `transformApi.X` (a fresh property access per
   // render). This mirrors the same fragility class as the `[viewport]`
@@ -239,7 +264,7 @@ export const EditorShell = ({
     setHundredPercent,
     zoomBy,
     panBy,
-  } = useStageTransform({ width: stageSize.width, height: stageHeight });
+  } = useStageTransform({ width: stageInnerWidth, height: stageHeight });
 
   const handleImageLoaded = useCallback(
     (size: { width: number; height: number } | null) => {
@@ -502,40 +527,61 @@ export const EditorShell = ({
 
   return (
     <main className="relative h-dvh w-dvw overflow-hidden bg-(--color-surface) text-(--color-text)">
+      {/* Phase 10.H: AdSense rail placeholders. Reserved fixed-px regions on
+          `lg:` viewports so the future <ins class="adsbygoogle"> drop-in does
+          not introduce CLS. Hidden below lg via the AdSlot's own className. */}
+      <AdSlot variant="rail" side="left" />
+      <AdSlot variant="rail" side="right" />
       <header
         ref={headerRef}
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-2"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-2 lg:left-40 lg:right-40"
       >
         <h1 className="pointer-events-auto hidden select-none self-center text-sm font-semibold tracking-wide opacity-70 md:block">
           {t('common.appName')}
         </h1>
-        <Toolbar
-          tool={store.state.tool}
-          canUndo={store.canUndo}
-          canRedo={store.canRedo}
-          hasSelection={store.state.selectedId !== null}
-          imageLoaded={source !== null}
-          canExport={canExport}
-          activeColor={store.state.activeColor}
-          activeFontSize={store.state.activeFontSize}
-          onSetTool={handleSetTool}
-          onUndo={store.undo}
-          onRedo={store.redo}
-          onDelete={handleDelete}
-          onClearImage={handleClearImage}
-          onExport={handleExport}
-          onPickColor={handlePickColor}
-          onIncrementFontSize={handleIncrementFontSize}
-          onDecrementFontSize={handleDecrementFontSize}
-          onShowHelp={handleShowHelp}
-        />
-        <div className="pointer-events-auto flex min-w-0 justify-end self-center md:w-30">
-          {toolbarRight ?? <div aria-hidden="true" />}
+        {/* Phase 10.H: hide the editor Toolbar on landing (source === null).
+            The disabled tool buttons add no value before an image is loaded
+            and crowded the landing surface — verified during dogfood review.
+            When `source` becomes non-null the Toolbar mounts immediately,
+            which is also the user's "now you can edit" signal. */}
+        {source !== null ? (
+          <Toolbar
+            tool={store.state.tool}
+            canUndo={store.canUndo}
+            canRedo={store.canRedo}
+            hasSelection={store.state.selectedId !== null}
+            imageLoaded={source !== null}
+            canExport={canExport}
+            activeColor={store.state.activeColor}
+            activeFontSize={store.state.activeFontSize}
+            onSetTool={handleSetTool}
+            onUndo={store.undo}
+            onRedo={store.redo}
+            onDelete={handleDelete}
+            onClearImage={handleClearImage}
+            onExport={handleExport}
+            onPickColor={handlePickColor}
+            onIncrementFontSize={handleIncrementFontSize}
+            onDecrementFontSize={handleDecrementFontSize}
+            onShowHelp={handleShowHelp}
+          />
+        ) : (
+          // Spacer keeps `justify-between` flexbox stable so the right slot
+          // (LangToggle) does not collapse into the brand h1.
+          <div aria-hidden="true" />
+        )}
+        {/* Phase 10.H: LangToggle is rendered alongside the right slot so the
+            language switcher stays accessible on landing (where the editor
+            toolbar is hidden). It used to sit inside Toolbar, which gated
+            language switching behind "image loaded". */}
+        <div className="pointer-events-auto flex min-w-0 items-center justify-end gap-2 self-center md:w-auto">
+          <LangToggle />
+          {toolbarRight ?? null}
         </div>
       </header>
       {belowHeader && (
         <div
-          className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-3"
+          className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-3 lg:left-40 lg:right-40"
           style={{ top: headerHeight }}
         >
           {belowHeader}
@@ -543,13 +589,18 @@ export const EditorShell = ({
       )}
       <div
         ref={stageContainerRef}
-        className="absolute inset-x-0 bottom-0"
+        // Phase 10.H: stage container's vertical extent is fully determined
+        // by `style={{ top, height }}` — `bottom` is intentionally NOT set
+        // so the inline height (`vh - headerHeight - stageBottomInset`)
+        // wins. `lg:left-40 lg:right-40` reserves 160px gutters for the
+        // side ad rails on lg+ widths.
+        className="absolute inset-x-0 lg:left-40 lg:right-40"
         style={{ top: headerHeight, height: stageHeight }}
       >
         {source ? (
           <CanvasStage
             src={source.url}
-            width={stageSize.width}
+            width={stageInnerWidth}
             height={stageHeight}
             store={store}
             editingTextId={editingTextId}
@@ -567,7 +618,15 @@ export const EditorShell = ({
             onCancelAutoArrowIfAny={handleCancelAutoArrowIfAny}
           />
         ) : onLoadFile ? (
-          <DropZone onFile={onLoadFile} error={imageError} />
+          // Phase 10.H: When LocalEditor provides `landingSlot`, wrap the
+          // <DropZone> with the landing surface (Hero / Features / HowTo /
+          // Faq). Otherwise fall back to a bare DropZone — matches prior
+          // behaviour for any consumer that does not opt in.
+          landingSlot ? (
+            landingSlot(<DropZone onFile={onLoadFile} error={imageError} />)
+          ) : (
+            <DropZone onFile={onLoadFile} error={imageError} />
+          )
         ) : (
           <div className="flex h-full items-center justify-center text-sm opacity-60">
             {t('dropzone.loading')}
@@ -584,6 +643,12 @@ export const EditorShell = ({
         />
       )}
       {floatingExtras}
+      {/* Phase 10.H: bottom AdSlot is `position: fixed; bottom: 0` and
+          `lg:hidden`, so it stays pinned regardless of scroll position on
+          narrow viewports and disappears on lg+ where the side rails take
+          over. Stage height already subtracts BOTTOM_HEIGHT_PX on narrow
+          to keep the canvas from being covered. */}
+      <AdSlot variant="bottom" />
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </main>
   );

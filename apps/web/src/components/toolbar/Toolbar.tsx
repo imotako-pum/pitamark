@@ -14,7 +14,6 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { TOOLS, type Tool } from '../../hooks/annotationsReducer';
 import { type I18nKey, useTranslation } from '../../i18n';
-import { LangToggle } from '../lang-toggle/LangToggle';
 import { ColorPalette } from './ColorPalette';
 import { FontSizeControl } from './FontSizeControl';
 import { ToolButton } from './ToolButton';
@@ -168,8 +167,9 @@ export const Toolbar = ({
           shortcut="?"
           onClick={onShowHelp}
         />
-        <Divider />
-        <LangToggle />
+        {/* Phase 10.H: LangToggle moved out of Toolbar into the EditorShell
+            header so it stays usable on landing (where the editor toolbar
+            is hidden because no image is loaded). */}
       </div>
     </TooltipProvider>
   );

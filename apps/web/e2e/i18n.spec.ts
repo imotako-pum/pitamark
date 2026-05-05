@@ -21,19 +21,23 @@ test.describe('i18n — LangToggle', () => {
   // pin the default to 'ja'. The "persisted on reload" case below relies on
   // localStorage being preserved across `page.reload()` within the same test.
 
+  // Phase 10.H: Toolbar is hidden on landing (source === null), so we can't
+  // probe the toolbar's i18n aria-label here. The DropZone heading is the
+  // cleanest substitute — it's translated, always visible on landing, and
+  // unlikely to disappear.
   test('default lang is JA on landing (matches Playwright locale=ja-JP)', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   });
 
-  test('clicking EN toggle switches the toolbar group label, persists to localStorage, and updates <html lang>', async ({
+  test('clicking EN toggle switches landing copy, persists to localStorage, and updates <html lang>', async ({
     page,
   }) => {
     await page.goto('/');
 
     // Sanity: starts in JA.
-    await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
 
     // Click EN.
     await page
@@ -41,8 +45,8 @@ test.describe('i18n — LangToggle', () => {
       .getByRole('button', { name: 'English' })
       .click();
 
-    // Toolbar aria-label flips to the EN value.
-    await expect(page.getByRole('toolbar', { name: 'Editing tools' })).toBeVisible();
+    // DropZone heading flips to the EN value.
+    await expect(page.getByRole('heading', { name: 'Drop an image here' })).toBeVisible();
 
     // <html lang> reflects.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -52,20 +56,20 @@ test.describe('i18n — LangToggle', () => {
     expect(stored).toBe('en');
   });
 
-  test('switching back to JA restores the JA toolbar label', async ({ page }) => {
+  test('switching back to JA restores the JA landing copy', async ({ page }) => {
     await page.goto('/');
 
     await page
       .getByRole('group', { name: '言語' })
       .getByRole('button', { name: 'English' })
       .click();
-    await expect(page.getByRole('toolbar', { name: 'Editing tools' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Drop an image here' })).toBeVisible();
 
     await page
       .getByRole('group', { name: 'Language' })
       .getByRole('button', { name: '日本語' })
       .click();
-    await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   });
 
@@ -79,6 +83,6 @@ test.describe('i18n — LangToggle', () => {
 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.getByRole('toolbar', { name: 'Editing tools' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Drop an image here' })).toBeVisible();
   });
 });
