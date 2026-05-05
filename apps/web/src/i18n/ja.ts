@@ -11,7 +11,7 @@
 
 export const ja = {
   // Application-wide / shared.
-  'common.appName': 'snap-share',
+  'common.appName': 'pitamark',
   'common.langToggle.label': '言語',
   'common.langToggle.ja': '日本語',
   'common.langToggle.en': 'English',

@@ -10,7 +10,7 @@ import type { I18nKey } from './keys';
 
 export const en: Record<I18nKey, string> = {
   // Application-wide / shared.
-  'common.appName': 'snap-share',
+  'common.appName': 'pitamark',
   'common.langToggle.label': 'Language',
   'common.langToggle.ja': '日本語',
   'common.langToggle.en': 'English',

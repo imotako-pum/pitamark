@@ -507,7 +507,7 @@ export const EditorShell = ({
         className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-2"
       >
         <h1 className="pointer-events-auto hidden select-none self-center text-sm font-semibold tracking-wide opacity-70 md:block">
-          snap-share
+          {t('common.appName')}
         </h1>
         <Toolbar
           tool={store.state.tool}
