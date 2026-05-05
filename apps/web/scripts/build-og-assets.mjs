@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noConsole: build script logs progress and errors to stdout/stderr.
 // Phase 10.D: Generate og-image.png (1200x630) and apple-touch-icon.png (180x180)
 // from inline HTML using Playwright's chromium. Run with:
 //
@@ -119,7 +120,13 @@ const main = async () => {
   const browser = await chromium.launch();
   try {
     await renderToPng(browser, ogHtml, 1200, 630, resolve(PUBLIC_DIR, 'og-image.png'));
-    await renderToPng(browser, appleIconHtml, 180, 180, resolve(PUBLIC_DIR, 'apple-touch-icon.png'));
+    await renderToPng(
+      browser,
+      appleIconHtml,
+      180,
+      180,
+      resolve(PUBLIC_DIR, 'apple-touch-icon.png'),
+    );
   } finally {
     await browser.close();
   }
