@@ -47,11 +47,16 @@ export const AdSlot = ({ variant, side = 'left' }: AdSlotProps) => {
     );
   }
 
+  // Phase 10.H: bottom variant is sticky/fixed so it stays visible at the
+  // bottom of the viewport on narrow widths regardless of scroll position.
+  // Owner feedback: "常に出てないと。bottomに固定で出さないといけないのでは？"
+  // Layout consumers (EditorShell / LandingShell) reserve `BOTTOM_HEIGHT_PX`
+  // of bottom inset so this fixed bar does not overlap content.
   return (
     <aside
       aria-label={ariaLabel}
       data-testid="ad-slot-bottom"
-      className="relative w-full lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 lg:hidden"
       style={{ minHeight: BOTTOM_HEIGHT_PX, height: BOTTOM_HEIGHT_PX }}
     >
       <div className={`h-full w-full ${baseSurface}`}>

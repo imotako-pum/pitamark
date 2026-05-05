@@ -131,7 +131,7 @@ describe('Landing components', () => {
   });
 
   describe('<LandingShell>', () => {
-    it('renders Hero + Features + HowTo + Faq + bottom AdSlot, in order', () => {
+    it('renders Hero + Features + HowTo + Faq, in order', () => {
       const { container, root } = setup();
       try {
         act(() => {
@@ -143,8 +143,9 @@ describe('Landing components', () => {
         expect(sections[1]?.getAttribute('aria-labelledby')).toBe('landing-features-heading');
         expect(sections[2]?.getAttribute('aria-labelledby')).toBe('landing-howto-heading');
         expect(sections[3]?.getAttribute('aria-labelledby')).toBe('landing-faq-heading');
-        // Bottom AdSlot is the last <aside>.
-        expect(container.querySelector('[data-testid="ad-slot-bottom"]')).not.toBeNull();
+        // Bottom AdSlot moved to EditorShell (page-shell, fixed bottom) so
+        // it is NOT a child of LandingShell anymore.
+        expect(container.querySelector('[data-testid="ad-slot-bottom"]')).toBeNull();
         // DropZone slot is forwarded into Hero.
         expect(container.querySelector('[data-testid="dz"]')).not.toBeNull();
       } finally {
