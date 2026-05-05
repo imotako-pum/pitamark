@@ -22,7 +22,7 @@ export type UseExportPngParams = Readonly<{
  *   1. Hides the awareness layer (so peer cursors are not baked in).
  *   2. Temporarily resets stage transform so zoom/pan don't affect output.
  *   3. Renders the (image-bounded) region to a PNG Blob via `stage.toCanvas`.
- *   4. Triggers a download with `snap-share-{roomId}-{timestamp}.png`.
+ *   4. Triggers a download with `pitamark-{roomId}-{timestamp}.png`.
  *   5. Restores transform and the awareness layer in `finally`.
  *
  * Failures are surfaced through `sonner` toasts and `logger.warn`; the caller

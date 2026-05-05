@@ -66,9 +66,9 @@ test.describe('cross-origin PNG export from a receiver context', () => {
       });
       await expect(receiverPage.getByText('PNG の保存に失敗しました')).toBeHidden();
 
-      // ファイル名が snap-share-<roomId>-<ts>.png のパターンであること
+      // ファイル名が pitamark-<roomId>-<ts>.png のパターンであること
       expect(download.suggestedFilename()).toMatch(
-        /^snap-share-[A-Za-z0-9_-]{21}-\d{8}-\d{6}\.png$/,
+        /^pitamark-[A-Za-z0-9_-]{21}-\d{8}-\d{6}\.png$/,
       );
     } finally {
       await sender.close();
