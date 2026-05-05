@@ -12,6 +12,7 @@
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
     <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="%VITE_PUBLIC_URL%" />
     <meta property="og:site_name" content="pitamark" />
     <meta property="og:title" content="pitamark — 画像URL一発で共同注釈" />
     <meta
@@ -34,6 +35,23 @@
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
     <meta name="twitter:image" content="%VITE_PUBLIC_URL%/og-image.png" />
+    <!-- Phase 10.D: structured data for search engines. SoftwareApplication
+         schema covers the bare minimum (name / description / category / OS /
+         offer). url + image use %VITE_PUBLIC_URL% placeholders that Vite
+         substitutes at build time from the env var. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "pitamark",
+        "description": "画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。",
+        "url": "%VITE_PUBLIC_URL%",
+        "image": "%VITE_PUBLIC_URL%/og-image.png",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
+      }
+    </script>
     <!-- Phase 7: Cloudflare Turnstile loader. Site key is read at runtime by the React widget. -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>

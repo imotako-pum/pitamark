@@ -1,0 +1,17 @@
+# Phase 10.D: pitamark robots policy.
+# - Allow `/` (landing) for SEO indexing.
+# - Disallow `/r/:roomId` to avoid leaking room IDs and indexing user content.
+#   Rooms are time-bounded (24h default / 7d max) and may contain images that
+#   the uploader did not intend to be permanently public; keeping them out of
+#   crawler indexes matches the "ephemeral by default" UX promise.
+# - Sitemap URL is %VITE_PUBLIC_URL% — Vite does NOT substitute env vars in
+#   public/ files, so the placeholder is intentional and Phase 10.F replaces
+#   it with the real domain when the site goes to production.
+# TODO(phase-10-f): replace %VITE_PUBLIC_URL% with the production origin
+# (e.g. https://pitamark.app) and re-deploy.
+
+User-agent: *
+Allow: /
+Disallow: /r/
+
+Sitemap: %VITE_PUBLIC_URL%/sitemap.xml

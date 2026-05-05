@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Phase 10.D: minimal sitemap covering the landing page only. Room URLs
+  (`/r/:roomId`) are excluded for the same reason robots.txt disallows them
+  (ephemeral / privacy-sensitive). Vite does NOT substitute env vars in
+  public/ files; the %VITE_PUBLIC_URL% placeholder is replaced with the
+  production origin in Phase 10.F.
+  TODO(phase-10-f): replace %VITE_PUBLIC_URL% with the production origin.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>%VITE_PUBLIC_URL%/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
