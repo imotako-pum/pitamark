@@ -52,12 +52,22 @@ export const AdSlot = ({ variant, side = 'left' }: AdSlotProps) => {
   // Owner feedback: "常に出てないと。bottomに固定で出さないといけないのでは？"
   // Layout consumers (EditorShell / LandingShell) reserve `BOTTOM_HEIGHT_PX`
   // of bottom inset so this fixed bar does not overlap content.
+  //
+  // iOS safe-area: `padding-bottom: env(safe-area-inset-bottom)` keeps the
+  // visible content (label + note) above the home indicator on iPhones with
+  // a notch / pill. With Tailwind's preflight `box-sizing: border-box`, the
+  // padding is included inside the 100px height, so the bar's outer extent
+  // stays at 100px and the EditorShell stage inset math is unchanged.
   return (
     <aside
       aria-label={ariaLabel}
       data-testid="ad-slot-bottom"
       className="fixed inset-x-0 bottom-0 z-20 lg:hidden"
-      style={{ minHeight: BOTTOM_HEIGHT_PX, height: BOTTOM_HEIGHT_PX }}
+      style={{
+        minHeight: BOTTOM_HEIGHT_PX,
+        height: BOTTOM_HEIGHT_PX,
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
       <div className={`h-full w-full ${baseSurface}`}>
         <span>{label}</span>

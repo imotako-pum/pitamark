@@ -589,7 +589,12 @@ export const EditorShell = ({
       )}
       <div
         ref={stageContainerRef}
-        className="absolute inset-x-0 bottom-0 lg:left-40 lg:right-40"
+        // Phase 10.H: stage container's vertical extent is fully determined
+        // by `style={{ top, height }}` — `bottom` is intentionally NOT set
+        // so the inline height (`vh - headerHeight - stageBottomInset`)
+        // wins. `lg:left-40 lg:right-40` reserves 160px gutters for the
+        // side ad rails on lg+ widths.
+        className="absolute inset-x-0 lg:left-40 lg:right-40"
         style={{ top: headerHeight, height: stageHeight }}
       >
         {source ? (
