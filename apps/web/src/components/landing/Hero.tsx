@@ -28,7 +28,10 @@ export const Hero = ({ dropzone }: HeroProps) => {
           {t('landing.hero.subhead')}
         </p>
       </div>
-      <div className="w-full max-w-2xl">{dropzone}</div>
+      {/* dropzone slot may carry siblings (e.g. LocalEditor's protect-password
+          panel). Flex gap keeps them legibly separated without forcing each
+          slotted element to know about its neighbours. */}
+      <div className="flex w-full max-w-2xl flex-col gap-3">{dropzone}</div>
       {/* Phase 10.H v1: SVG editor mock so the picture works with no binary
           assets. Phase 11+ will swap to a real WebP screenshot of the live
           editor (cf. plan Task 11). The <picture> wrapper is kept so the
