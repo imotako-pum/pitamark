@@ -1,9 +1,10 @@
 import { Lock } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import { type ReactNode, useCallback, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LandingShell } from '../components/landing/LandingShell';
 import { TurnstileWidget } from '../components/turnstile/TurnstileWidget';
 import { useAnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useImageSource } from '../hooks/useImageSource';
@@ -152,6 +153,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
         onClearImage={handleClear}
         store={store}
         belowHeader={protectPanel}
+        landingSlot={(dropzone: ReactNode) => <LandingShell dropzone={dropzone} />}
       />
     </>
   );
