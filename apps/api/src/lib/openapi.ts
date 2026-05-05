@@ -4,7 +4,7 @@
 export const openApiDocConfig = {
   openapi: '3.1.0' as const,
   info: {
-    title: 'snap-share API',
+    title: 'pitamark API',
     version: '0.0.0',
     description: 'Image annotation rooms (PRD-driven)',
   },

@@ -47,7 +47,7 @@ describe('ColorPalette', () => {
       document.body.removeChild(document.body.firstChild);
     }
     // Pin language to JA so ARIA-label-based queries are deterministic.
-    window.localStorage.setItem('snap-share-lang', 'ja');
+    window.localStorage.setItem('pitamark-lang', 'ja');
     __resetI18nForTesting();
     setLang('ja');
   });

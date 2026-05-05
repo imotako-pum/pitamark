@@ -2,19 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildExportFilename, triggerDownload } from '../exportPng';
 
 describe('buildExportFilename', () => {
-  it('formats roomId-bound filenames as snap-share-{room}-YYYYMMDD-HHMMSS.png', () => {
+  it('formats roomId-bound filenames as pitamark-{room}-YYYYMMDD-HHMMSS.png', () => {
     const now = new Date(2026, 4, 1, 15, 30, 12); // 2026-05-01 15:30:12 local
-    expect(buildExportFilename(now, 'abc123')).toBe('snap-share-abc123-20260501-153012.png');
+    expect(buildExportFilename(now, 'abc123')).toBe('pitamark-abc123-20260501-153012.png');
   });
 
   it('omits the roomId segment when roomId is null', () => {
     const now = new Date(2026, 4, 1, 15, 30, 12);
-    expect(buildExportFilename(now, null)).toBe('snap-share-20260501-153012.png');
+    expect(buildExportFilename(now, null)).toBe('pitamark-20260501-153012.png');
   });
 
   it('zero-pads single-digit components', () => {
     const now = new Date(2026, 0, 1, 0, 0, 0); // 2026-01-01 00:00:00
-    expect(buildExportFilename(now, 'a')).toBe('snap-share-a-20260101-000000.png');
+    expect(buildExportFilename(now, 'a')).toBe('pitamark-a-20260101-000000.png');
   });
 });
 
@@ -44,7 +44,7 @@ describe('triggerDownload', () => {
     const blob = new Blob(['x'], { type: 'image/png' });
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
-    triggerDownload(blob, 'snap-share-test.png');
+    triggerDownload(blob, 'pitamark-test.png');
 
     expect(createObjectURL).toHaveBeenCalledWith(blob);
     expect(clickSpy).toHaveBeenCalledOnce();

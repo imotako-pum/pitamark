@@ -1,4 +1,4 @@
-import type { RoomAuth } from '@snap-share/shared';
+import type { RoomAuth } from '@pitamark/shared';
 import { AppError } from '../lib/error';
 import {
   base64UrlDecode,

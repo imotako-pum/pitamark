@@ -12,7 +12,7 @@
 - [ ] `pnpm typecheck` 緑
 - [ ] `pnpm lint` 緑
 - [ ] `pnpm test` 緑
-- [ ] `pnpm -F @snap-share/web test:e2e` 緑（UI 変更時のみ）
+- [ ] `pnpm -F @pitamark/web test:e2e` 緑（UI 変更時のみ）
 - [ ] `pnpm build` 緑
 
 ## スクリーンショット (UI 変更時)

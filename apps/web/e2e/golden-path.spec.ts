@@ -100,5 +100,5 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
   const downloadPromise = page.waitForEvent('download', { timeout: 10_000 });
   await page.keyboard.press(`${modifier}+s`);
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^snap-share-[A-Za-z0-9_-]{21}-\d{8}-\d{6}\.png$/);
+  expect(download.suggestedFilename()).toMatch(/^pitamark-[A-Za-z0-9_-]{21}-\d{8}-\d{6}\.png$/);
 });

@@ -12,7 +12,7 @@ describe('GET /api/openapi.json', () => {
       paths: Record<string, unknown>;
     };
     expect(doc.openapi).toBe('3.1.0');
-    expect(doc.info.title).toBe('snap-share API');
+    expect(doc.info.title).toBe('pitamark API');
     expect(doc.paths).toHaveProperty('/rooms');
     expect(doc.paths).toHaveProperty('/rooms/{id}');
     expect(doc.paths).toHaveProperty('/rooms/{id}/image');

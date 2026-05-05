@@ -48,7 +48,7 @@ test.describe('i18n — LangToggle', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
     // localStorage persists.
-    const stored = await page.evaluate(() => window.localStorage.getItem('snap-share-lang'));
+    const stored = await page.evaluate(() => window.localStorage.getItem('pitamark-lang'));
     expect(stored).toBe('en');
   });
 

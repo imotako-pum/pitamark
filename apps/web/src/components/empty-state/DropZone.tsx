@@ -1,4 +1,4 @@
-import { ALLOWED_IMAGE_MIME_TYPES } from '@snap-share/shared';
+import { ALLOWED_IMAGE_MIME_TYPES } from '@pitamark/shared';
 import { ImagePlus } from 'lucide-react';
 import { type ChangeEvent, type DragEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from '../../i18n';

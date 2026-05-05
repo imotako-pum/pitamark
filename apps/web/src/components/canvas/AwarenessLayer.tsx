@@ -1,4 +1,4 @@
-import type { Annotation, UserPresence } from '@snap-share/shared';
+import type { Annotation, UserPresence } from '@pitamark/shared';
 import type Konva from 'konva';
 import { forwardRef, type JSX } from 'react';
 import { Group, Layer, Line, Rect, Text } from 'react-konva';

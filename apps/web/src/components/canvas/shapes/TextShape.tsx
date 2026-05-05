@@ -1,4 +1,4 @@
-import type { TextAnnotation } from '@snap-share/shared';
+import type { TextAnnotation } from '@pitamark/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Group, Rect as KonvaRect, Text as KonvaText } from 'react-konva';
 import { OUTLINE_ACCENT } from '../colors';

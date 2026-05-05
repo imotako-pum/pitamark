@@ -1,4 +1,4 @@
-import { ANNOTATION_TYPES, type Annotation, type Point } from '@snap-share/shared';
+import { ANNOTATION_TYPES, type Annotation, type Point } from '@pitamark/shared';
 import { DEFAULT_FONT_SIZE, DEFAULT_SYNC_COLOR } from '../components/canvas/colors';
 import {
   addAnnotation,

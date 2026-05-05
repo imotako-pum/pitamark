@@ -4,15 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#5b6dff" />
-    <title>snap-share — 画像URL一発で共同注釈</title>
+    <title>pitamark — 画像URL一発で共同注釈</title>
     <meta
       name="description"
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
     <meta name="robots" content="index, follow" />
-    <meta property="og:site_name" content="snap-share" />
-    <meta property="og:title" content="snap-share — 画像URL一発で共同注釈" />
+    <link rel="canonical" href="%VITE_PUBLIC_URL%" />
+    <meta property="og:site_name" content="pitamark" />
+    <meta property="og:title" content="pitamark — 画像URL一発で共同注釈" />
     <meta
       property="og:description"
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
@@ -20,16 +22,36 @@
     <meta property="og:url" content="%VITE_PUBLIC_URL%" />
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:type" content="website" />
-    <!-- Phase 10.B: og:image / twitter:card=summary_large_image はアプリ名 + ロゴ
-         確定 (Phase 10.D) → og-image.png 作成 (Phase 10.F) のタイミングで追加。
-         不在資産を参照すると SNS スクレイパが破損プレビューを生成するため、
-         今は summary カード (画像なし) で fallback する。 -->
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="snap-share — 画像URL一発で共同注釈" />
+    <meta property="og:image" content="%VITE_PUBLIC_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="pitamark — 画像URL一発で共同注釈" />
+    <!-- twitter:card は画像 (og:image) を有効化したため summary_large_image に
+         切り替え (Phase 10.D)。`%VITE_PUBLIC_URL%` は Phase 10.F で確定値に置換。 -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="pitamark — 画像URL一発で共同注釈" />
     <meta
       name="twitter:description"
       content="画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。"
     />
+    <meta name="twitter:image" content="%VITE_PUBLIC_URL%/og-image.png" />
+    <!-- Phase 10.D: structured data for search engines. SoftwareApplication
+         schema covers the bare minimum (name / description / category / OS /
+         offer). url + image use %VITE_PUBLIC_URL% placeholders that Vite
+         substitutes at build time from the env var. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "pitamark",
+        "description": "画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。",
+        "url": "%VITE_PUBLIC_URL%",
+        "image": "%VITE_PUBLIC_URL%/og-image.png",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
+      }
+    </script>
     <!-- Phase 7: Cloudflare Turnstile loader. Site key is read at runtime by the React widget. -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>

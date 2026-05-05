@@ -1,4 +1,4 @@
-# Cloudflare Pages headers. Phase 7: production CSP for snap-share.
+# Cloudflare Pages headers. Phase 7: production CSP for pitamark.
 # - script-src whitelists the two external CDNs we actually load:
 #     * challenges.cloudflare.com  → Turnstile widget loader
 #     * static.cloudflareinsights.com → Web Analytics beacon

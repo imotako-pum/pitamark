@@ -1,11 +1,11 @@
-import type { AppType } from '@snap-share/api';
+import type { AppType } from '@pitamark/api';
 import {
   AuthResponseSchema,
   RoomCreatedSchema,
   type RoomPublic,
   RoomPublicSchema,
   WsTicketResponseSchema,
-} from '@snap-share/shared';
+} from '@pitamark/shared';
 import { hc } from 'hono/client';
 import { logger } from './logger';
 

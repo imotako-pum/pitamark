@@ -1,4 +1,4 @@
-import { MAX_FONT_SIZE } from '@snap-share/shared';
+import { MAX_FONT_SIZE } from '@pitamark/shared';
 
 // Schema は positive(>0) のみで min を持たない。dogfood 時に「画像 30% 縮小でも
 // 読める下限」目安として 8 を採用。極小フォントの暴発を UI 側でクランプする。

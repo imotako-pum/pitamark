@@ -10,7 +10,7 @@ const formatTimestamp = (now: Date): string => {
 
 export const buildExportFilename = (now: Date, roomId: string | null): string => {
   const ts = formatTimestamp(now);
-  return roomId ? `snap-share-${roomId}-${ts}.png` : `snap-share-${ts}.png`;
+  return roomId ? `pitamark-${roomId}-${ts}.png` : `pitamark-${ts}.png`;
 };
 
 export type StageBounds = Readonly<{

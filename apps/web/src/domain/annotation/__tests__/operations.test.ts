@@ -4,7 +4,7 @@ import type {
   HighlightAnnotation,
   RectangleAnnotation,
   TextAnnotation,
-} from '@snap-share/shared';
+} from '@pitamark/shared';
 import { describe, expect, it } from 'vitest';
 import {
   addAnnotation,

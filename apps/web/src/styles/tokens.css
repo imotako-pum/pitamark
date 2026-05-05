@@ -32,7 +32,7 @@
 
   /* Phase 6 — shadcn / Base UI variable bridge.
      shadcn の生成コンポーネント (button / input / tooltip / sonner / alert-dialog
-     等) は以下の CSS 変数を Tailwind クラス経由で参照する。snap-share 既存の
+     等) は以下の CSS 変数を Tailwind クラス経由で参照する。pitamark 既存の
      `--color-*` トークンと oklch 値を共有させ、見た目の主導権は引き続き
      `--color-*` 側に残す。Konva の hex リテラルは
      `apps/web/src/components/canvas/colors.ts` 側で管理。 */

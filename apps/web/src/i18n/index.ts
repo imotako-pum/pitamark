@@ -19,22 +19,42 @@ export { ja } from './ja';
 export type { I18nKey, Lang } from './keys';
 export { SUPPORTED_LANGS } from './keys';
 
-const STORAGE_KEY = 'snap-share-lang';
+const STORAGE_KEY = 'pitamark-lang';
+// Phase 10.D: legacy key from snap-share era. One-shot migrated below so
+// existing users keep their language preference. Safe to remove once
+// adoption stabilizes (Phase 11+).
+const LEGACY_STORAGE_KEY = 'snap-share-lang';
 
 const dicts: Record<Lang, Record<I18nKey, string>> = { ja, en };
 
 const isLang = (v: unknown): v is Lang =>
   typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v);
 
+const readPersistedLang = (): Lang | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const current = window.localStorage.getItem(STORAGE_KEY);
+    if (isLang(current)) return current;
+    // Migrate legacy → current key, then drop the legacy entry. If the legacy
+    // value is invalid we still drop it to avoid re-checking on every load.
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy !== null) {
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      if (isLang(legacy)) {
+        window.localStorage.setItem(STORAGE_KEY, legacy);
+        return legacy;
+      }
+    }
+  } catch {
+    // localStorage may throw in privacy modes / sandboxed iframes.
+  }
+  return null;
+};
+
 const detectInitialLang = (): Lang => {
   if (typeof window === 'undefined') return 'ja';
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (isLang(stored)) return stored;
-  } catch {
-    // localStorage may throw in privacy modes / sandboxed iframes — fall
-    // through to navigator.language.
-  }
+  const persisted = readPersistedLang();
+  if (persisted !== null) return persisted;
   const nav = window.navigator?.language?.slice(0, 2);
   return isLang(nav) ? nav : 'ja';
 };

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AWARENESS_USER_PALETTE } from '../../components/canvas/colors';
 import { getOrCreateLocalUser } from '../local-user';
 
-const STORAGE_KEY = 'snap-share/user-v1';
+const STORAGE_KEY = 'pitamark/user-v1';
+const LEGACY_STORAGE_KEY = 'snap-share/user-v1';
 
 const makeStorage = (initial: Record<string, string> = {}): Storage => {
   const map = new Map(Object.entries(initial));
@@ -56,5 +57,43 @@ describe('getOrCreateLocalUser', () => {
       colors.add(user.color);
     }
     expect(colors.size).toBeGreaterThan(1);
+  });
+
+  describe('Phase 10.D legacy key migration', () => {
+    it('migrates a legacy `snap-share/user-v1` entry to the new key and drops the legacy entry', () => {
+      const legacyUser = {
+        userId: 'legacy-user-id-1234',
+        displayName: 'guest-1234',
+        color: '#5b6dff',
+      };
+      const storage = makeStorage({ [LEGACY_STORAGE_KEY]: JSON.stringify(legacyUser) });
+      const migrated = getOrCreateLocalUser(storage);
+      expect(migrated.userId).toBe(legacyUser.userId);
+      expect(migrated.displayName).toBe(legacyUser.displayName);
+      expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(legacyUser));
+      expect(storage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
+    });
+
+    it('prefers the new key over a legacy entry when both are present', () => {
+      const newUser = {
+        userId: 'new-user-id-abcd',
+        displayName: 'new-1234',
+        color: '#5b6dff',
+      };
+      const legacyUser = {
+        userId: 'legacy-user-id-9999',
+        displayName: 'old-9999',
+        color: '#000000',
+      };
+      const storage = makeStorage({
+        [STORAGE_KEY]: JSON.stringify(newUser),
+        [LEGACY_STORAGE_KEY]: JSON.stringify(legacyUser),
+      });
+      const result = getOrCreateLocalUser(storage);
+      expect(result.userId).toBe(newUser.userId);
+      // Legacy entry is left alone when the new key already exists. A future
+      // run with new-key absent + legacy present will clean it up.
+      expect(storage.getItem(LEGACY_STORAGE_KEY)).toBe(JSON.stringify(legacyUser));
+    });
   });
 });

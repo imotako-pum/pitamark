@@ -1,4 +1,4 @@
-import { MAX_IMAGE_BYTES, MAX_ROOM_TTL_MS } from '@snap-share/shared';
+import { MAX_IMAGE_BYTES, MAX_ROOM_TTL_MS } from '@pitamark/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AppError } from '../../lib/error';
 import { createPasswordService } from '../../services/password-service';

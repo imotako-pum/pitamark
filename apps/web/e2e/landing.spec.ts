@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('landing page renders heading on desktop widths', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
-  await expect(page.locator('h1')).toContainText('snap-share');
+  await expect(page.locator('h1')).toContainText('pitamark');
 });
 
 test('landing page renders the editor toolbar with all five tools', async ({ page }) => {

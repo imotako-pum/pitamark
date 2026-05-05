@@ -1,4 +1,4 @@
-import { ROOM_ID_REGEX } from '@snap-share/shared';
+import { ROOM_ID_REGEX } from '@pitamark/shared';
 import { Hono } from 'hono';
 import { YDurableObjects, yRoute } from 'y-durableobjects';
 import type { Bindings } from './lib/bindings';

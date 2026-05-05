@@ -1,4 +1,4 @@
-import { ROOM_ID_REGEX } from '@snap-share/shared';
+import { ROOM_ID_REGEX } from '@pitamark/shared';
 
 const ROOM_PREFIX = '/r/';
 

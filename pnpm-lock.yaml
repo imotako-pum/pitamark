@@ -95,12 +95,12 @@ importers:
       '@hono/zod-validator':
         specifier: 'catalog:'
         version: 0.7.6(hono@4.12.15)(zod@4.4.1)
+      '@pitamark/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@scalar/hono-api-reference':
         specifier: 'catalog:'
         version: 0.10.12(hono@4.12.15)
-      '@snap-share/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       hono:
         specifier: 'catalog:'
         version: 4.12.15
@@ -141,10 +141,10 @@ importers:
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@snap-share/api':
+      '@pitamark/api':
         specifier: workspace:*
         version: link:../api
-      '@snap-share/shared':
+      '@pitamark/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       class-variance-authority:

@@ -1,4 +1,4 @@
-import type { Annotation } from '@snap-share/shared';
+import type { Annotation } from '@pitamark/shared';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { yMapToAnnotation } from '../yjs-codec';

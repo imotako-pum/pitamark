@@ -101,7 +101,7 @@ test.describe('keyboard shortcuts', () => {
     const download = await downloadPromise;
 
     await expect(page.getByText('PNG を保存しました')).toBeVisible({ timeout: 5_000 });
-    expect(download.suggestedFilename()).toMatch(/^snap-share-[A-Za-z0-9_-]{21}-\d{8}-\d{6}\.png$/);
+    expect(download.suggestedFilename()).toMatch(/^pitamark-[A-Za-z0-9_-]{21}-\d{8}-\d{6}\.png$/);
   });
 
   test('input フォーカス中はツールショートカットが発火しない (isEditableTarget ガード)', async ({

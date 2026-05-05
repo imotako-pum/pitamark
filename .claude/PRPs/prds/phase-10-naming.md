@@ -243,16 +243,25 @@ HTTP 000 = サイトなし = 空きの強候補。WHOIS で念押し確認した
 
 - [x] user 最終選定 → `pitamark.app` (2026-05-05)
 - [x] クリアランス調査 (Web 検索 / GitHub / USPTO 系) → ◎ 衝突なし (2026-05-05)
-- [ ] **ADR-0005「アプリ名 + ドメイン」起票**:
+- [x] **ADR-0005「アプリ名 + ドメイン」起票** (2026-05-05 完了、commit c991aa9):
   - Status: accepted (選定意思決定は確定、取得自体は 10.F で後追い)
-  - Context / Decision / Consequences を整理
+  - Context / Decision / Consequences / Alternatives / Clearance Investigation Results / Implementation Approach
   - 本ファイルの議論サマリと Decisions Log を ADR フォーマットに圧縮
-- [ ] **リネーム実装** (`writing-plans` skill で別途計画化):
-  - workspace package 名 `@snap-share/*` → `@pitamark/*`
-  - PRD / ADR / コードコメント / README / index.html / 法務文書 の言及更新
-  - localStorage key (`snap-share-lang` 等) のマイグレーション戦略
-  - 履歴ある旧名表記 (Phase 0-8 の PRD / commit message) は残す (歴史として)
-  - リポジトリ名 `snap-share` → `pitamark` 変更は別判断 (GitHub 設定変更が必要なオーナー作業)
+- [x] **リネーム実装** (`phase-10-d-rename-launch-prep.plan.md` 全 12 step 完了):
+  - workspace package 名 `@snap-share/*` → `@pitamark/*` (commit 0b9d494)
+  - 可視 UI (h1 / index.html title / og 系) → t('common.appName') 経由 (commit d785fbf)
+  - API 内部識別子 (health / OpenAPI / vitest / Symbol) → pitamark (commit c6327e5)
+  - localStorage key migration (`snap-share-lang` → `pitamark-lang` /
+    `snap-share/user-v1` → `pitamark/user-v1`) (commit 77b2a13)
+  - Export PNG ファイル名 prefix → `pitamark-` (commit 1f50f70)
+  - OGP/apple-touch-icon アセット + index.html meta 整備 (commit 12457ce)
+  - SEO 雛形 (robots.txt / sitemap.xml / JSON-LD / canonical) (commit d0358e6)
+  - 法務 ja rename + en draft (machine-translated) (commit 5d1192e)
+  - GitHub templates / README / CI 反映 (commit ebc24c4)
+  - i18n 化漏れ追跡 + 残骸 cleanup (commit eef38f4)
+  - 歴史記録 (Phase 0-8 PRD / commit message / completed plans / ADR-0001〜4) は意図的に残置
+  - リポジトリ名 `imotako-pum/snap-share` → `imotako-pum/pitamark` 変更は別判断
+    (GitHub 設定変更が必要なオーナー作業、PR merge 前後の任意タイミング)
 
 ### 新 Phase 10.F で実施 (ドメイン取得後にしかできない)
 

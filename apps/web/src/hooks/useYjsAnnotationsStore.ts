@@ -1,4 +1,4 @@
-import type { Annotation } from '@snap-share/shared';
+import type { Annotation } from '@pitamark/shared';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { Awareness } from 'y-protocols/awareness';
 import { WebsocketProvider } from 'y-websocket';

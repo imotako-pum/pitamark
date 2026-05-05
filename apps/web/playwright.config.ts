@@ -37,13 +37,13 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm -F @snap-share/api dev',
+      command: 'pnpm -F @pitamark/api dev',
       url: `http://localhost:${API_PORT}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 90_000,
     },
     {
-      command: 'pnpm -F @snap-share/web dev',
+      command: 'pnpm -F @pitamark/web dev',
       url: `http://localhost:${WEB_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

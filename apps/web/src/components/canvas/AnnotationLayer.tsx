@@ -1,4 +1,4 @@
-import type { Annotation } from '@snap-share/shared';
+import type { Annotation } from '@pitamark/shared';
 import { Layer } from 'react-konva';
 import { type ArrowEndpointsPatch, ArrowShape } from './shapes/ArrowShape';
 import { type HighlightResizePatch, HighlightShape } from './shapes/HighlightShape';

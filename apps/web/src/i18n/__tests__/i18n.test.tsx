@@ -51,7 +51,7 @@ const renderHookCapture = <T,>(useHook: () => T) => {
 
 const reset = (initial?: 'ja' | 'en') => {
   window.localStorage.clear();
-  if (initial) window.localStorage.setItem('snap-share-lang', initial);
+  if (initial) window.localStorage.setItem('pitamark-lang', initial);
   __resetI18nForTesting();
 };
 
@@ -102,7 +102,7 @@ describe('i18n — useTranslation', () => {
     act(() => {
       setLang('en');
     });
-    expect(window.localStorage.getItem('snap-share-lang')).toBe('en');
+    expect(window.localStorage.getItem('pitamark-lang')).toBe('en');
     handle.cleanup();
   });
 
@@ -148,6 +148,51 @@ describe('i18n — useCurrentLang', () => {
     reset('en');
     const handle = renderHookCapture(() => useCurrentLang());
     expect(handle.current).toBe('en');
+    handle.cleanup();
+  });
+});
+
+describe('i18n — legacy localStorage migration (Phase 10.D)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    __resetI18nForTesting();
+  });
+  afterEach(() => {
+    window.localStorage.clear();
+    __resetI18nForTesting();
+  });
+
+  it('migrates a valid legacy `snap-share-lang` value to `pitamark-lang` and removes the legacy key', () => {
+    window.localStorage.setItem('snap-share-lang', 'en');
+    __resetI18nForTesting();
+    const handle = renderHookCapture(() => useCurrentLang());
+    expect(handle.current).toBe('en');
+    expect(window.localStorage.getItem('pitamark-lang')).toBe('en');
+    expect(window.localStorage.getItem('snap-share-lang')).toBeNull();
+    handle.cleanup();
+  });
+
+  it('drops an invalid legacy value and falls back to navigator detection without re-checking', () => {
+    window.localStorage.setItem('snap-share-lang', 'fr');
+    __resetI18nForTesting();
+    const handle = renderHookCapture(() => useCurrentLang());
+    // 'fr' is not a supported lang — should not be persisted as new key.
+    expect(window.localStorage.getItem('pitamark-lang')).toBeNull();
+    // Legacy key dropped to avoid revisiting on every load.
+    expect(window.localStorage.getItem('snap-share-lang')).toBeNull();
+    handle.cleanup();
+  });
+
+  it('prefers the new `pitamark-lang` key when both keys are present', () => {
+    window.localStorage.setItem('snap-share-lang', 'ja');
+    window.localStorage.setItem('pitamark-lang', 'en');
+    __resetI18nForTesting();
+    const handle = renderHookCapture(() => useCurrentLang());
+    expect(handle.current).toBe('en');
+    // Legacy key is left alone in this branch — only touched when `pitamark-lang`
+    // is absent. (It can be cleaned up by a future "no current key + legacy
+    // present" run, which is fine.)
+    expect(window.localStorage.getItem('snap-share-lang')).toBe('ja');
     handle.cleanup();
   });
 });
