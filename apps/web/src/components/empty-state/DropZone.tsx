@@ -1,6 +1,7 @@
 import { ALLOWED_IMAGE_MIME_TYPES } from '@snap-share/shared';
 import { ImagePlus } from 'lucide-react';
 import { type ChangeEvent, type DragEvent, useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from '../../i18n';
 
 type DropZoneProps = Readonly<{
   onFile: (file: File) => void;
@@ -10,6 +11,7 @@ type DropZoneProps = Readonly<{
 const ACCEPT_ATTRIBUTE = ALLOWED_IMAGE_MIME_TYPES.join(',');
 
 export const DropZone = ({ onFile, error }: DropZoneProps) => {
+  const t = useTranslation();
   const [isOver, setIsOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
@@ -81,13 +83,14 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
         >
           <ImagePlus size={48} strokeWidth={1.25} className="text-(--color-accent)" />
           <h2 id="dropzone-heading" className="text-lg font-medium">
-            画像をドロップしてください
+            {t('dropzone.headline')}
           </h2>
           <p className="text-sm opacity-75">
-            クリックで選択、または <kbd className="rounded border px-1.5 py-0.5 text-xs">⌘V</kbd>{' '}
-            で貼り付け
+            {t('dropzone.instructionPrefix')}{' '}
+            <kbd className="rounded border px-1.5 py-0.5 text-xs">⌘V</kbd>
+            {t('dropzone.instructionSuffix') ? ` ${t('dropzone.instructionSuffix')}` : ''}
           </p>
-          <p className="text-xs opacity-60">PNG / JPEG / WebP / SVG (10MB まで)</p>
+          <p className="text-xs opacity-60">{t('dropzone.formats')}</p>
         </button>
         {/* Phase 8.x a11y review #9 L2: pull the error out of the <button>'s
             visible content so SR doesn't read button name + alert text as one

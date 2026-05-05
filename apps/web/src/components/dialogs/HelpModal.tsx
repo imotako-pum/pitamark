@@ -6,37 +6,44 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { TOOLS, type Tool } from '../../hooks/annotationsReducer';
+import { type I18nKey, useTranslation } from '../../i18n';
 
 type Props = Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }>;
 
-type Row = Readonly<{ label: string; keys: ReadonlyArray<string> }>;
-type Section = Readonly<{ title: string; rows: ReadonlyArray<Row> }>;
+// Phase 10.E: rows are described as i18n keys instead of literal strings, so
+// the cheat-sheet swaps language with the rest of the UI. Some keycaps are
+// also locale-specific (`ホイール` / `ドラッグ` vs `Wheel` / `Drag`); they go
+// through the dict via `keyKeys`. Plain symbols stay as literals.
+
+type KeyAtom = string | { readonly key: I18nKey };
+type Row = Readonly<{ labelKey: I18nKey; keys: ReadonlyArray<KeyAtom> }>;
+type Section = Readonly<{ titleKey: I18nKey; rows: ReadonlyArray<Row> }>;
 
 // Phase 8.x extensibility review #7 M1 案 B: `Readonly<Record<Tool, Row>>`
 // 化することで、新しい `Tool` を追加した時点でこの map に key 漏れが
 // コンパイルエラーで surface する。`TOOL_ROWS` (配列) は `TOOLS` から
 // 順序を借りて生成する。
 const TOOL_ROW_BY_TOOL: Readonly<Record<Tool, Row>> = {
-  select: { label: '選択', keys: ['V'] },
-  rectangle: { label: '矩形', keys: ['R'] },
-  arrow: { label: '矢印', keys: ['A'] },
-  text: { label: 'テキスト', keys: ['T'] },
-  highlight: { label: 'ハイライト', keys: ['H'] },
+  select: { labelKey: 'help.row.select', keys: ['V'] },
+  rectangle: { labelKey: 'help.row.rectangle', keys: ['R'] },
+  arrow: { labelKey: 'help.row.arrow', keys: ['A'] },
+  text: { labelKey: 'help.row.text', keys: ['T'] },
+  highlight: { labelKey: 'help.row.highlight', keys: ['H'] },
 };
 
 const TOOL_ROWS: ReadonlyArray<Row> = TOOLS.map((t) => TOOL_ROW_BY_TOOL[t]);
 
 const COLOR_ROWS: ReadonlyArray<Row> = [
-  { label: '次の色', keys: ['C'] },
-  { label: '前の色', keys: ['⇧', 'C'] },
+  { labelKey: 'help.row.nextColor', keys: ['C'] },
+  { labelKey: 'help.row.prevColor', keys: ['⇧', 'C'] },
 ];
 
 const TEXT_ROWS: ReadonlyArray<Row> = [
-  { label: 'フォントサイズ +2', keys: [']'] },
-  { label: 'フォントサイズ -2', keys: ['['] },
+  { labelKey: 'help.row.fontSizeIncrease', keys: [']'] },
+  { labelKey: 'help.row.fontSizeDecrease', keys: ['['] },
 ];
 
 // Phase 7.8-5: 次手予測 (矢印→テキスト / 矩形→矢印) のキー規約。Enter は
@@ -45,38 +52,38 @@ const TEXT_ROWS: ReadonlyArray<Row> = [
 // なし時は通常の選択削除に戻る)。Backspace は他セクションの「Del」と挙動が
 // 異なるため記号 ⌫ で視覚的に分離する。
 const PREDICT_ROWS: ReadonlyArray<Row> = [
-  { label: 'サジェスト確定', keys: ['Enter'] },
-  { label: 'サジェスト破棄', keys: ['Esc'] },
-  { label: 'pending クリア', keys: ['⌫'] },
+  { labelKey: 'help.row.suggestionAccept', keys: ['Enter'] },
+  { labelKey: 'help.row.suggestionDismiss', keys: ['Esc'] },
+  { labelKey: 'help.row.pendingClear', keys: ['⌫'] },
 ];
 
 const EDIT_ROWS: ReadonlyArray<Row> = [
-  { label: '元に戻す', keys: ['⌘', 'Z'] },
-  { label: 'やり直し', keys: ['⌘', '⇧', 'Z'] },
-  { label: '削除', keys: ['Del'] },
-  { label: '選択解除', keys: ['Esc'] },
+  { labelKey: 'help.row.undo', keys: ['⌘', 'Z'] },
+  { labelKey: 'help.row.redo', keys: ['⌘', '⇧', 'Z'] },
+  { labelKey: 'help.row.delete', keys: ['Del'] },
+  { labelKey: 'help.row.deselect', keys: ['Esc'] },
 ];
 
 const ZOOM_ROWS: ReadonlyArray<Row> = [
-  { label: '全体表示', keys: ['⌘', '0'] },
-  { label: '100%', keys: ['⌘', '1'] },
-  { label: 'ズーム', keys: ['⌘', 'ホイール'] },
-  { label: 'パン', keys: ['Space', 'ドラッグ'] },
+  { labelKey: 'help.row.fitView', keys: ['⌘', '0'] },
+  { labelKey: 'help.row.zoomReset', keys: ['⌘', '1'] },
+  { labelKey: 'help.row.zoom', keys: ['⌘', { key: 'help.key.wheel' }] },
+  { labelKey: 'help.row.pan', keys: ['Space', { key: 'help.key.drag' }] },
 ];
 
-const EXPORT_ROWS: ReadonlyArray<Row> = [{ label: 'PNG 保存', keys: ['⌘', 'S'] }];
+const EXPORT_ROWS: ReadonlyArray<Row> = [{ labelKey: 'help.row.exportPng', keys: ['⌘', 'S'] }];
 
-const HELP_ROWS: ReadonlyArray<Row> = [{ label: 'このパネル', keys: ['?'] }];
+const HELP_ROWS: ReadonlyArray<Row> = [{ labelKey: 'help.row.toggleHelp', keys: ['?'] }];
 
 const SECTIONS: ReadonlyArray<Section> = [
-  { title: 'ツール', rows: TOOL_ROWS },
-  { title: '色', rows: COLOR_ROWS },
-  { title: 'テキスト', rows: TEXT_ROWS },
-  { title: '次手予測', rows: PREDICT_ROWS },
-  { title: '編集', rows: EDIT_ROWS },
-  { title: 'ズーム', rows: ZOOM_ROWS },
-  { title: '出力', rows: EXPORT_ROWS },
-  { title: 'ヘルプ', rows: HELP_ROWS },
+  { titleKey: 'help.section.tools', rows: TOOL_ROWS },
+  { titleKey: 'help.section.colors', rows: COLOR_ROWS },
+  { titleKey: 'help.section.text', rows: TEXT_ROWS },
+  { titleKey: 'help.section.predict', rows: PREDICT_ROWS },
+  { titleKey: 'help.section.edit', rows: EDIT_ROWS },
+  { titleKey: 'help.section.zoom', rows: ZOOM_ROWS },
+  { titleKey: 'help.section.export', rows: EXPORT_ROWS },
+  { titleKey: 'help.section.help', rows: HELP_ROWS },
 ];
 
 const Kbd = ({ children }: { children: React.ReactNode }) => (
@@ -85,40 +92,51 @@ const Kbd = ({ children }: { children: React.ReactNode }) => (
   </kbd>
 );
 
-export const HelpModal = ({ open, onOpenChange }: Props) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent size="lg">
-      <DialogHeader>
-        <DialogTitle>キーボードショートカット</DialogTitle>
-        <DialogDescription>
-          すべての操作はキーボードで完結できます。閉じるには Esc か外側をクリック。
-          矢印→テキスト・矩形→矢印 のサジェストは Enter で確定 / Esc で破棄。
-        </DialogDescription>
-      </DialogHeader>
-      <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-        {SECTIONS.map((section) => (
-          <section key={section.title} aria-labelledby={`help-section-${section.title}`}>
-            <h3
-              id={`help-section-${section.title}`}
-              className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-            >
-              {section.title}
-            </h3>
-            <ul className="flex flex-col gap-1.5">
-              {section.rows.map((row) => (
-                <li key={row.label} className="flex items-center justify-between gap-3 text-sm">
-                  <span>{row.label}</span>
-                  <span className="flex items-center gap-1">
-                    {row.keys.map((k) => (
-                      <Kbd key={`${row.label}-${k}`}>{k}</Kbd>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-    </DialogContent>
-  </Dialog>
-);
+export const HelpModal = ({ open, onOpenChange }: Props) => {
+  const t = useTranslation();
+  const renderKey = (atom: KeyAtom): string => (typeof atom === 'string' ? atom : t(atom.key));
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle>{t('help.title')}</DialogTitle>
+          <DialogDescription>{t('help.description')}</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+          {SECTIONS.map((section) => {
+            const title = t(section.titleKey);
+            return (
+              <section key={section.titleKey} aria-labelledby={`help-section-${section.titleKey}`}>
+                <h3
+                  id={`help-section-${section.titleKey}`}
+                  className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {title}
+                </h3>
+                <ul className="flex flex-col gap-1.5">
+                  {section.rows.map((row) => {
+                    const label = t(row.labelKey);
+                    return (
+                      <li
+                        key={row.labelKey}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        <span>{label}</span>
+                        <span className="flex items-center gap-1">
+                          {row.keys.map((k, i) => {
+                            const txt = renderKey(k);
+                            return <Kbd key={`${row.labelKey}-${i}-${txt}`}>{txt}</Kbd>;
+                          })}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

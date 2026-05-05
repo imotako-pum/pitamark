@@ -2,6 +2,7 @@ import {
   ALLOWED_IMAGE_MIME_TYPES,
   type AllowedImageMimeType,
   MAX_IMAGE_BYTES,
+  MAX_ROOM_TTL_MS,
   type Room,
 } from '@snap-share/shared';
 import { AppError } from '../lib/error';
@@ -43,6 +44,13 @@ export type RoomCreateOptions = Readonly<{
   turnstileToken?: string;
   /** Visitor IP forwarded to siteverify. Optional. */
   remoteIp?: string;
+  /**
+   * Phase 10.B: per-room TTL override (milliseconds). When omitted, the
+   * server falls back to `deps.ttlMs` (env-supplied default = 24h). Must be
+   * a positive integer ≤ `MAX_ROOM_TTL_MS` (= 7 days). Anything else is a
+   * 400 INVALID_REQUEST.
+   */
+  ttlMs?: number;
 }>;
 
 export type RoomService = {
@@ -87,6 +95,24 @@ const assertValidTtlMs = (ttlMs: number): void => {
   }
 };
 
+// Phase 10.B: client-supplied ttlMs validation. Distinct from
+// `assertValidTtlMs` because this one is a client error (400), not a server
+// misconfiguration (500). The requested value never appears in the public
+// message — only in logContext for ops triage.
+const assertValidRequestedTtlMs = (ttlMs: number): void => {
+  if (
+    !Number.isFinite(ttlMs) ||
+    !Number.isInteger(ttlMs) ||
+    ttlMs <= 0 ||
+    ttlMs > MAX_ROOM_TTL_MS
+  ) {
+    throw new AppError(400, 'INVALID_REQUEST', 'Invalid ttlMs', {
+      requestedTtlMs: ttlMs,
+      maxTtlMs: MAX_ROOM_TTL_MS,
+    });
+  }
+};
+
 // Empty / whitespace-only password is treated as "no password" so the upload
 // form can include the field unconditionally without flipping unprotected
 // rooms into protected ones.
@@ -106,6 +132,11 @@ export const createRoomService = (deps: RoomServiceDeps): RoomService => ({
     }
     const contentType = assertAllowedMime(file.type);
     assertValidTtlMs(deps.ttlMs);
+    // Per-room TTL override (Phase 10.B). When `opts.ttlMs` is provided we
+    // validate against MAX before doing any storage work, so callers cannot
+    // create orphan R2 objects via a bad ttlMs.
+    if (opts.ttlMs !== undefined) assertValidRequestedTtlMs(opts.ttlMs);
+    const effectiveTtlMs = opts.ttlMs ?? deps.ttlMs;
 
     // Phase 7: Turnstile verification BEFORE we touch R2. Skipped when no
     // service is wired (test fixtures, legacy paths). The token must be a
@@ -155,7 +186,7 @@ export const createRoomService = (deps: RoomServiceDeps): RoomService => ({
     const room: Room = {
       id,
       createdAt: deps.now(),
-      ttlMs: deps.ttlMs,
+      ttlMs: effectiveTtlMs,
       image: { key, contentType, size: file.size, sha256: sha },
       ...(auth ? { auth } : {}),
     };

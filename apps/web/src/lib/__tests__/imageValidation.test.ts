@@ -26,13 +26,13 @@ describe('validateImageFile', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('rejects non-image MIME types with a Japanese error message', () => {
+  it('rejects non-image MIME types with the unsupported-format i18n key', () => {
     const file = makeFile('virus.exe', 'application/x-msdownload', 100);
     const result = validateImageFile(file);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toMatch(/画像/);
+      expect(result.errorKey).toBe('error.image.unsupportedFormat');
     }
   });
 
@@ -50,13 +50,13 @@ describe('validateImageFile', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('rejects a file 1 byte over the size limit', () => {
+  it('rejects a file 1 byte over the size limit with the too-large i18n key', () => {
     const file = makeFile('big.png', 'image/png', MAX_IMAGE_BYTES + 1);
     const result = validateImageFile(file);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toMatch(/10MB|サイズ|大きすぎ/);
+      expect(result.errorKey).toBe('error.image.tooLarge');
     }
   });
 });

@@ -8,6 +8,7 @@ import { TurnstileWidget } from '../components/turnstile/TurnstileWidget';
 import { useAnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useImageSource } from '../hooks/useImageSource';
 import { useTurnstileToken } from '../hooks/useTurnstileToken';
+import { useTranslation } from '../i18n';
 import { setRoomIdInUrl } from '../lib/url-room';
 import { EditorShell } from './EditorShell';
 
@@ -27,6 +28,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
  * the parent App then swaps in `RoomEditor`.
  */
 export const LocalEditor = ({ onRoomIdChange }: Props) => {
+  const t = useTranslation();
   const handleRoomCreated = useCallback(
     (roomId: string) => {
       setRoomIdInUrl(roomId);
@@ -35,9 +37,13 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     [onRoomIdChange],
   );
 
-  const { source, error, loadFromFile, clear } = useImageSource({
+  const { source, errorKey, loadFromFile, clear } = useImageSource({
     onRoomCreated: handleRoomCreated,
   });
+  // Translate at render time so lang switches mid-error update the message
+  // shown in <DropZone>. `errorKey` is the source of truth; the translation
+  // is derived state.
+  const error = errorKey ? t(errorKey) : null;
   const store = useAnnotationsStore();
   const turnstile = useTurnstileToken(TURNSTILE_SITE_KEY);
   const [protect, setProtect] = useState(false);
@@ -67,15 +73,15 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
   const handleLoad = useCallback(
     (file: File) => {
       if (blockedByEmptyPassword) {
-        toast.error('パスワードを入力してください');
+        toast.error(t('gate.toast.passwordRequired'));
         return;
       }
       if (turnstile.state.status === 'pending') {
-        toast.error('認証中です。少し待ってから再度お試しください');
+        toast.error(t('gate.toast.authenticating'));
         return;
       }
       if (turnstile.state.status === 'error') {
-        toast.error('認証に失敗しました。再度お試しください');
+        toast.error(t('gate.toast.authFailed'));
         return;
       }
       const pw = protect && password.length > 0 ? password : undefined;
@@ -84,54 +90,54 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
       // attempt waits for a fresh one. `disabled` resets back to `disabled`.
       turnstile.reset();
     },
-    [blockedByEmptyPassword, protect, password, loadFromFile, turnstile],
+    [blockedByEmptyPassword, protect, password, loadFromFile, turnstile, t],
   );
+
+  // Phase 7.6 既知-2 fix の改修 (横幅狭時 wrap バグ): 旧実装は `top-16` 固定で
+  // パネルを Toolbar 直下に逃がしていたが、Toolbar が flex-wrap で 2 行になると
+  // パネルが Toolbar の後ろに隠れる回帰があった。EditorShell の `belowHeader`
+  // slot に流すことで、ResizeObserver で測定された動的 `headerHeight` に追従。
+  const protectPanel =
+    source === null ? (
+      <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={checkboxId}
+            checked={protect}
+            onCheckedChange={(checked) => {
+              const next = checked === true;
+              setProtect(next);
+              if (!next) setPassword('');
+            }}
+          />
+          <Lock aria-hidden="true" className="h-4 w-4 text-(--color-accent)" />
+          <Label htmlFor={checkboxId} className="cursor-pointer">
+            {t('localEditor.protectPassword.label')}
+          </Label>
+        </div>
+        {protect && (
+          <Input
+            id={passwordId}
+            type="password"
+            placeholder={t('gate.password.placeholder')}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-label={t('gate.password.aria')}
+            aria-invalid={blockedByEmptyPassword || undefined}
+            aria-describedby={blockedByEmptyPassword ? errorId : undefined}
+          />
+        )}
+        {blockedByEmptyPassword && (
+          <p id={errorId} className="text-xs text-destructive">
+            {t('localEditor.protectPassword.required')}
+          </p>
+        )}
+      </div>
+    ) : null;
 
   return (
     <>
-      {source === null && (
-        // Phase 7.6 既知-2 fix: Toolbar (header inset-x-0 top-0 z-10) と panel が
-        // 同じ z 帯で衝突し、pointer-events が遮断されてユーザーがチェックを
-        // 直接クリックできなかった。top-16 (= 4rem ≒ 64px) で Toolbar の
-        // 直下に逃がすことで z-index 競合自体を解消する。
-        <div className="pointer-events-none absolute top-16 left-1/2 z-10 -translate-x-1/2">
-          <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id={checkboxId}
-                checked={protect}
-                onCheckedChange={(checked) => {
-                  const next = checked === true;
-                  setProtect(next);
-                  if (!next) setPassword('');
-                }}
-              />
-              <Lock aria-hidden="true" className="h-4 w-4 text-(--color-accent)" />
-              <Label htmlFor={checkboxId} className="cursor-pointer">
-                パスワードで保護する（任意）
-              </Label>
-            </div>
-            {protect && (
-              <Input
-                id={passwordId}
-                type="password"
-                placeholder="パスワード"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                aria-label="ルームのパスワード"
-                aria-invalid={blockedByEmptyPassword || undefined}
-                aria-describedby={blockedByEmptyPassword ? errorId : undefined}
-              />
-            )}
-            {blockedByEmptyPassword && (
-              <p id={errorId} className="text-xs text-destructive">
-                パスワードを入力してください
-              </p>
-            )}
-          </div>
-        </div>
-      )}
       {TURNSTILE_SITE_KEY && (
         <TurnstileWidget
           siteKey={TURNSTILE_SITE_KEY}
@@ -145,6 +151,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
         onLoadFile={handleLoad}
         onClearImage={handleClear}
         store={store}
+        belowHeader={protectPanel}
       />
     </>
   );

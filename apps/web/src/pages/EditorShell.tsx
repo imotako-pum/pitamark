@@ -21,6 +21,7 @@ import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
 import { useStageTransform } from '../hooks/useStageTransform';
+import { useTranslation } from '../i18n';
 import { computeAutoArrowDefault } from '../lib/autoArrowDefault';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../lib/autoNextOffset';
 import { nextColor, prevColor } from '../lib/colorCycle';
@@ -63,6 +64,11 @@ export type EditorShellProps = Readonly<{
   toolbarRight?: ReactNode;
   /** Bottom-right floating slot (ConnectionBadge). */
   floatingExtras?: ReactNode;
+  /** Floating slot rendered immediately below the header at `top: headerHeight`.
+   *  Tracks the dynamic Toolbar height so wrapping toolbars (narrow viewport)
+   *  don't occlude the slot. Used by LocalEditor for the optional protect-password
+   *  panel — see Phase 7.6 既知-2 fix for the original z-index gotcha. */
+  belowHeader?: ReactNode;
   /** roomId for export filename; null in local mode. */
   roomId?: string | null;
 }>;
@@ -78,8 +84,10 @@ export const EditorShell = ({
   onSelectedIdChange,
   toolbarRight,
   floatingExtras,
+  belowHeader,
   roomId = null,
 }: EditorShellProps) => {
+  const t = useTranslation();
   const stageContainerRef = useRef<HTMLDivElement>(null);
   // Phase 8.x perf review #10 M2: `useStageSize` no longer registers a
   // `window.resize` listener — it observes `document.documentElement` via
@@ -525,6 +533,14 @@ export const EditorShell = ({
           {toolbarRight ?? <div aria-hidden="true" />}
         </div>
       </header>
+      {belowHeader && (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-3"
+          style={{ top: headerHeight }}
+        >
+          {belowHeader}
+        </div>
+      )}
       <div
         ref={stageContainerRef}
         className="absolute inset-x-0 bottom-0"
@@ -554,7 +570,7 @@ export const EditorShell = ({
           <DropZone onFile={onLoadFile} error={imageError} />
         ) : (
           <div className="flex h-full items-center justify-center text-sm opacity-60">
-            画像を読み込んでいます…
+            {t('dropzone.loading')}
           </div>
         )}
       </div>

@@ -17,7 +17,7 @@
 - 他参加者のカーソル可視化（Awareness）
 - ⌘S で PNG エクスポート（注釈焼き込み済）
 - 任意のパスワード保護ルーム（PBKDF2-SHA256 210k iter ハッシュ）
-- 7 日 TTL で自動破棄（Durable Object Alarm）
+- ルーム TTL は デフォルト 24 時間 / 最大 7 日で自動破棄（Durable Object Alarm）
 - 日本語ファースト UI、cookieless アナリティクス
 - スパム緩和: Cloudflare Turnstile + Workers Rate Limit + 画像 SHA-256 ブラックリスト
 
@@ -83,7 +83,7 @@ pnpm -F @snap-share/web test:e2e -- -g "renders toolbar"
 │ Durable Obj  │ Hibernate │  GET  /sync/:id (WS)   │
 │ SnapShareYDO │◀──────────│   └─ RL_SYNC + token   │
 │ + DO Alarm   │           └────────────┬───────────┘
-│   (TTL 7d)   │                        │
+│ (TTL 24h-7d) │                        │
 └──────┬───────┘                        ▼
        │                  ┌─────────────┐  ┌──────────────────┐
        └─────────────────▶│  R2 IMAGES  │  │  KV blocklist    │
@@ -163,13 +163,22 @@ Yjs 同期。保護ルームは `?token=<JWT>` 必須。未保護は `RL_SYNC` (
 ## Security & Privacy
 
 - **パスワードハッシュ**: PBKDF2-SHA256 210,000 iterations + 16 byte salt（OWASP 推奨）。
-- **TTL 自動破棄**: 7 日経過で Durable Object Alarm が R2 image + meta + DO storage を削除。
+- **TTL 自動破棄**: デフォルト 24 時間（最大 7 日）で Durable Object Alarm が R2 image + meta + DO storage を削除。`POST /rooms` の `ttlMs` (ms, optional) で per-room 上書き可。Phase 10.B で 7 日固定 → 24h default + 7d max に変更。
 - **No tracking cookies**: Cloudflare Web Analytics は cookieless ビーコン。
 - **画像 SHA-256 ブラックリスト**: 既知の悪用素材をハッシュベースで弾く。R2 にも書く前に検査。
 - **Turnstile**: ルーム作成時の機械的トラフィックを invisible widget で抑制。
 - **IP レート制限**: ルーム作成 / 認証 / 同期 WS upgrade に Workers Rate Limit binding。
 
-詳細は `.claude/rules/web/security.md` を参照。
+詳細は `.claude/rules/web/security.md`、利用規約・プライバシーポリシーは [`docs/legal/`](./docs/legal/) を参照。
+
+## 通報・不具合連絡
+
+- **違反コンテンツ通報**: GitHub Issue Forms から [Abuse Report テンプレート](https://github.com/imotako-pum/snap-share/issues/new?template=abuse-report.yml) で報告してください。`report-abuse` ラベルが自動付与されます。
+- **バグ報告 / 機能要望**: 通常の Issue Templates（[bug](https://github.com/imotako-pum/snap-share/issues/new?template=bug_report.md) / [feature](https://github.com/imotako-pum/snap-share/issues/new?template=feature_request.md)）を使ってください。
+- **緊急性が高い場合** (児童ポルノ / 爆破予告等): 本リポジトリではなく **警察または該当機関** に直接通報してください。
+- **個人情報・センシティブな URL を含む連絡**: GitHub Issue は public のため貼らず、運営者メール（公開リリース時に追記予定）にお送りください。
+
+通報内容は運営者が確認のうえ合理的な範囲で対応 (削除 / TTL 短縮 / 追加調査) します。すべての通報に個別回答することは保証しません。詳細は [利用規約](./docs/legal/terms-ja.md) 第 8 条を参照してください。
 
 ## Production deploy
 

@@ -2,6 +2,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { __resetI18nForTesting, setLang } from '../../../i18n';
+import { ja } from '../../../i18n/ja';
 import { COLOR_PALETTE } from '../../canvas/colors';
 import { Toolbar } from '../Toolbar';
 
@@ -58,15 +60,21 @@ const renderToolbar = (overrides: Partial<ToolbarProps> = {}) => {
 describe('Toolbar', () => {
   beforeEach(() => {
     while (document.body.firstChild) document.body.removeChild(document.body.firstChild);
+    // Pin language to JA so query selectors against `ja[...]` aria-labels match.
+    window.localStorage.setItem('snap-share-lang', 'ja');
+    __resetI18nForTesting();
+    setLang('ja');
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    __resetI18nForTesting();
   });
 
-  it('renders a Help button with aria-label "ショートカット一覧"', () => {
+  it('renders a Help button with the i18n action.help label', () => {
     const m = renderToolbar({});
-    const btn = m.container.querySelector('button[aria-label="ショートカット一覧"]');
+    const btn = m.container.querySelector(`button[aria-label="${ja['toolbar.action.help']}"]`);
     expect(btn).not.toBeNull();
     m.unmount();
   });
@@ -75,7 +83,7 @@ describe('Toolbar', () => {
     const onShowHelp = vi.fn();
     const m = renderToolbar({ onShowHelp });
     const btn = m.container.querySelector<HTMLButtonElement>(
-      'button[aria-label="ショートカット一覧"]',
+      `button[aria-label="${ja['toolbar.action.help']}"]`,
     );
     act(() => {
       btn?.click();
@@ -87,7 +95,7 @@ describe('Toolbar', () => {
   it('Help button stays enabled even when image is not loaded', () => {
     const m = renderToolbar({ imageLoaded: false, canExport: false });
     const btn = m.container.querySelector<HTMLButtonElement>(
-      'button[aria-label="ショートカット一覧"]',
+      `button[aria-label="${ja['toolbar.action.help']}"]`,
     );
     expect(btn?.disabled).toBe(false);
     m.unmount();
@@ -102,7 +110,7 @@ describe('Toolbar', () => {
   it('renders FontSizeControl A+ button with aria-label', () => {
     const m = renderToolbar({});
     const btn = m.container.querySelector<HTMLButtonElement>(
-      'button[aria-label="フォントサイズを大きくする"]',
+      `button[aria-label="${ja['toolbar.fontSize.increaseAria']}"]`,
     );
     expect(btn).not.toBeNull();
     m.unmount();

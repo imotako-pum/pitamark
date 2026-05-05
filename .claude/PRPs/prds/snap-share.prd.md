@@ -49,12 +49,12 @@
 - [ ] PNG エクスポート時の元画像解像度保持の方針 (dogfood/公開後の数字で判断)
 - [ ] スパム/悪用対策: Cloudflare Turnstile / レート制限 / SHA-256 ハッシュブラックリストの優先度 (公開後の実発生で判断)
 - [ ] アナリティクス選定: Cloudflare Web Analytics（無料・cookieless）で十分か (Phase 10.G 観察期間で判断)
-- [ ] 公開ドメイン候補 + アプリ名再考 (Phase 10.D で商標 / .com / .app / .jp 空き調査、[ADR-0003](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) 確定後)
+- [x] 公開ドメイン候補 + アプリ名再考 → **`pitamark.app`** (+ `.com` 並行取得) で確定 (2026-05-05)、詳細: [phase-10-naming.md](phase-10-naming.md)、ADR-0005 起票 + ドメイン取得 + リネーム実装は次セッション
 - [x] i18n 戦略の確定 → **軽量自作 dict + 日英 2 言語** ([ADR-0004 accepted](../../../docs/adr/ADR-0004-i18n-strategy.md))、Phase 10.E で実装
 - [x] Web vs デスクトップ方針 → **Phase 10 では Web 単独確定**、Mac spike は Phase 11+ 候補へ後回し ([ADR-0003 on hold](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md))
 - [x] 収益化スタンス C の撤退条件 → **半年で月 1000 円なし → B 修正検討**、Phase 11 起票時 (Phase 10.G 完了後) に判断
 - [ ] 収益化現実見立て: 観察データに基づく C 維持 / B 修正の最終判断 (Phase 11 起票時)
-- [ ] CHANGELOG 開始時の version 番号 (v0.1.0 / v0.9.0-mvp / v1.0.0、Phase 10.B で確定)
+- [x] CHANGELOG 開始時の version 番号 → **v0.9.0-mvp 起点 → Phase 10 完了で v1.0.0** で確定 (Decisions Log 参照)。ただし **ファイル新設は公開リリース直前 (Phase 10.F / v1.0.0 タグ時) まで保留** — タグ未作成段階での先行起票はリンク 404 で実用性ゼロのため (2026-05-05 ロールバック判断)
 
 ---
 
@@ -205,7 +205,7 @@
 | 7.8 | 次手予測 UX | Auto-next 次手予測（矢印→テキスト / 矩形→矢印）+ フォントサイズ UI + dogfood/Help 準備（4 サブプラン、Smart snap は 7.8-4 として stash 化し見送り） | complete | - | 7.7 | [prd](./phase-7.8-predictive-ux.prd.md) / sub: [7.8-1](../plans/completed/phase-7.8-1-auto-next-arrow-text.plan.md) ・ [7.8-2](../plans/completed/phase-7.8-2-auto-next-rect-arrow.plan.md) ・ [7.8-3](../plans/completed/phase-7.8-3-font-size-ui.plan.md) ・ [7.8-5](../plans/completed/phase-7.8-5-dogfood-help.plan.md) |
 | 8 | 統合レビュー（観察のみ） | リポジトリ全体の SSOT / モダン性 / React ベストプラクティス / Hono ベストプラクティス / その場しのぎ実装 / 型キャスト / 拡張性 / テスト網羅 / a11y / bundle・perf / エラー envelope 一貫性 / PRP 整理状況 / security の 13 観点横断レビュー。実コードの修正は Phase 8.x で別ブランチ・別 PR に切り出す | complete | - | 7.8 | [prd](./phase-8-integration-review.prd.md) / [plan](../plans/completed/phase-8-integration-review.plan.md) / [report](../reports/phase-8-integration-review-report.md) / 14 reviews in `reviews/phase-8-*-review.md` |
 | 9 | (廃止) dogfood & 計測 | **Phase 10 に内包**（process 軽量化方針、公開リリース + Analytics 観察に置換）。当初想定の「2 週間 dogfood + closed beta」は廃止 | superseded | - | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) |
-| 10 | 公開リリース + i18n + ブランディング (Web 単独) | 公開リリース最低限整備 (TOS/プライバシー/通報窓口) + i18n 軽量実装 (日英) + アプリ名/ドメイン取得 + TTL 仕様変更 + CHANGELOG 開始 (v0.9.0-mvp → v1.0.0) + 1 ヶ月 Analytics 観察。**Mac spike は Q9 で Phase 11+ 候補へ後回し** | pending | 10.B/D/E 並走可 | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) / [ADR-0003 (on hold)](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) / [ADR-0004 (accepted)](../../../docs/adr/ADR-0004-i18n-strategy.md) |
+| 10 | 公開リリース + i18n + ブランディング (Web 単独) | 公開リリース最低限整備 (TOS/プライバシー/通報窓口) + i18n 軽量実装 (日英) + アプリ名確定 + リネーム + 公開準備 (ドメイン非依存) + ドメイン取得 + 本番デプロイ + 1 ヶ月 Analytics 観察。CHANGELOG は 10.F (タグ作成時) まで保留。**Mac spike は Q9 で Phase 11+ 候補へ後回し**。**2026-05-05 再分割: 旧 10.D (アプリ名 + ドメイン取得 + リネーム実装) を 10.D = リネーム + 公開準備 (ドメイン非依存) と 10.F = ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ に切り分け、ドメイン取得待ちで 10.D が止まらないようにした** | in-progress (10.B: TTL+法務 draft+通報窓口+OGP 完了、CHANGELOG ロールバック / 10.D pitamark.app 確定済 / リネーム + 公開準備 (ドメイン非依存) は次フェーズで実装 / 10.E: 自作 dict + LangToggle + 305 unit + 4 e2e で完了、英訳 draft はレビュー待ち / 10.F: ドメイン取得 + 本番デプロイ pending / 10.G pending) | 10.B/D/E 並走可 | 8 | [phase-10-direction.prd.md](./phase-10-direction.prd.md) / [ADR-0003 (on hold)](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) / [ADR-0004 (accepted)](../../../docs/adr/ADR-0004-i18n-strategy.md) / [phase-10-b plan](../plans/phase-10-b-launch-prep.plan.md) / [phase-10-e plan](../plans/phase-10-e-i18n.plan.md) |
 | 11 | 次フェーズ確定 (収益化 / 品質 / Mac 再検討) | Phase 10.G 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、次の実装方向 (better-auth + 永続ルーム / Mac spike 再開 / SEO 深掘り 等) を決定 | pending | - | 10 | TBD (Phase 10.G 完了後に起票) |
 
 ### Phase Details
@@ -423,6 +423,9 @@
 | 撤退条件 (Phase 10) | **半年で月 1000 円なし → B (相殺) 修正検討**、Phase 11 起票時 (Phase 10.G 完了後) に判断 | 1 年で月 5 千円 / Phase 11 で総合判断のみ / 設定なし | オーナー指示 (Q8)。タイトだが基準として明確、無限延長を回避 |
 | アプリ名再考の手順 (Phase 10.D) | **Phase 10.D 実行時にブレスト**（事前準備しない、その場感覚優先） | 事前 Q&A / オーナー宿題 / AI 候補 generation | オーナー判断 (Q4)、判断時の鮮度 > 事前準備の効率 |
 | dogfood 残置度 (Phase 10) | **「気が向いたら」残す + 詰まった瞬間メモ継続**、強制 process 廃止 | 完全 0 / 軽量 1 週間版 / 強制 2 週間維持 | オーナー判断 (Q3)。自然利用は restrict しない |
+| CHANGELOG 起票タイミング (Phase 10.B 内で再判断) | **公開リリース直前 (Phase 10.F or v1.0.0 タグ作成時) まで起票しない** | Phase 10.B で先行起票 / Conventional Changelog 自動生成 / 起票しない | タグ未作成の段階で `[Unreleased]: .../compare/v0.9.0-mvp...HEAD` を貼ってもリンクが 404 になり実用性ゼロ。Decisions Log と PRD で意思決定はトレース済、git log で git の差分は読める。タグ運用が現実化した時点 (Phase 10.F) で初版起票する |
+| Phase 10.B 着手範囲 (CHANGELOG ロールバック後) | **TTL 仕様変更 + 法務 draft + 通報窓口 + OGP/meta** の 4 項目を自走実装 (1 PR にまとめる) | 全 6 項目 / 各項目を別 PR | feedback memory「PRP は PRD 単位で 1 ブランチ 1 PR」。CHANGELOG は時期尚早につき 10.F へ後ろ倒し、Cloudflare Analytics 確認はオーナーダッシュボード操作必須、GitHub label 設定も shared state 変更なので人手作業として PR merge 後に分離 |
+| Phase 10.D 再定義 (2026-05-05) | **旧 10.D「アプリ名 + ドメイン取得 + リネーム実装」を 10.D「リネーム + 公開準備 (ドメイン非依存)」と 10.F「ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ」に切り分け** | 旧定義のまま (バンドル維持) / 10.D を 3 つに分割 | オーナー意向「ドメイン取得を急がない」。バンドル維持だと取得待ちで 10.D の リネーム/SEO/法務英訳/ADR-0005 が全部ブロックする。ドメイン非依存タスクを先行実行可にして、ドメイン取得は 10.F で集中対応に切り分ける。詳細 sub-phase 定義は [phase-10-direction.prd.md](./phase-10-direction.prd.md) |
 
 ---
 

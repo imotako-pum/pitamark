@@ -27,10 +27,18 @@ import { createR2MetaStorage } from '../storage/r2-meta-storage';
 // `cf-turnstile-response` is required at the API surface; in dev/CI the
 // runtime short-circuits via `BYPASS_TURNSTILE=true` so the field can be a
 // dummy "ok" string.
+// Phase 10.B: `ttlMs` (optional) — per-room TTL override in milliseconds.
+// multipart/form-data carries it as a string; we validate the digit shape
+// here and let `room-service` enforce the MAX cap as 400 INVALID_REQUEST.
 const uploadFormSchema = z.object({
   image: z.instanceof(File).openapi({ type: 'string', format: 'binary' }),
   password: z.string().max(256).optional().openapi({ type: 'string' }),
   'cf-turnstile-response': z.string().min(1).max(2048).openapi({ type: 'string' }),
+  ttlMs: z
+    .string()
+    .regex(/^\d+$/, { message: 'ttlMs must be a non-negative integer' })
+    .optional()
+    .openapi({ type: 'string' }),
 });
 
 const authBodySchema = z.object({
@@ -226,12 +234,19 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
   .openapi(
     createRoomRoute,
     async (c) => {
-      const { image, password } = c.req.valid('form');
-      const turnstileToken = c.req.valid('form')['cf-turnstile-response'];
+      const form = c.req.valid('form');
+      const { image, password } = form;
+      const turnstileToken = form['cf-turnstile-response'];
+      // Phase 10.B: optional per-room TTL override. Empty / absent → undefined,
+      // service falls back to `deps.ttlMs` (env default = 24h). The Number()
+      // call is safe because the Zod schema already pinned the string shape
+      // to /^\d+$/, so it cannot return NaN here.
+      const ttlMs = form.ttlMs !== undefined ? Number(form.ttlMs) : undefined;
       const room = await buildRoomService(c.env).create(image, {
         password,
         turnstileToken,
         remoteIp: extractClientIp(c.req.raw),
+        ...(ttlMs !== undefined ? { ttlMs } : {}),
       });
       // Phase 7.6 既知-5 fix: protected room を作成した uploader は自分で
       // password を入力したばかりなので、URL 遷移後に再度ゲートを出すのは

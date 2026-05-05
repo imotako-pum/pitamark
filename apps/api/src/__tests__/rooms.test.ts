@@ -1,4 +1,4 @@
-import { MAX_IMAGE_BYTES } from '@snap-share/shared';
+import { MAX_IMAGE_BYTES, MAX_ROOM_TTL_MS } from '@snap-share/shared';
 import { describe, expect, it } from 'vitest';
 import app from '../index';
 import type { ErrorEnvelope } from '../lib/error';
@@ -109,6 +109,69 @@ describe('POST /rooms', () => {
     const env = buildEnv();
     const empty = new File([new Uint8Array(0)], 'empty.png', { type: 'image/png' });
     const res = await app.request('/rooms', { method: 'POST', body: formWithImage(empty) }, env);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+  });
+
+  // Phase 10.B: per-room ttlMs override surface tests.
+  it('honours an explicit ttlMs within the cap and stores it on the room', async () => {
+    const env = buildEnv();
+    const requested = 3 * 24 * 60 * 60 * 1000; // 3 days, < MAX_ROOM_TTL_MS
+    const res = await app.request(
+      '/rooms',
+      {
+        method: 'POST',
+        body: formWithImage(pngFile(4), { ttlMs: String(requested) }),
+      },
+      env,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as PublicRoom;
+    expect(body.ttlMs).toBe(requested);
+  });
+
+  it('falls back to env default ROOM_TTL_MS when ttlMs is omitted', async () => {
+    const env = buildEnv();
+    const res = await app.request(
+      '/rooms',
+      { method: 'POST', body: formWithImage(pngFile(4)) },
+      env,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as PublicRoom;
+    // build-env helper now defaults to 24h (Phase 10.B production default).
+    expect(body.ttlMs).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it('returns 400 INVALID_REQUEST when ttlMs exceeds MAX_ROOM_TTL_MS', async () => {
+    const env = buildEnv();
+    const tooBig = MAX_ROOM_TTL_MS + 1;
+    const res = await app.request(
+      '/rooms',
+      {
+        method: 'POST',
+        body: formWithImage(pngFile(4), { ttlMs: String(tooBig) }),
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as ErrorBody;
+    expect(body.error.code).toBe('INVALID_REQUEST');
+    // Public message must not echo the requested value (Phase 8.x error-envelope review #11 pattern).
+    expect(body.error.message).not.toContain(String(tooBig));
+  });
+
+  it('returns 400 INVALID_REQUEST when ttlMs is non-numeric', async () => {
+    const env = buildEnv();
+    const res = await app.request(
+      '/rooms',
+      {
+        method: 'POST',
+        body: formWithImage(pngFile(4), { ttlMs: '7d' }),
+      },
+      env,
+    );
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('INVALID_REQUEST');

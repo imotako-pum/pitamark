@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { type I18nKey, useTranslation } from '../i18n';
 import { type CreateRoomFailure, createRoom } from '../lib/api-client';
 import { setRoomToken } from '../lib/auth-storage';
-import { validateImageFile } from '../lib/imageValidation';
+import { type ImageValidationErrorKey, validateImageFile } from '../lib/imageValidation';
 import { logger } from '../lib/logger';
 
 type ImageSource = Readonly<{
@@ -18,7 +19,10 @@ export type UseImageSourceOptions = Readonly<{
 
 type UseImageSource = Readonly<{
   source: ImageSource | null;
-  error: string | null;
+  // Phase 10.E: surface a stable i18n key instead of a pre-translated string
+  // so DropZone can re-render in the user's chosen language even if the
+  // validation ran while the previous language was active.
+  errorKey: ImageValidationErrorKey | null;
   /**
    * Validates and previews the image, then fires `POST /rooms`. The
    * `turnstileToken` argument carries the Turnstile widget value (empty
@@ -29,20 +33,25 @@ type UseImageSource = Readonly<{
   clear: () => void;
 }>;
 
-const FAILURE_TOASTS: Record<CreateRoomFailure['reason'], string> = {
-  'rate-limited': 'しばらく経ってからお試しください（アクセスが多すぎます）',
-  'image-blocked': 'この画像はアップロードできません',
-  turnstile: '認証に失敗しました。再度お試しください',
-  invalid: 'アップロードできない形式です',
-  network: '通信に失敗しました。ネットワークを確認してください',
+const FAILURE_KEY: Record<CreateRoomFailure['reason'], I18nKey> = {
+  'rate-limited': 'error.upload.rateLimited',
+  'image-blocked': 'error.upload.blocked',
+  turnstile: 'error.upload.turnstileFailed',
+  invalid: 'error.upload.invalidFormat',
+  network: 'error.upload.network',
 };
 
 export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSource => {
+  const t = useTranslation();
   const [source, setSource] = useState<ImageSource | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<ImageValidationErrorKey | null>(null);
   const urlRef = useRef<string | null>(null);
   const onRoomCreatedRef = useRef(options.onRoomCreated);
   onRoomCreatedRef.current = options.onRoomCreated;
+  // Translation function ref so the async createRoom failure handler can fire
+  // toasts without re-running the loadFromFile callback on every lang change.
+  const tRef = useRef(t);
+  tRef.current = t;
 
   useEffect(() => {
     return () => {
@@ -61,7 +70,7 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
         type: file.type,
         bytes: file.size,
       });
-      setError(result.error);
+      setErrorKey(result.errorKey);
       return;
     }
     if (urlRef.current) {
@@ -69,7 +78,7 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
     }
     const url = URL.createObjectURL(file);
     urlRef.current = url;
-    setError(null);
+    setErrorKey(null);
     setSource({ url, contentType: result.contentType, bytes: result.bytes });
     logger.info('image loaded', { type: result.contentType, bytes: result.bytes });
 
@@ -89,7 +98,7 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
         onRoomCreatedRef.current?.(out.room.id);
         return;
       }
-      toast.error(FAILURE_TOASTS[out.reason]);
+      toast.error(tRef.current(FAILURE_KEY[out.reason]));
     })();
   }, []);
 
@@ -99,8 +108,8 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
       urlRef.current = null;
     }
     setSource(null);
-    setError(null);
+    setErrorKey(null);
   }, []);
 
-  return { source, error, loadFromFile, clear };
+  return { source, errorKey, loadFromFile, clear };
 };
