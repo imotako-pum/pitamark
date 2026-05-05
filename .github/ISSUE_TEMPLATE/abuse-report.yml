@@ -1,5 +1,5 @@
 name: 通報・違反コンテンツ報告 (Abuse Report)
-description: 公開済みの snap-share ルームで著作権侵害・誹謗中傷・個人情報漏洩・性的コンテンツ・違法行為等を発見した場合の報告フォーム。
+description: 公開済みの pitamark ルームで著作権侵害・誹謗中傷・個人情報漏洩・性的コンテンツ・違法行為等を発見した場合の報告フォーム。
 title: "[abuse] "
 labels: ["report-abuse"]
 body:
@@ -15,8 +15,8 @@ body:
     id: target-url
     attributes:
       label: 対象の共有 URL
-      description: snap-share の公開ルーム URL を記入してください (例 `https://snap-share.pages.dev/r/V1StGXR8_Z5jdHi6B-myT`)。
-      placeholder: https://snap-share.pages.dev/r/...
+      description: pitamark の公開ルーム URL を記入してください (例 `https://pitamark.pages.dev/r/V1StGXR8_Z5jdHi6B-myT`)。
+      placeholder: https://pitamark.pages.dev/r/...
     validations:
       required: true
 

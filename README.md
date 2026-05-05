@@ -1,4 +1,4 @@
-# snap-share
+# pitamark
 
 > 画像にハイライト・吹き出し・矢印・テキストをオーバーレイし、URL一発で共同編集できる、日本語ファーストの軽量Webアプリ。
 
@@ -6,9 +6,11 @@
 [![Node](https://img.shields.io/badge/node-22%2B-339933)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-orange)](https://pnpm.io/)
 
-公開デモ: <!-- Phase 7 Task 28 で本番ドメイン確定後に差し込み: https://snap-share.pages.dev -->TBD
+公開デモ: <!-- Phase 10.F でドメイン取得 (pitamark.app 予定) + 本番デプロイ後に差し込み -->TBD
 
 詳細な背景・ユーザー像・成功指標は [PRD](./.claude/PRPs/prds/snap-share.prd.md) を参照。
+
+> **リネーム移行中 (Phase 10.D)**: 旧名 `snap-share` から `pitamark` へのリネームを段階実施中です。コードベース / GitHub リポジトリ / ドキュメントは `pitamark` を使い、Cloudflare 側リソース (Worker `snap-share-api` / R2 bucket `snap-share-images` / Pages project `snap-share.pages.dev`) は Phase 10.F (ドメイン取得 + 本番デプロイ) で移行します。本 README で `snap-share` 表記が残るのはこの操作対象を指しています。
 
 ## 何ができるか
 
@@ -55,15 +57,15 @@ Node 22+ と pnpm 10 が必須（`packageManager` で固定）。
 スコープ別タスク：
 
 ```sh
-pnpm -F @snap-share/web dev
-pnpm -F @snap-share/api test
-pnpm -F @snap-share/shared test
+pnpm -F @pitamark/web dev
+pnpm -F @pitamark/api test
+pnpm -F @pitamark/shared test
 
 # 単一テストファイル
-pnpm -F @snap-share/web test -- src/hooks/__tests__/historyReducer.test.ts
+pnpm -F @pitamark/web test -- src/hooks/__tests__/historyReducer.test.ts
 
 # Playwright をタイトル指定で
-pnpm -F @snap-share/web test:e2e -- -g "renders toolbar"
+pnpm -F @pitamark/web test:e2e -- -g "renders toolbar"
 ```
 
 ## Architecture
@@ -173,8 +175,8 @@ Yjs 同期。保護ルームは `?token=<JWT>` 必須。未保護は `RL_SYNC` (
 
 ## 通報・不具合連絡
 
-- **違反コンテンツ通報**: GitHub Issue Forms から [Abuse Report テンプレート](https://github.com/imotako-pum/snap-share/issues/new?template=abuse-report.yml) で報告してください。`report-abuse` ラベルが自動付与されます。
-- **バグ報告 / 機能要望**: 通常の Issue Templates（[bug](https://github.com/imotako-pum/snap-share/issues/new?template=bug_report.md) / [feature](https://github.com/imotako-pum/snap-share/issues/new?template=feature_request.md)）を使ってください。
+- **違反コンテンツ通報**: GitHub Issue Forms から [Abuse Report テンプレート](https://github.com/imotako-pum/pitamark/issues/new?template=abuse-report.yml) で報告してください。`report-abuse` ラベルが自動付与されます。
+- **バグ報告 / 機能要望**: 通常の Issue Templates（[bug](https://github.com/imotako-pum/pitamark/issues/new?template=bug_report.md) / [feature](https://github.com/imotako-pum/pitamark/issues/new?template=feature_request.md)）を使ってください。
 - **緊急性が高い場合** (児童ポルノ / 爆破予告等): 本リポジトリではなく **警察または該当機関** に直接通報してください。
 - **個人情報・センシティブな URL を含む連絡**: GitHub Issue は public のため貼らず、運営者メール（公開リリース時に追記予定）にお送りください。
 
@@ -223,12 +225,12 @@ cd apps/api && pnpm wrangler deploy
 
 # 7. smoke check
 curl -i https://snap-share-api.<account>.workers.dev/health
-# → 200 { "ok": true, "service": "snap-share-api", "ts": ... }
+# → 200 { "ok": true, "service": "pitamark-api", "ts": ... }
 
 # 8. Deploy Web (Pages, Git 連携)
 # Cloudflare ダッシュボード → Pages → New project → Connect to GitHub
 #   Production branch: main
-#   Build command:     pnpm install --frozen-lockfile && pnpm -F @snap-share/web build
+#   Build command:     pnpm install --frozen-lockfile && pnpm -F @pitamark/web build
 #   Build output:      apps/web/dist
 #   Root directory:    (空)  ※ monorepo のため
 #   Node version:      22

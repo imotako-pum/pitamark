@@ -23,7 +23,7 @@ labels: ["bug"]
 - OS:
 - Browser (バージョン込み):
 - Node:
-- snap-share commit hash (またはブランチ名):
+- pitamark commit hash (またはブランチ名):
 - 公開版 / セルフホスト:
 
 ## スクリーンショット / コンソールログ
