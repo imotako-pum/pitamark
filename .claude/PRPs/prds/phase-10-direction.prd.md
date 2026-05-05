@@ -254,9 +254,9 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 | 10.A | snap-share.prd.md 更新 | 確定分（TTL / CHANGELOG / 通報窓口 / Q9 Mac spike 後回し / 撤退条件）を Decisions Log + Open Questions に織込み | complete | with 10.0 | 10.0 確定後 | (commit b8978a0) |
 | 10.B | 公開リリース最低限整備 | TOS / プライバシー / 通報窓口 / OGP / Analytics 確認 / TTL 仕様変更 (CHANGELOG は 10.F 後ろ倒し) | complete (自走範囲: TTL/法務 draft/通報窓口/OGP の 4 件、CHANGELOG は時期尚早につき 10.F 送り。Cloudflare Analytics ダッシュボード確認 + GitHub label 設定の 2 件はオーナー手動作業) | with 10.C/10.D | 10.A | [phase-10-b-launch-prep.plan.md](../plans/phase-10-b-launch-prep.plan.md) |
 | ~~10.C~~ | ~~Mac spike (Tauri)~~ | **Q9 で削除、Phase 11+ 候補へ後回し** | removed | — | — | [ADR-0003](../../../docs/adr/ADR-0003-web-vs-desktop-direction.md) (on hold) |
-| 10.D | アプリ名 + ドメイン取得 | ブレスト + 商標調査 + 取得 + Turnstile site 切替 | pending | with 10.B/E | 10.A | TBD |
+| 10.D | リネーム + 公開準備 (ドメイン非依存) | リネーム実装 (`snap-share` → `pitamark`) + ADR-0005 起票 + OGP/favicon アセット作成 + SEO 雛形 (robots.txt / sitemap.xml / JSON-LD / canonical) + 法務文書英訳 (terms-en / privacy-en draft) + i18n 化漏れ追跡 + CHANGELOG 雛形準備。**2026-05-05 再分割: 旧 10.D「ドメイン取得 + Turnstile 切替 + Pages カスタムドメイン設定」は 10.F に移動** | pending | with 10.B/E | 10.A | TBD |
 | 10.E | i18n 軽量実装 | 自作 dict + 日英 2 言語、Q9 で待ち条件解消し独立実行可 | complete (apps/web/src/i18n/ + ~80 keys + LangToggle UI + 305 unit + 4 e2e、英訳 draft はオーナー後続レビュー) | with 10.B/D | 10.A | [phase-10-e-i18n.plan.md](../plans/phase-10-e-i18n.plan.md) |
-| 10.F | 公開リリース実走 | pages.dev or カスタムドメインで公開、Analytics 観察開始 | pending | - | 10.B + 10.D + 10.E | TBD |
+| 10.F | ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ | Cloudflare Registrar で `pitamark.app` + `.com` 取得 / Pages カスタムドメイン設定 / Workers `CORS_ALLOWED_ORIGINS` 更新 / Turnstile site key 切替 / Cloudflare Web Analytics token 本番値設定 / 法務運営者連絡先 + 確定ドメイン埋込 / `og:url` + canonical + sitemap.xml URL 確定値置換 / 本番デプロイ + v1.0.0 タグ + GitHub Release / `CHANGELOG.md` 初版起票 (Phase 0〜10 milestone 遡及記録) / HSTS preload 申請判断 | pending | - | 10.B + 10.D + 10.E | TBD |
 | 10.G | 観察期間（1 ヶ月） | Analytics 蓄積 + オーナーの「詰まった瞬間メモ」 | pending | - | 10.F | (ad-hoc) |
 | 11.0 | Phase 11 PRD 起票 | 観察結果で C スタンス維持 / B 修正 (撤退条件: 半年で月千円なし) を判断、Mac spike 再検討含む実装方向確定 | pending | - | 10.G | TBD |
 
@@ -297,14 +297,20 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 - Phase 10 期間短縮効果: 1-2 週間
 - 既存 spike 設計 (Tauri 2.0 + 70% 流用 + Go/No-Go Gate) は ADR-0003 に保存済み、Phase 11+ で再開時に流用可能
 
-**Phase 10.D: アプリ名 + ドメイン取得**
-- Goal: 公開拡大に向けた最低限のブランディング基盤
+**Phase 10.D: リネーム + 公開準備 (ドメイン非依存)**
+
+> 2026-05-05 再分割: 旧 10.D は「アプリ名再考 (ブレスト) + 商標調査 + ドメイン空き調査 + Cloudflare 取得 + Turnstile/Pages 切替」をバンドルしていた。前段 (アプリ名 + 商標 + 空き調査) は完了 (`pitamark.app` 確定、[phase-10-naming.md](./phase-10-naming.md))。後段 (ドメイン取得 + インフラ切替) は 10.F に切り離し、10.D はオーナーがドメイン取得を急がなくても進められる範囲に縮小する。
+
+- Goal: ドメイン取得を待たず、コードベースを `pitamark` 名義に揃え、公開時の SEO/法務/アセット雛形を整える
 - Scope:
-  - 候補出し（オーナー直感ベース、~10 候補）
-  - 商標調査（J-PlatPat / USPTO / 主要 SaaS で同名の有無）
-  - ドメイン空き調査（.com / .app / .jp / .io）
-  - Cloudflare で取得 + Turnstile site 設定切替 + Pages カスタムドメイン設定
-- Success signal: ドメイン取得済 + DNS 設定完了 + HTTPS 動作確認
+  - **リネーム実装**: `snap-share` → `pitamark` (識別子 / コメント / docstring)、パッケージ名 `@snap-share/web` `@snap-share/api` `@snap-share/shared` → `@pitamark/*`、turborepo / pnpm-workspace.yaml / 全 import path、localStorage key (`snap-share-lang` 等) のマイグレーション戦略
+  - **ADR-0005 起票**: アプリ名 + ドメイン候補確定の意思決定記録 (`docs/adr/ADR-0005-app-naming-and-domain.md`)、phase-10-naming.md の商標クリアランス結果を固定化
+  - **OGP / favicon アセット作成**: `og-image.png` (1200×630)、`favicon.ico` / `apple-touch-icon.png` 系、index.html の `og:image` / `twitter:card=summary_large_image` 切替 (URL 不要)
+  - **SEO 雛形整備**: `apps/web/public/robots.txt` (`Allow: /` + `/r/` Disallow + sitemap 参照)、`apps/web/public/sitemap.xml` (`/` のみ最小 sitemap、URL は `%VITE_PUBLIC_URL%` 環境変数で差し込む雛形)、JSON-LD `SoftwareApplication` schema を index.html に inline、`<link rel="canonical">` 追加
+  - **法務文書英訳**: `docs/legal/terms-en.md` / `privacy-en.md` draft、LangToggle と連動するか別 routing にするか方針判断
+  - **i18n 化漏れ追跡**: 本セッションで `RoomEditor.tsx not-found` を拾った経験を踏まえ、grep ベースで残ハードコード文言を網羅
+  - **CHANGELOG 雛形準備**: ファイル新設はせず、起票テンプレ (Keep a Changelog 形式) を別領域に置くか完全保留 (起票は 10.F)
+- Success signal: 全パッケージ `@pitamark/*` で `pnpm build` 緑 / robots.txt + sitemap.xml + JSON-LD + canonical が `%VITE_PUBLIC_URL%` テンプレ経由で動く / OGP 画像が staging で正しく表示 / ADR-0005 がコミット / 法務 en draft が PR レビュー待ち
 
 **Phase 10.E: i18n 軽量実装**
 - Goal: 日英 2 言語の最小実装
@@ -315,13 +321,20 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
   - 全 UI 文言を dict 化、ハードコード排除
 - Success signal: 言語切替で UI が完全に日↔英で切り替わる + テスト追加
 
-**Phase 10.F: 公開リリース実走**
-- Goal: 実際に世に出す
+**Phase 10.F: ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ**
+
+> 2026-05-05 再分割: 旧 10.F は「公開リリース実走 (pages.dev or カスタムドメイン)」のみだったが、再分割で旧 10.D 後段「ドメイン取得 + Turnstile 切替 + Pages カスタムドメイン設定」を吸収し、「ドメイン取得後にしか確定できない値の置換 + 本番タグ + CHANGELOG 起票」までを 1 sub-phase に集約する。
+
+- Goal: ドメイン取得して本番運用に乗せ、v1.0.0 を切る
 - Scope:
-  - pages.dev or 取得済ドメインで本番デプロイ最終確認
-  - SNS / 個人ブログ等で公開告知（任意）
-  - Analytics 観察開始
-- Success signal: 公開済 URL + Analytics dashboard で数字が動き始める
+  - **ドメイン取得**: Cloudflare Registrar で `pitamark.app` + `pitamark.com` 取得 (オーナー作業)
+  - **インフラ確定**: Pages カスタムドメイン設定 / DNS / TLS、Workers `apps/api/wrangler.toml` の `CORS_ALLOWED_ORIGINS` 更新、Turnstile site key 切替、Cloudflare Web Analytics token 本番値設定
+  - **公開 URL 確定値の埋込**: 法務文書 (terms-ja / privacy-ja / en) の運営者連絡先 + 確定ドメイン、`og:url` / canonical / sitemap.xml の URL 確定値置換
+  - **本番デプロイ**: Pages production にカスタムドメインで公開、`wrangler deploy` で API 本番化
+  - **リリースタグ**: `v1.0.0` タグ + GitHub Release
+  - **CHANGELOG.md 初版起票** (Keep a Changelog 形式、Phase 0〜10 milestone 遡及記録)
+  - **HSTS preload 申請判断** (運用安定後、サブドメイン全 HTTPS 確認後にオーナーが申請)
+- Success signal: `pitamark.app` で踏める / API が `*.pitamark.*` から CORS 許可される / 本番ダッシュボードで数字が動き始める / `v1.0.0` タグが GitHub に存在 / CHANGELOG.md が main にコミット済
 
 **Phase 10.G: 観察期間（1 ヶ月）**
 - Goal: Phase 11 起票の判断材料を蓄積
@@ -341,11 +354,11 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
   - 「B スタンス修正」→ Phase 11 = SEO + 品質深掘り、収益化フェーズは無期限延期
 - Success signal: Phase 11 PRD が `prp-prd` で起票される
 
-### Parallelism Notes（Q9 反映後）
+### Parallelism Notes（Q9 反映 + 2026-05-05 再分割反映後）
 
-- **10.B / 10.D / 10.E は完全並走可**: 異なる surface（公開 docs / DNS / i18n dict）に touch するため独立
+- **10.B / 10.D / 10.E は完全並走可**: 異なる surface（公開 docs / リネーム + SEO 雛形 / i18n dict）に touch するため独立。新 10.D はドメイン非依存に縮小されたためパッケージ名 + アセット作成 + 法務英訳が並行可能
 - **10.E が独立実行可になった**: Q9 で Mac spike 削除、Tauri webview 文字列同期問題が解消
-- **10.F は逐次**: 10.B + 10.D + 10.E 全完了が前提
+- **10.F は逐次**: 10.B + 10.D + 10.E 全完了が前提。ドメイン取得 + インフラ切替 + 本番タグを 1 sub-phase に集約 (再分割でここに吸収)
 - **10.G は逐次**: 10.F の公開後でないと数字が取れない
 
 ---
@@ -369,6 +382,7 @@ Phase 10 を **「方向性確定 + 短期 spike + 公開最低限整備」を 1
 | アプリ名再考の手順 (Q4) | **Phase 10.D 実行時にブレスト** | 事前に詰める / オーナー宿題 / 候補 generation 自動 | その場感覚で決めたい、事前準備の効率より判断時の鮮度優先 |
 | dogfood 残置度 (Q3) | **「気が向いたら」残す + 詰まった瞬間メモ継続** | 完全 0 / 軽量 1 週間版 / 強制 2 週間維持 | 強制 process は廃止、自然利用は restrict しない |
 | version 番号 (Q7) | **v0.9.0-mvp 起点 → Phase 10 完了で v1.0.0** | v0.1.0 / v1.0.0 直接 / なし | Phase 0-8 で MVP 完成 + Phase 10 公開 = v1.0.0 が自然な区切り |
+| Phase 10.D 再分割 (2026-05-05) | **旧 10.D「アプリ名 + ドメイン取得 + リネーム実装」を 2 つに切り分け**: 新 10.D = リネーム + 公開準備 (ドメイン非依存) / 新 10.F = ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ + CHANGELOG 起票 | 旧定義のまま維持 (バンドル) / 10.D を 3 つに分割 | オーナー意向「ドメイン取得を急がない」。バンドル維持だと取得待ちで リネーム + ADR-0005 + OGP/SEO/法務英訳 が全部ブロックする。ドメイン非依存タスクを 10.D で先行実行可、ドメイン取得 + 取得後にしか確定できない値の置換 + v1.0.0 タグ を 10.F に集約することで、各 sub-phase の責務を「ドメインに関係なく進められる」/「ドメイン取得後にしか進められない」で綺麗に分離 |
 
 ---
 

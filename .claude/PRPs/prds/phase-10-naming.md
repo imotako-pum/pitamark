@@ -18,25 +18,26 @@
 
 ## ⏯ 次セッション再開時のクイックスタート
 
-**このファイルは Phase 10.D「アプリ名再考 + 公開ドメイン取得」の意思決定記録。`pitamark.app` で確定済。** 次セッションでは以下の順で実行:
+**このファイルは Phase 10.D「アプリ名再考 + 公開ドメイン取得」の意思決定記録。`pitamark.app` で確定済。**
 
-1. **ドメイン取得** (user 自身、もしまだなら最優先):
+> **2026-05-05 再分割**: ドメイン取得を急がない方針となり、Phase 10.D を「リネーム + 公開準備 (ドメイン非依存)」に縮小、**ドメイン取得 + 取得後でないと確定できない値の置換 (法務運営者連絡先 / og:url / Turnstile site key / CORS_ALLOWED_ORIGINS / Cloudflare Web Analytics token / 本番デプロイ + v1.0.0 タグ + CHANGELOG 起票)** は新 Phase 10.F に切り離した。詳細は [phase-10-direction.prd.md](./phase-10-direction.prd.md) Phase 10.D / 10.F 定義参照。
+
+次セッションは新 Phase 10.D の plan 起票から始める。実行順:
+
+1. **ADR-0005「アプリ名 + ドメイン」起票** (新 10.D 内、ドメイン取得を待たない):
+   - パス: `docs/adr/ADR-0005-app-naming-and-domain.md`
+   - Status: accepted (取得自体は 10.F だが、選定の意思決定は確定済)
+   - 本ファイルの「議論サマリ」「Decisions Log」「クリアランス調査結果」を ADR フォーマットに圧縮
+2. **リネーム実装計画作成** (`superpowers:writing-plans` skill 起動):
+   - パス: `.claude/PRPs/plans/phase-10-d-rename-launch-prep.plan.md`
+   - スコープ: workspace package 名 `@snap-share/*` → `@pitamark/*` / PRD / ADR / コード内言及更新 / OGP/favicon アセット / SEO 雛形 (robots.txt / sitemap.xml / JSON-LD / canonical) / 法務 en draft / i18n 化漏れ追跡 / CHANGELOG 雛形準備
+   - 履歴ある旧名 (Phase 0-8 commit message / 完了 PRD) は残す (歴史として)
+   - リポジトリ名 `snap-share` → `pitamark` 変更は別判断 (リポジトリリネームは GitHub 設定変更が必要)
+3. **新 Phase 10.D 実装** (Plan 通り)
+4. **新 Phase 10.F (ドメイン取得 + DNS + Pages 本番 + v1.0.0 タグ)** はオーナーがドメイン取得に踏み切るタイミングで別ブランチ起動
    - `pitamark.app` ($14/年) — Cloudflare Registrar 推奨 (年額据え置き / WHOIS プライバシー無料)
    - `pitamark.com` 並行取得 ($10-15/年) — リダイレクト用 + ブランド検索保護
    - `.io` は予算外 (年 $30-60) で見送り済
-2. **ADR-0005「アプリ名 / 公開ドメイン」起票**:
-   - パス: `docs/adr/ADR-0005-app-name-and-domain.md`
-   - Status: accepted
-   - 本ファイルの「議論サマリ」「Decisions Log」「クリアランス調査結果」を ADR フォーマットに圧縮
-3. **PRD Open Question close** (ADR-0005 リンクで close):
-   - `.claude/PRPs/prds/snap-share.prd.md` の「公開ドメイン候補 + アプリ名再考」 (line 52)
-   - `.claude/PRPs/prds/phase-10-direction.prd.md` の「アプリ名再考 — 候補リストアップとドメイン空き調査の手順」 (line 124)
-4. **リネーム実装計画作成** (`superpowers:writing-plans` skill 起動):
-   - パス: `.claude/PRPs/plans/phase-10-rename.plan.md`
-   - スコープ: リポジトリ名 `snap-share` → `pitamark` / workspace package 名 `@snap-share/*` → `@pitamark/*` / PRD / ADR / コード内言及更新
-   - 履歴ある旧名 (Phase 0-8 commit message / 完了 PRD) は残す (歴史として)
-   - Phase 配置: Phase 10.D の一部として実装するか、Phase 10.D' として別 Phase 化するかは Plan 作成時に判断
-5. **リネーム実装** (Plan 通り)
 
 ### 文脈サマリ (3 行)
 
@@ -236,25 +237,39 @@ HTTP 000 = サイトなし = 空きの強候補。WHOIS で念押し確認した
 
 ## 次のアクション
 
+> **2026-05-05 再分割**: アクションを「新 Phase 10.D (ドメイン非依存)」と「新 Phase 10.F (ドメイン取得後)」に分け、ドメイン取得を急がない方針に整合させる。
+
+### 新 Phase 10.D で先行実施 (ドメイン取得を待たない)
+
 - [x] user 最終選定 → `pitamark.app` (2026-05-05)
 - [x] クリアランス調査 (Web 検索 / GitHub / USPTO 系) → ◎ 衝突なし (2026-05-05)
-- [ ] **ドメイン取得** (user タスク):
-  - `pitamark.app` メイン取得 (Cloudflare Registrar / Namecheap / Google Domains 等で約 $14/年)
-  - `pitamark.com` 並行取得 ($10-15/年)
-  - `.io` は予算外で見送り
-- [ ] **ADR-0005「アプリ名 / 公開ドメイン」起票**:
-  - Status: accepted
+- [ ] **ADR-0005「アプリ名 + ドメイン」起票**:
+  - Status: accepted (選定意思決定は確定、取得自体は 10.F で後追い)
   - Context / Decision / Consequences を整理
   - 本ファイルの議論サマリと Decisions Log を ADR フォーマットに圧縮
-- [ ] **PRD Open Question close**:
-  - `snap-share.prd.md` の「公開ドメイン候補 + アプリ名再考」を close
-  - `phase-10-direction.prd.md` の「アプリ名再考 — 候補リストアップとドメイン空き調査の手順」を close
-- [ ] **リネーム実装計画** (`writing-plans` skill で別途計画化):
-  - リポジトリ名 `snap-share` → `pitamark`
+- [ ] **リネーム実装** (`writing-plans` skill で別途計画化):
   - workspace package 名 `@snap-share/*` → `@pitamark/*`
-  - PRD / ADR / コードコメント / README の言及更新
+  - PRD / ADR / コードコメント / README / index.html / 法務文書 の言及更新
+  - localStorage key (`snap-share-lang` 等) のマイグレーション戦略
   - 履歴ある旧名表記 (Phase 0-8 の PRD / commit message) は残す (歴史として)
-  - Phase 配置: Phase 10.D の一部として実装するか、別 Phase 化するか要判断
+  - リポジトリ名 `snap-share` → `pitamark` 変更は別判断 (GitHub 設定変更が必要なオーナー作業)
+
+### 新 Phase 10.F で実施 (ドメイン取得後にしかできない)
+
+- [ ] **ドメイン取得** (user タスク):
+  - `pitamark.app` メイン取得 (Cloudflare Registrar 推奨、約 $14/年)
+  - `pitamark.com` 並行取得 ($10-15/年)
+  - `.io` は予算外で見送り
+- [ ] **インフラ確定**:
+  - Cloudflare Pages カスタムドメイン設定 / DNS / TLS
+  - Workers `apps/api/wrangler.toml` の `CORS_ALLOWED_ORIGINS` 更新
+  - Turnstile site key 切替
+  - Cloudflare Web Analytics token 本番値設定
+- [ ] **取得後にしか確定できない値の埋込**:
+  - 法務文書 (terms-ja / privacy-ja / en) の運営者連絡先 + 確定ドメイン
+  - `og:url` / canonical / sitemap.xml の URL 確定値
+- [ ] 本番デプロイ + v1.0.0 タグ + GitHub Release + CHANGELOG.md 起票
+- [ ] HSTS preload 申請判断 (運用安定後)
 - [ ] 正式商標登録 (USPTO / JPO / EUIPO) は **Phase 11 以降** の事業化判断後に検討 (個人開発フェーズではオプション)
 
 ---
