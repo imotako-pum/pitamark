@@ -12,11 +12,8 @@ import {
   setText,
 } from '../domain/annotation/operations';
 
-// Phase 8.x extensibility review #7 L4: derive the editor's tool set from
-// `ANNOTATION_TYPES` (in `packages/shared`) so adding a new annotation kind
-// to the SSOT automatically flows into `Tool`. `'select'` stays at the head
-// because it has no annotation counterpart and several call sites depend on
-// it being position 0.
+// SSOT の `ANNOTATION_TYPES` から派生させ、annotation 種別追加が自動で `Tool` に流れる。
+// 'select' は annotation 対応がない head 固定 — index 0 = 'select' を前提にする callsite がある。
 export const TOOLS = ['select', ...ANNOTATION_TYPES] as const;
 export type Tool = (typeof TOOLS)[number];
 
@@ -24,15 +21,11 @@ export type AnnotationsState = Readonly<{
   annotations: ReadonlyArray<Annotation>;
   selectedId: string | null;
   tool: Tool;
-  // Single active color shared across all annotation types. Picking a swatch
-  // updates this; subsequent draws use it regardless of tool. The previous
-  // sync/highlight lane separation produced an indicator discontinuity when
-  // switching tools (the swatch ring jumped to a different color), so we
-  // collapsed it to one source of truth.
+  // 全 annotation 種別で共有する active color。sync/highlight でレーン分離していた頃は
+  // tool 切替で swatch ring が別色に飛ぶ不具合があったため 1 SSOT に collapse。
   activeColor: string;
-  // Single active font size for new text annotations. Mirrors activeColor's
-  // SSOT model — Toolbar A-/A+ and `[`/`]` shortcut update this; subsequent
-  // text creation (manual + Auto-next-A + Auto-next-B) reads from this.
+  // 新規 text annotation の active font size。activeColor と同じ SSOT 構造で、
+  // Toolbar A-/A+ や `[`/`]` の更新先 / Auto-next 系の参照先を 1 箇所に集約する。
   activeFontSize: number;
 }>;
 
@@ -139,12 +132,8 @@ export const annotationsReducer = (
         annotations: setColor(state.annotations, action.id, action.color),
       };
     case 'annotation/set-font-size': {
-      // Phase 8.x tests review #8 M2: when `setFontSize` returns the same
-      // array reference (no-op for non-text or unknown id), preserve the
-      // outer state identity too. Without this, `historyReducer` sees a
-      // freshly-allocated wrapper and appends an empty undo step — Phase
-      // 7.8-3 already gated this from the handler side; this is the
-      // belt-and-suspenders reducer-level guarantee.
+      // `setFontSize` の no-op (非 text / 未知 id) 時は state 参照も同一に保つ。
+      // 新 wrapper を返すと historyReducer が空の undo step を積んでしまう。
       const nextAnnotations = setFontSize(state.annotations, action.id, action.fontSize);
       if (nextAnnotations === state.annotations) return state;
       return { ...state, annotations: nextAnnotations };
@@ -156,11 +145,9 @@ export const annotationsReducer = (
   }
 };
 
-// Phase 8.x extensibility review #7 M1 案 C: switch + `const _: never` で
-// 網羅性をコンパイル時に enforce。新 action variant を追加した瞬間に
-// 「committing にするか UI-only か」をここで明示する必要が出るので、
-// 配列ベース `includes` 時代の「足し忘れて undo に積まれない」事故が
-// 発生しなくなる。
+// switch + `const _: never` で網羅性をコンパイル時に enforce。
+// 新 action 追加時に committing / UI-only の判断を必ず明示する構造で、
+// 配列ベース `includes` 時代の「足し忘れて undo に積まれない」事故を防ぐ。
 export const isCommittingAction = (action: AnnotationsAction): boolean => {
   switch (action.type) {
     case 'tool/set':
