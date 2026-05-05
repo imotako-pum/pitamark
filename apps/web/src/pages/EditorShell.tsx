@@ -64,6 +64,11 @@ export type EditorShellProps = Readonly<{
   toolbarRight?: ReactNode;
   /** Bottom-right floating slot (ConnectionBadge). */
   floatingExtras?: ReactNode;
+  /** Floating slot rendered immediately below the header at `top: headerHeight`.
+   *  Tracks the dynamic Toolbar height so wrapping toolbars (narrow viewport)
+   *  don't occlude the slot. Used by LocalEditor for the optional protect-password
+   *  panel — see Phase 7.6 既知-2 fix for the original z-index gotcha. */
+  belowHeader?: ReactNode;
   /** roomId for export filename; null in local mode. */
   roomId?: string | null;
 }>;
@@ -79,6 +84,7 @@ export const EditorShell = ({
   onSelectedIdChange,
   toolbarRight,
   floatingExtras,
+  belowHeader,
   roomId = null,
 }: EditorShellProps) => {
   const t = useTranslation();
@@ -527,6 +533,14 @@ export const EditorShell = ({
           {toolbarRight ?? <div aria-hidden="true" />}
         </div>
       </header>
+      {belowHeader && (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-3"
+          style={{ top: headerHeight }}
+        >
+          {belowHeader}
+        </div>
+      )}
       <div
         ref={stageContainerRef}
         className="absolute inset-x-0 bottom-0"

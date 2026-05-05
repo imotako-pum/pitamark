@@ -93,51 +93,51 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     [blockedByEmptyPassword, protect, password, loadFromFile, turnstile, t],
   );
 
+  // Phase 7.6 既知-2 fix の改修 (横幅狭時 wrap バグ): 旧実装は `top-16` 固定で
+  // パネルを Toolbar 直下に逃がしていたが、Toolbar が flex-wrap で 2 行になると
+  // パネルが Toolbar の後ろに隠れる回帰があった。EditorShell の `belowHeader`
+  // slot に流すことで、ResizeObserver で測定された動的 `headerHeight` に追従。
+  const protectPanel =
+    source === null ? (
+      <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={checkboxId}
+            checked={protect}
+            onCheckedChange={(checked) => {
+              const next = checked === true;
+              setProtect(next);
+              if (!next) setPassword('');
+            }}
+          />
+          <Lock aria-hidden="true" className="h-4 w-4 text-(--color-accent)" />
+          <Label htmlFor={checkboxId} className="cursor-pointer">
+            {t('localEditor.protectPassword.label')}
+          </Label>
+        </div>
+        {protect && (
+          <Input
+            id={passwordId}
+            type="password"
+            placeholder={t('gate.password.placeholder')}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-label={t('gate.password.aria')}
+            aria-invalid={blockedByEmptyPassword || undefined}
+            aria-describedby={blockedByEmptyPassword ? errorId : undefined}
+          />
+        )}
+        {blockedByEmptyPassword && (
+          <p id={errorId} className="text-xs text-destructive">
+            {t('localEditor.protectPassword.required')}
+          </p>
+        )}
+      </div>
+    ) : null;
+
   return (
     <>
-      {source === null && (
-        // Phase 7.6 既知-2 fix: Toolbar (header inset-x-0 top-0 z-10) と panel が
-        // 同じ z 帯で衝突し、pointer-events が遮断されてユーザーがチェックを
-        // 直接クリックできなかった。top-16 (= 4rem ≒ 64px) で Toolbar の
-        // 直下に逃がすことで z-index 競合自体を解消する。
-        <div className="pointer-events-none absolute top-16 left-1/2 z-10 -translate-x-1/2">
-          <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id={checkboxId}
-                checked={protect}
-                onCheckedChange={(checked) => {
-                  const next = checked === true;
-                  setProtect(next);
-                  if (!next) setPassword('');
-                }}
-              />
-              <Lock aria-hidden="true" className="h-4 w-4 text-(--color-accent)" />
-              <Label htmlFor={checkboxId} className="cursor-pointer">
-                {t('localEditor.protectPassword.label')}
-              </Label>
-            </div>
-            {protect && (
-              <Input
-                id={passwordId}
-                type="password"
-                placeholder={t('gate.password.placeholder')}
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                aria-label={t('gate.password.aria')}
-                aria-invalid={blockedByEmptyPassword || undefined}
-                aria-describedby={blockedByEmptyPassword ? errorId : undefined}
-              />
-            )}
-            {blockedByEmptyPassword && (
-              <p id={errorId} className="text-xs text-destructive">
-                {t('localEditor.protectPassword.required')}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
       {TURNSTILE_SITE_KEY && (
         <TurnstileWidget
           siteKey={TURNSTILE_SITE_KEY}
@@ -151,6 +151,7 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
         onLoadFile={handleLoad}
         onClearImage={handleClear}
         store={store}
+        belowHeader={protectPanel}
       />
     </>
   );
