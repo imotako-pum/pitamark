@@ -7,39 +7,34 @@ export type KeyboardShortcuts = Readonly<{
   onDelete: () => void;
   onSetTool: (tool: Tool) => void;
   onEscape: () => void;
-  /** Optional. ⌘S/Ctrl+S → PNG export. preventDefault() is only fired when
-   *  this is provided, so the browser's "Save Page" dialog is never blocked
-   *  for users who haven't loaded an image yet. */
+  /** 任意。⌘S/Ctrl+S → PNG export。提供時のみ preventDefault する (画像未ロード時に
+   *  browser の "Save Page" を奪わないため)。 */
   onExport?: () => void;
-  /** Optional. ⌘0/Ctrl+0 → fit-to-viewport. preventDefault only when provided
-   *  so we don't steal the browser's "reset zoom" before an image is loaded. */
+  /** 任意。⌘0/Ctrl+0 → fit-to-viewport。提供時のみ preventDefault (画像未ロード時に
+   *  browser の reset zoom を奪わないため)。 */
   onFitToViewport?: () => void;
-  /** Optional. ⌘1/Ctrl+1 → 100% scale. preventDefault only when provided so
-   *  we don't steal the browser's "go to tab 1" before an image is loaded. */
+  /** 任意。⌘1/Ctrl+1 → 100% scale。提供時のみ preventDefault (画像未ロード時に
+   *  browser の "go to tab 1" を奪わないため)。 */
   onSetHundredPercent?: () => void;
-  /** Optional. `?` (Shift+/) → toggle the help cheatsheet. preventDefault only
-   *  when provided so the browser keeps `?` for non-app contexts otherwise. */
+  /** 任意。`?` (Shift+/) → help cheatsheet を toggle。提供時のみ preventDefault し、
+   *  それ以外の context では browser の `?` を温存する。 */
   onShowHelp?: () => void;
-  /** Optional. `C` → cycle to the next palette color. */
+  /** 任意。`C` → palette の次の色に cycle。 */
   onCycleColorNext?: () => void;
-  /** Optional. `⇧C` → cycle to the previous palette color. */
+  /** 任意。`⇧C` → palette の前の色に cycle。 */
   onCycleColorPrev?: () => void;
-  /** Optional. Enter (no modifier, no shift) → confirm pending auto-arrow.
-   *  preventDefault only when provided so Enter keeps its default elsewhere
-   *  (e.g. button focus, form submit) when there is no pending arrow. */
+  /** 任意。Enter (modifier / shift なし) → 保留中の auto-arrow を確定。pending が無いとき
+   *  Enter は browser default (button focus / form submit など) として温存。 */
   onConfirmAutoArrow?: () => void;
-  /** Optional. `]` → activeFontSize + STEP / 選択中 text にも適用。
-   *  preventDefault only when provided so `]` keeps its default elsewhere. */
+  /** 任意。`]` → activeFontSize + STEP / 選択中 text にも適用。提供時のみ preventDefault。 */
   onIncrementFontSize?: () => void;
-  /** Optional. `[` → activeFontSize - STEP / 選択中 text にも適用。 */
+  /** 任意。`[` → activeFontSize - STEP / 選択中 text にも適用。 */
   onDecrementFontSize?: () => void;
 }>;
 
-// Phase 8.x extensibility review #7 M1 案 B: declare the tool→key direction
-// as `Record<Tool, string>` so adding a new `Tool` becomes a typecheck
-// failure here (forces the implementer to choose a key). Lookup by key
-// goes through `TOOL_BY_KEY`, an inverse `Map` derived from the same
-// source — single SSOT, no manual sync.
+// tool → key の方向を `Record<Tool, string>` で宣言。新 `Tool` を追加するとここが
+// typecheck で落ちるため、key の選択が強制される。逆向きの key→tool 解決は同じ source
+// から派生させた `TOOL_BY_KEY` が担当 — 1 SSOT で手動同期が要らない。
 const TOOL_KEYS: Readonly<Record<Tool, string>> = {
   select: 'v',
   rectangle: 'r',
@@ -48,10 +43,9 @@ const TOOL_KEYS: Readonly<Record<Tool, string>> = {
   highlight: 'h',
 };
 
-// Phase 8.x PR #15 self-review L2: build the inverse map by iterating
-// `TOOLS` (typed `readonly Tool[]`) so `TOOL_KEYS[t]` is type-safe and we
-// avoid `Object.entries`'s loss of key types. `TOOLS` lives upstream so
-// that adding a new `Tool` triggers a typecheck in `TOOL_KEYS` first.
+// 逆 map は `TOOLS` (`readonly Tool[]`) を回して構築するので `TOOL_KEYS[t]` が型安全に
+// 引け、`Object.entries` の key 型欠落を回避できる。`TOOLS` を SSOT に置くことで、
+// 新 `Tool` 追加時はまず `TOOL_KEYS` で typecheck エラーが出る順序になっている。
 const TOOL_BY_KEY: ReadonlyMap<string, Tool> = new Map(
   TOOLS.map((t) => [TOOL_KEYS[t], t] as const),
 );
@@ -115,9 +109,9 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
         ref.current.onEscape();
         return;
       }
-      // `?` (Shift+/) — toggle help. JIS/US keyboards both produce `e.key === '?'`
-      // when Shift+/ is pressed. Place this before the mod-only early return so
-      // a no-modifier `?` never falls through to the tool-key branch.
+      // `?` (Shift+/) — help を toggle。JIS/US 両配列で Shift+/ は `e.key === '?'` になる。
+      // mod-only の早期 return より前に置くことで、modifier なし `?` が tool-key 経路に
+      // 流れないようにしている。
       if (!mod && e.key === '?') {
         const cb = ref.current.onShowHelp;
         if (cb) {
@@ -126,10 +120,10 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
         }
         return;
       }
-      // Enter — confirm pending auto-arrow (Phase 7.8-2). text 編集中は textarea が
-      // stopPropagation するためここに届かない。pending != null のときだけ
-      // EditorShell が provide する経路で発火し、それ以外は browser default の
-      // Enter (ボタン focus 等) を温存。Shift+Enter / Cmd+Enter は除外。
+      // Enter — 保留中の auto-arrow を確定。text 編集中は textarea が stopPropagation
+      // するためここに届かない。pending != null のときだけ EditorShell 側の経路で
+      // 発火し、それ以外は browser default の Enter (ボタン focus 等) を温存する。
+      // Shift+Enter / Cmd+Enter は除外。
       if (!mod && e.key === 'Enter' && !e.shiftKey) {
         const cb = ref.current.onConfirmAutoArrow;
         if (cb) {
@@ -138,8 +132,8 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcuts): void => {
         }
         return;
       }
-      // `C` / `⇧C` — palette cycle. Shift reverses direction. `c` is reserved
-      // exclusively for color cycling (intentionally not in TOOL_KEY_MAP).
+      // `C` / `⇧C` — palette を cycle。Shift で逆方向。`c` は color cycling 専用に
+      // 予約 (意図的に TOOL_KEYS には載せていない)。
       if (!mod && key === 'c') {
         const cb = e.shiftKey ? ref.current.onCycleColorPrev : ref.current.onCycleColorNext;
         if (cb) {

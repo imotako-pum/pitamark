@@ -1,11 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 
 /**
- * `useState` whose latest value is also accessible via a ref. Closures that
- * are constructed once (e.g. the `dispatch` returned from `useCallback([])`)
- * can read the up-to-date value through `ref.current` instead of capturing
- * the value at render time. Mirrors the `useRef` pattern used in
- * `apps/web/src/components/canvas/CanvasStage.tsx` for drag-time state.
+ * 値を `useState` として保持しつつ、最新値を ref からも読める hook。
+ * `useCallback([])` で 1 度だけ作るような closure が、render 時点の値ではなく
+ * 最新の値を `ref.current` で参照できる。CanvasStage の drag 時 state と同じ
+ * `useRef` パターンを React state と組み合わせた版。
  */
 export const useStateRef = <T>(
   initial: T,
