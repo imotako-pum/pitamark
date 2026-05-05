@@ -3,14 +3,10 @@ import type { Awareness } from 'y-protocols/awareness';
 import type { LocalUser } from '../lib/local-user';
 
 /**
- * Minimal subset of `y-protocols/awareness`'s Awareness surface that
- * `createPresenceContext` exercises. Tests pass a plain stub that records
- * the calls; real callers pass `provider.awareness`.
- *
- * Phase 8.x typesafety review #6 M3: derive the shape via `Pick` from the
- * upstream `Awareness` type so that minor version drift in y-protocols is
- * caught at compile time. The previous hand-rolled type silently allowed
- * structural divergence (e.g. signature changes in `on` / `off`).
+ * `createPresenceContext` が触れる `y-protocols/awareness` Awareness の最小サブセット。
+ * テストは call を記録する plain stub を渡し、本番経路では `provider.awareness` を渡す。
+ * `Pick` で upstream `Awareness` から派生させることで、y-protocols の minor version drift
+ * (例: `on`/`off` の signature 変更) を runtime ではなくコンパイル時に検知できる。
  */
 export type AwarenessLike = Pick<
   Awareness,
@@ -20,21 +16,19 @@ export type AwarenessLike = Pick<
 export type PresenceContext = Readonly<{
   setCursor: (point: { x: number; y: number } | null) => void;
   setSelectedId: (id: string | null) => void;
-  /** Reads a frozen list of *other* clients' presence (self excluded). */
+  /** 自分以外の client presence を frozen list として返す。 */
   others: () => ReadonlyArray<UserPresence>;
-  /** Subscribe to remote presence changes. Returns unsubscribe. */
+  /** remote presence の変化を subscribe。返り値は unsubscribe。 */
   subscribe: (cb: () => void) => () => void;
-  /** Initialize local state with the user identity. */
+  /** local state を user identity 込みで初期化。 */
   initLocal: () => void;
-  /** Tear down local state (broadcast departure). */
+  /** local state を解除して departure を broadcast。 */
   dispose: () => void;
 }>;
 
-// Phase 8.x typesafety review #6 L2: `awareness.getStates()` returns a map
-// of `Record<string, unknown>` so each client's state must be parsed
-// before flowing into `UserPresence`. Validating the assembled record via
-// `UserPresenceSchema` rejects malformed peers (missing displayName /
-// color, malformed cursor) without crashing the whole presence layer.
+// `awareness.getStates()` は `Record<string, unknown>` を値とする map を返すため、
+// `UserPresence` に流す前に `UserPresenceSchema` で validate する。malformed な peer
+// (displayName/color 欠落、cursor 形式不正など) は捨て、presence layer 全体を落とさない。
 const buildOthers = (awareness: AwarenessLike): ReadonlyArray<UserPresence> => {
   const states = awareness.getStates();
   const result: UserPresence[] = [];

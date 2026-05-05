@@ -19,9 +19,9 @@ import type { AnnotationsAction } from './annotationsReducer';
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
 /**
- * Minimal provider surface that `createYjsAnnotationsContext` needs. Mirrors
- * the relevant slice of `y-websocket`'s WebsocketProvider so tests can pass
- * a stub without bringing the real WS connection up.
+ * `createYjsAnnotationsContext` が必要とする最小 provider 表面。`y-websocket` の
+ * WebsocketProvider のうち使う部分だけを mirror しており、テストは実 WS を起こさない
+ * stub を渡せる。
  */
 export type YjsProviderLike = {
   on: (event: 'status', handler: (event: { status: ConnectionStatus }) => void) => void;
@@ -73,7 +73,7 @@ export const createYjsAnnotationsContext = (
       case 'select/set':
       case 'active-color/set':
       case 'active-font-size/set':
-        // UI-only state; never persisted to Yjs.
+        // UI-only state — Yjs には流さない。
         return;
       case 'annotation/add':
         addAnnotationY(doc, yAnnotations, action.annotation);
@@ -119,8 +119,8 @@ export const createYjsAnnotationsContext = (
         setTextFontSizeY(doc, yAnnotations, action.id, action.fontSize);
         return;
       default: {
-        // Exhaustiveness check — compile-time via `never`, runtime via throw
-        // so a variant slipping through `as` casts surfaces immediately.
+        // 網羅性チェック — `never` で compile-time、throw で runtime にも露出させる。
+        // `as` cast をすり抜けた variant がここに到達したら即落ちる構造。
         const _exhaustive: never = action;
         throw new Error(
           `unknown annotations action: ${(_exhaustive as { type?: string }).type ?? '<unknown>'}`,
