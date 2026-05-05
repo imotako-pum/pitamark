@@ -41,12 +41,7 @@ export const historyReducer = <T>(
       if (state.past.length === 0) {
         return state;
       }
-      // Phase 8.x typesafety review #6 H2: avoid `as T` (which silently
-      // suppresses `noUncheckedIndexedAccess` if the length guard above is
-      // ever weakened during refactor). `!` is honest about narrowing one
-      // particular known-safe access while preserving the rest of the
-      // checker; the biome-ignore reason links the assertion back to the
-      // direct guard so future readers see the proof.
+      // `as T` だと noUncheckedIndexedAccess の保護が外れるため `!` を採用。
       // biome-ignore lint/style/noNonNullAssertion: length > 0 は直上の guard で保証
       const previous = state.past[state.past.length - 1]!;
       return {
