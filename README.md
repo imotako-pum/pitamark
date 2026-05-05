@@ -17,7 +17,7 @@
 - 他参加者のカーソル可視化（Awareness）
 - ⌘S で PNG エクスポート（注釈焼き込み済）
 - 任意のパスワード保護ルーム（PBKDF2-SHA256 210k iter ハッシュ）
-- 7 日 TTL で自動破棄（Durable Object Alarm）
+- ルーム TTL は デフォルト 24 時間 / 最大 7 日で自動破棄（Durable Object Alarm）
 - 日本語ファースト UI、cookieless アナリティクス
 - スパム緩和: Cloudflare Turnstile + Workers Rate Limit + 画像 SHA-256 ブラックリスト
 
@@ -83,7 +83,7 @@ pnpm -F @snap-share/web test:e2e -- -g "renders toolbar"
 │ Durable Obj  │ Hibernate │  GET  /sync/:id (WS)   │
 │ SnapShareYDO │◀──────────│   └─ RL_SYNC + token   │
 │ + DO Alarm   │           └────────────┬───────────┘
-│   (TTL 7d)   │                        │
+│ (TTL 24h-7d) │                        │
 └──────┬───────┘                        ▼
        │                  ┌─────────────┐  ┌──────────────────┐
        └─────────────────▶│  R2 IMAGES  │  │  KV blocklist    │

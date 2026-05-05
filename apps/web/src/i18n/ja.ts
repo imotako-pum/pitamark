@@ -101,6 +101,13 @@ export const ja = {
   'error.upload.invalidFormat': 'アップロードできない形式です',
   'error.upload.network': '通信に失敗しました。ネットワークを確認してください',
 
+  // Room not-found page (TTL 切れ / 誤った URL)。Phase 10.B で TTL 仕様が
+  // default 24h / max 7d に変わったため、文言は「24 時間〜7 日で破棄」に揃える。
+  'notFound.title': 'ルームが見つかりません',
+  'notFound.ttlNotice':
+    'URL の有効期限が切れている可能性があります（デフォルト 24 時間 / 最大 7 日）。',
+  'notFound.backToTop': 'トップに戻る',
+
   // Toast (export).
   'toast.export.success': 'PNG を保存しました',
   'toast.export.error': 'PNG の保存に失敗しました',

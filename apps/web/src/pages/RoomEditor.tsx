@@ -8,6 +8,7 @@ import { RoomGate } from '../components/room-gate/RoomGate';
 import { CopyUrlButton } from '../components/toolbar/CopyUrlButton';
 import { type PresenceHandle, usePresence } from '../hooks/usePresence';
 import { useYjsAnnotationsStore, type YjsAnnotationsStore } from '../hooks/useYjsAnnotationsStore';
+import { useTranslation } from '../i18n';
 import { buildImageUrl, fetchProtectedImage, fetchRoom } from '../lib/api-client';
 import { clearRoomToken, getRoomToken } from '../lib/auth-storage';
 import { getOrCreateLocalUser } from '../lib/local-user';
@@ -28,6 +29,7 @@ type ImageState =
   | { kind: 'not-found' };
 
 export const RoomEditor = ({ roomId }: Props) => {
+  const t = useTranslation();
   const [imageState, setImageState] = useState<ImageState>({ kind: 'loading' });
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   // `token` is hoisted into state so a successful RoomGate auth re-runs the
@@ -119,12 +121,10 @@ export const RoomEditor = ({ roomId }: Props) => {
     return (
       <main className="flex h-dvh w-dvw items-center justify-center bg-(--color-surface) text-(--color-text)">
         <div className="text-center">
-          <p className="text-base font-semibold">ルームが見つかりません</p>
-          <p className="mt-2 text-sm opacity-70">
-            URL の有効期限が切れている可能性があります（TTL 7 日）。
-          </p>
+          <p className="text-base font-semibold">{t('notFound.title')}</p>
+          <p className="mt-2 text-sm opacity-70">{t('notFound.ttlNotice')}</p>
           <a href="/" className="mt-4 inline-block text-sm text-(--color-accent) underline">
-            トップに戻る
+            {t('notFound.backToTop')}
           </a>
         </div>
       </main>

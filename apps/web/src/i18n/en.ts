@@ -99,6 +99,11 @@ export const en: Record<I18nKey, string> = {
   'error.upload.invalidFormat': 'This file format cannot be uploaded',
   'error.upload.network': 'Network error. Please check your connection.',
 
+  // Room not-found page.
+  'notFound.title': 'Room not found',
+  'notFound.ttlNotice': 'The URL may have expired (default 24 hours, max 7 days).',
+  'notFound.backToTop': 'Back to top',
+
   // Toast (export).
   'toast.export.success': 'PNG saved',
   'toast.export.error': 'Failed to save PNG',
