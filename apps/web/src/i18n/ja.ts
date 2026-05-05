@@ -133,6 +133,42 @@ export const ja = {
   'help.section.export': '出力',
   'help.section.help': 'ヘルプ',
 
+  // Phase 10.H: Landing — first-impression surface shown when no image is
+  // loaded. Copy is intentionally light/pop ("簡潔・ポップ・分かりやすく")
+  // to convert Google-search visitors who landed cold.
+  'landing.hero.headline': '画像にサクッと注釈、URL で一瞬共有',
+  'landing.hero.subhead': 'ドラッグして注釈を書くだけ。会員登録なし、URL で共同編集。',
+  'landing.hero.previewAlt': 'pitamark エディタの利用イメージ — 画像に矢印・矩形・テキスト注釈',
+  'landing.features.heading': 'できること',
+  'landing.features.urlShare.title': 'URL 一発共有',
+  'landing.features.urlShare.body': 'アップロード即発行。会員登録は不要。',
+  'landing.features.collab.title': '共同編集',
+  'landing.features.collab.body': '同じ URL を開けば、相手もそのまま書き込める。',
+  'landing.features.ttl.title': 'ゆるい TTL',
+  'landing.features.ttl.body': 'デフォルト 24 時間で自動消失。残さない設計。',
+  'landing.howto.heading': '使い方は 3 ステップ',
+  'landing.howto.step1': '画像をドラッグ',
+  'landing.howto.step2': '注釈を書く',
+  'landing.howto.step3': 'URL をコピーして送る',
+  'landing.faq.heading': 'よくある質問',
+  'landing.faq.q1': '画像はどこに保存される？',
+  'landing.faq.a1':
+    'Cloudflare R2 に保存し、TTL（デフォルト 24 時間 / 最大 7 日）で自動削除されます。',
+  'landing.faq.q2': '無料で使える？',
+  'landing.faq.a2': 'はい、基本機能は無料です。',
+  'landing.faq.q3': '誰が編集できる？',
+  'landing.faq.a3': 'URL を知っている人なら誰でも。パスワード保護も設定できます。',
+  'landing.faq.q4': '広告は出る？',
+  'landing.faq.a4': '将来の収益化に向けて表示枠を用意しています。現在は配信していません。',
+
+  // Phase 10.H: AdSense placeholder. The placeholder is reserved at fixed
+  // dimensions to avoid CLS when the actual <ins class="adsbygoogle"> is
+  // wired in Phase 11+. `aria` stays English (固定) because accessibility
+  // tooling and AdSense policy both look for "Sponsored" semantics.
+  'ad.placeholder.label': '広告枠',
+  'ad.placeholder.note': '将来配信予定',
+  'ad.placeholder.aria': 'Sponsored placeholder',
+
   // Help — verbose row labels (some overlap with toolbar.tool.* by happenstance,
   // but they are kept separate so the cheat-sheet copy can drift independently).
   'help.row.select': '選択',

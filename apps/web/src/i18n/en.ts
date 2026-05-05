@@ -129,6 +129,39 @@ export const en: Record<I18nKey, string> = {
   'help.section.export': 'Export',
   'help.section.help': 'Help',
 
+  // Phase 10.H: Landing surface (en draft — Phase 10.E "ja confirmed +
+  // en draft" cadence applies; native polish is a Phase 11+ follow-up).
+  'landing.hero.headline': 'Annotate any image. Share by URL.',
+  'landing.hero.subhead':
+    'Drop a file, mark it up, send the link. No login, real-time collaboration built in.',
+  'landing.hero.previewAlt':
+    'pitamark editor preview — arrows, rectangles, and text overlaid on an image',
+  'landing.features.heading': 'What it does',
+  'landing.features.urlShare.title': 'Instant URL share',
+  'landing.features.urlShare.body': 'Upload, get a URL. No account needed.',
+  'landing.features.collab.title': 'Real-time collaboration',
+  'landing.features.collab.body': 'Open the same URL — everyone can annotate.',
+  'landing.features.ttl.title': 'Auto cleanup',
+  'landing.features.ttl.body': 'Default 24 h, max 7 days. Nothing lingers.',
+  'landing.howto.heading': 'Three steps',
+  'landing.howto.step1': 'Drop an image',
+  'landing.howto.step2': 'Annotate',
+  'landing.howto.step3': 'Copy & send the URL',
+  'landing.faq.heading': 'FAQ',
+  'landing.faq.q1': 'Where are images stored?',
+  'landing.faq.a1': 'On Cloudflare R2, auto-deleted after the TTL (default 24 h, max 7 days).',
+  'landing.faq.q2': 'Is it free?',
+  'landing.faq.a2': 'Yes — core features are free.',
+  'landing.faq.q3': 'Who can edit?',
+  'landing.faq.a3': 'Anyone with the URL. You can also enable password protection.',
+  'landing.faq.q4': 'Are there ads?',
+  'landing.faq.a4': 'A slot is reserved for future monetization. No ads are served right now.',
+
+  // Phase 10.H: AdSense placeholder.
+  'ad.placeholder.label': 'Sponsored',
+  'ad.placeholder.note': 'Reserved for future ads',
+  'ad.placeholder.aria': 'Sponsored placeholder',
+
   // Help — row labels.
   'help.row.select': 'Select',
   'help.row.rectangle': 'Rectangle',

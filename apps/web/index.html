@@ -52,6 +52,50 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" }
       }
     </script>
+    <!-- Phase 10.H: FAQPage schema mirrors apps/web/src/components/landing/Faq.tsx
+         (ja). Keep the Q/A copy in sync if the Japanese FAQ wording changes. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "画像はどこに保存される？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Cloudflare R2 に保存し、TTL（デフォルト 24 時間 / 最大 7 日）で自動削除されます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "無料で使える？",
+            "acceptedAnswer": { "@type": "Answer", "text": "はい、基本機能は無料です。" }
+          },
+          {
+            "@type": "Question",
+            "name": "誰が編集できる？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "URL を知っている人なら誰でも。パスワード保護も設定できます。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "広告は出る？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "将来の収益化に向けて表示枠を用意しています。現在は配信していません。"
+            }
+          }
+        ]
+      }
+    </script>
+    <!-- Phase 10.H: AdSense site-verification meta. Empty in dev / preview;
+         set VITE_ADSENSE_CLIENT_ID to "ca-pub-XXXXXXXXXXXXXXXX" once the
+         AdSense account is approved (Phase 11+). The actual <ins> tags and
+         the loader script are NOT shipped here — see Phase 10.H plan. -->
+    <meta name="google-adsense-account" content="%VITE_ADSENSE_CLIENT_ID%" />
     <!-- Phase 7: Cloudflare Turnstile loader. Site key is read at runtime by the React widget. -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   </head>
