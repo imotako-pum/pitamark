@@ -50,7 +50,7 @@ describe('FontSizeControl', () => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
-    window.localStorage.setItem('snap-share-lang', 'ja');
+    window.localStorage.setItem('pitamark-lang', 'ja');
     __resetI18nForTesting();
     setLang('ja');
   });

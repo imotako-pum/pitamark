@@ -39,7 +39,7 @@ beforeEach(() => {
   sessionStorage.clear();
   vi.stubGlobal('fetch', fetchMock);
   // Pin language to JA for stable text-content assertions across the suite.
-  window.localStorage.setItem('snap-share-lang', 'ja');
+  window.localStorage.setItem('pitamark-lang', 'ja');
   __resetI18nForTesting();
   setLang('ja');
 });
