@@ -1,4 +1,4 @@
-# 利用規約 (snap-share)
+# 利用規約 (pitamark)
 
 > **本文書は draft です。** Phase 10.B (公開リリース最低限整備) 段階で最低限の枠組みを定義したもので、公開リリース直前 (Phase 10.F) に再レビューする。
 > 法的拘束力のある最終版は、運営者連絡先・公開ドメイン・サービス名称が確定した時点で更新する。
@@ -43,7 +43,7 @@
 
 1. ユーザーがアップロードした画像、および注釈データの著作権はユーザー (または正当な権利者) に帰属します。
 2. ユーザーは、本サービスを利用することにより、本サービスの運営・改善のために必要な範囲で、運営者がこれらコンテンツを利用 (保存、表示、削除) することを許諾するものとします。
-3. 本サービス自体 (ソースコード、UI、ドキュメント、ロゴ等) の知的財産権は、運営者または該当するライセンサーに帰属します。本サービスのソースコードは [MIT License](https://github.com/imotako-pum/snap-share/blob/main/LICENSE) で公開されています。
+3. 本サービス自体 (ソースコード、UI、ドキュメント、ロゴ等) の知的財産権は、運営者または該当するライセンサーに帰属します。本サービスのソースコードは [MIT License](https://github.com/imotako-pum/pitamark/blob/main/LICENSE) で公開されています。
 
 ## 第 6 条 (免責事項)
 
@@ -61,7 +61,7 @@
 ## 第 8 条 (通報・違反コンテンツへの対応)
 
 1. ユーザーは、本サービス上で第 4 条に該当するコンテンツを発見した場合、以下の方法で運営者に通報できます。
-   - **GitHub Issue** (推奨): ラベル `report-abuse` を付けて issue を作成 ([テンプレート](https://github.com/imotako-pum/snap-share/issues/new?template=abuse-report.yml))
+   - **GitHub Issue** (推奨): ラベル `report-abuse` を付けて issue を作成 ([テンプレート](https://github.com/imotako-pum/pitamark/issues/new?template=abuse-report.yml))
    - **メール** (緊急時): [TBD: Phase 10.F 公開時に連絡先メールを記載]
 2. 通報を受領後、運営者は内容を確認し、合理的な対応 (コンテンツの削除、TTL 短縮、追加調査) を行います。ただし、すべての通報に個別回答することは保証しません。
 
@@ -82,7 +82,7 @@
 
 ## 連絡先
 
-- **GitHub Issues**: <https://github.com/imotako-pum/snap-share/issues>
+- **GitHub Issues**: <https://github.com/imotako-pum/pitamark/issues>
 - **通報専用**: ラベル `report-abuse` を付けた issue
 - **その他**: [TBD: Phase 10.F 公開時に運営者連絡先を追記]
 
