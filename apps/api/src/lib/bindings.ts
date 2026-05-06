@@ -1,88 +1,83 @@
 export type Bindings = {
   IMAGES: R2Bucket;
   /**
-   * Room TTL in milliseconds, sourced from `[vars]` in `wrangler.toml`.
-   * Cloudflare Workers env vars are always strings; callers must `Number(...)` it
-   * and validate with `Number.isFinite(x) && Number.isInteger(x) && x > 0`.
+   * Room TTL (ms 単位)。`wrangler.toml` の `[vars]` から渡る。Cloudflare Workers の
+   * env var は常に string なので、caller が `Number(...)` 変換し
+   * `Number.isFinite(x) && Number.isInteger(x) && x > 0` で validate すること。
    */
   ROOM_TTL_MS: string;
-  /** Yjs/CRDT room state. Bound to SnapShareYDO class via wrangler.toml. */
+  /** Yjs/CRDT の room state。`wrangler.toml` で `SnapShareYDO` class に bind される。 */
   Y_ROOM: DurableObjectNamespace;
   /**
-   * HS256 JWT signing secret for password-protected room tokens.
-   * Production: `wrangler secret put ROOM_TOKEN_SECRET`.
-   * Local dev: `apps/api/.dev.vars` (gitignored). Min 32 bytes.
+   * password-protected room token を署名する HS256 JWT secret。
+   * production: `wrangler secret put ROOM_TOKEN_SECRET`。
+   * local dev: `apps/api/.dev.vars` (gitignore 済)。最低 32 byte。
    */
   ROOM_TOKEN_SECRET: string;
 
   /**
-   * Phase 7: Workers Rate Limiting binding for `POST /rooms`.
-   * `wrangler.toml` `[[ratelimits]] name = "RL_CREATE_ROOM"` (5 req / 60s).
+   * `POST /rooms` 用の Workers Rate Limiting binding。
+   * `wrangler.toml` の `[[ratelimits]] name = "RL_CREATE_ROOM"` (5 req / 60s)。
    */
   RL_CREATE_ROOM: RateLimit;
   /**
-   * Phase 7: Workers Rate Limiting binding for `POST /rooms/:id/auth`.
-   * Keyed on `${roomId}:${ip}` so different rooms / IPs are independent.
-   * (10 req / 60s).
+   * `POST /rooms/:id/auth` 用の Workers Rate Limiting binding。`${roomId}:${ip}` を
+   * key にするので、room や IP ごとに独立。10 req / 60s。
    */
   RL_AUTH: RateLimit;
   /**
-   * Phase 7: Workers Rate Limiting binding for `/sync/:id` WS upgrades on
-   * UNPROTECTED rooms. Protected rooms already pay PBKDF2 + token verify and
-   * skip this layer. (30 req / 60s).
+   * unprotected room の `/sync/:id` WS upgrade 用の Workers Rate Limiting binding。
+   * protected room は PBKDF2 + token verify を既に払っているのでこの層を skip する。
+   * 30 req / 60s。
    */
   RL_SYNC: RateLimit;
 
   /**
-   * Phase 7: KV namespace storing SHA-256 hex of blocked images. Keys are the
-   * lowercase hex digest, values are operator-supplied reason strings.
-   * `wrangler kv namespace create IMAGE_BLOCKLIST` to provision.
+   * blocklist された画像の SHA-256 hex を保持する KV namespace。key は lowercase hex
+   * digest、value は operator が書く理由 string。provision は
+   * `wrangler kv namespace create IMAGE_BLOCKLIST`。
    */
   IMAGE_BLOCKLIST: KVNamespace;
 
   /**
-   * Phase 8.x security review #13 H1: KV namespace holding short-lived
-   * one-shot WebSocket upgrade tickets. Keys are `ws-ticket:<32 hex chars>`,
-   * values are the bound roomId. Entries auto-expire via `expirationTtl=60`
-   * (Cloudflare KV minimum) and are deleted on consume — protected room WS
-   * connections exchange the 24h JWT for one of these so the JWT never
-   * rides on the URL. `wrangler kv namespace create WS_TICKETS` to provision.
+   * 短命 one-shot WebSocket upgrade ticket を保持する KV namespace。key は
+   * `ws-ticket:<32 hex chars>`、value は bind 対象の roomId。`expirationTtl=60`
+   * (Cloudflare KV の最小値) で auto-expire し、consume 時に削除される。protected
+   * room の WS 接続は 24h JWT をこの ticket に交換することで JWT を URL に乗せない。
+   * provision は `wrangler kv namespace create WS_TICKETS`。
    */
   WS_TICKETS: KVNamespace;
 
   /**
-   * Phase 7: Public Turnstile site key. Safe to ship in the client bundle and
-   * commit to wrangler.toml.
+   * 公開 Turnstile site key。client bundle に乗せて公開しても安全で、wrangler.toml に
+   * commit しても良い。
    */
   TURNSTILE_SITE_KEY: string;
   /**
-   * Phase 7: Turnstile siteverify secret. `wrangler secret put TURNSTILE_SECRET_KEY`.
-   * Local dev: `apps/api/.dev.vars`.
+   * Turnstile siteverify secret。`wrangler secret put TURNSTILE_SECRET_KEY` で設定する。
+   * local dev: `apps/api/.dev.vars`。
    */
   TURNSTILE_SECRET_KEY: string;
   /**
-   * Phase 7: When `"true"`, the Turnstile verification is skipped. Used by
-   * dev/CI builds where calling the real siteverify endpoint is impractical.
-   * Defaults to `"false"` in production.
+   * `"true"` のとき Turnstile 検証を skip する。実 siteverify を叩けない dev / CI
+   * build 用。production では `"false"` がデフォルト。
    */
   BYPASS_TURNSTILE: string;
   /**
-   * Phase 7.6: When `"true"`, all `withRateLimit` middleware short-circuits
-   * and lets every request through. Used by E2E test runs where 14+ rooms
-   * are created in a 60s window and the production limit (5/60s) would
-   * cause spurious failures. MUST be `"false"` (or unset) in production.
-   * Defaults to `"false"`.
+   * `"true"` のとき `withRateLimit` middleware が常に short-circuit してすべての
+   * request を通す。E2E test run で 60s 以内に 14+ rooms 作るとき、production limit
+   * (5/60s) が spurious failure を起こすのを避けるためのみに使う。production では
+   * 必ず `"false"` (または未設定)。デフォルト `"false"`。
    */
   BYPASS_RATE_LIMIT: string;
 
   /**
-   * Phase 7.5: API を叩いてよいブラウザ origin の allowlist（カンマ区切り）。
-   * 各エントリは完全オリジン（`https://snap-share.pages.dev`）か、
-   * ワイルドカード接尾辞（`*.snap-share.pages.dev`、https 限定 — Pages の
-   * preview URL を吸収）のいずれか。空 / パース不能な値は module load 時では
-   * なく初回リクエスト時に CORS middleware（`index.ts`）が例外を投げる
-   * （Worker のログ可観測性を残すための fail-closed 方針）。WebSocket `/sync`
-   * upgrade は CORS 対象外で、別経路の origin check に依存する。
+   * API を叩いてよいブラウザ origin の allowlist (カンマ区切り)。各エントリは完全
+   * origin (`https://pitamark.app`) か、wildcard 接尾辞 (`*.pitamark.app`、https 限定 —
+   * Pages の preview URL を吸収) のいずれか。空 / parse 不能な値は module load 時では
+   * なく初回 request 時に CORS middleware (`index.ts`) が例外を投げる (Worker log の
+   * 可観測性を残す fail-closed 方針)。WebSocket `/sync` upgrade は CORS 対象外で、
+   * 別経路の origin check に依存する。
    */
   CORS_ALLOWED_ORIGINS: string;
 };

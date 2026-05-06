@@ -22,14 +22,13 @@ import { createWsTicketService } from '../services/ws-ticket-service';
 import { createR2ImageStorage } from '../storage/r2-image-storage';
 import { createR2MetaStorage } from '../storage/r2-meta-storage';
 
-// File field is rendered as `string($binary)` in OpenAPI 3.1.
-// `password` is optional — empty string or absent ⇒ unprotected room.
-// `cf-turnstile-response` is required at the API surface; in dev/CI the
-// runtime short-circuits via `BYPASS_TURNSTILE=true` so the field can be a
-// dummy "ok" string.
-// Phase 10.B: `ttlMs` (optional) — per-room TTL override in milliseconds.
-// multipart/form-data carries it as a string; we validate the digit shape
-// here and let `room-service` enforce the MAX cap as 400 INVALID_REQUEST.
+// File field は OpenAPI 3.1 で `string($binary)` として描画される。
+// `password` は optional — 空文字列 / 欠落で unprotected room になる。
+// `cf-turnstile-response` は API 表面では required だが、dev / CI 環境では
+// `BYPASS_TURNSTILE=true` の runtime short-circuit が走るので dummy "ok" 文字列で良い。
+// `ttlMs` は optional な room ごとの TTL override (ms)。multipart/form-data なので
+// 文字列として届く。ここでは数字 shape のみ validate し、MAX 超過は
+// `room-service` が 400 INVALID_REQUEST を返す。
 const uploadFormSchema = z.object({
   image: z.instanceof(File).openapi({ type: 'string', format: 'binary' }),
   password: z.string().max(256).optional().openapi({ type: 'string' }),
@@ -81,32 +80,32 @@ const createRoomRoute = createRoute({
     201: {
       content: { 'application/json': { schema: RoomCreatedSchema } },
       description:
-        'Room created. For protected rooms (`protected: true`) the response also carries an access `token` so the uploader skips the gate on first redirect.',
+        'Room を作成。protected room (`protected: true`) のときは uploader が初回 redirect で gate を skip できるよう access `token` も同梱する。',
     },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
       description:
-        'Bad request (missing image, empty file, password too long, or missing turnstile token)',
+        'Bad request (image 欠落、空 file、password が長すぎる、turnstile token 欠落 など)',
     },
     401: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Turnstile verification failed',
+      description: 'Turnstile 検証失敗',
     },
     413: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Image larger than the configured limit',
+      description: '画像が設定上限を超えている',
     },
     415: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Unsupported image MIME type',
+      description: 'サポート外の画像 MIME type',
     },
     422: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Image rejected by the blocklist',
+      description: 'blocklist で拒否された画像',
     },
     429: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Rate limit exceeded',
+      description: 'rate limit 超過',
     },
   },
 });
@@ -119,25 +118,24 @@ const getRoomRoute = createRoute({
   responses: {
     200: {
       content: { 'application/json': { schema: RoomPublicSchema } },
-      description: 'Room found (image hidden when protected)',
+      description: 'room を発見 (protected のときは image を hide)',
     },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Invalid room ID',
+      description: '不正な room ID',
     },
     404: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Room not found',
+      description: 'room が見つからない',
     },
   },
 });
 
-// Phase 8.x security review #13 H1: clients call this AFTER they have a
-// valid 24h JWT (from password auth or upload response) and BEFORE opening
-// the WebSocket. The returned ticket is consumed by `/sync/:id` so the JWT
-// itself never appears in the WS upgrade URL — and therefore never lands in
-// `wrangler tail` or any L7 proxy access log. RL_AUTH is reused: a client
-// that brute-forces ticket issuance would have already brute-forced the JWT.
+// 有効な 24h JWT (password auth / upload response 由来) を持つ client が WebSocket を
+// 開く **前** に叩く endpoint。返される ticket は `/sync/:id` で consume されるので、
+// JWT 自体は WS upgrade URL に乗らず、`wrangler tail` や L7 proxy の access log にも
+// 残らない。`RL_AUTH` を再利用するのは、ticket issuance を brute-force できる client
+// は既に JWT も brute-force できているはずだから。
 const wsTicketRoute = createRoute({
   method: 'post',
   path: '/{id}/ws-ticket',
@@ -151,13 +149,12 @@ const wsTicketRoute = createRoute({
   ] as const,
   request: {
     params: idParamSchema,
-    // `authorization` is intentionally `optional()` so a missing header maps
-    // to `401 UNAUTHORIZED` from the handler rather than `400 INVALID_REQUEST`
-    // from the Zod validator. The contract is "auth required" not
-    // "header malformed".
+    // `authorization` は意図的に `optional()` にしている。header 欠落を Zod validator
+    // の `400 INVALID_REQUEST` ではなく handler 側の `401 UNAUTHORIZED` に落とす契約
+    // にするため (「header malformed」ではなく「auth required」が contract)。
     headers: z.object({
       authorization: z.string().optional().openapi({
-        description: 'Bearer <jwt> — same JWT issued by `POST /rooms/:id/auth`.',
+        description: '`Bearer <jwt>` — `POST /rooms/:id/auth` で発行された JWT と同一。',
       }),
     }),
   },
@@ -165,23 +162,23 @@ const wsTicketRoute = createRoute({
     201: {
       content: { 'application/json': { schema: WsTicketResponseSchema } },
       description:
-        '30s one-shot ticket bound to the room. Pass it as `?ticket=<hex>` on the WS upgrade.',
+        'room に bind された 30 秒 one-shot ticket。WS upgrade で `?ticket=<hex>` として渡す。',
     },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Invalid room ID or unprotected room',
+      description: '不正な room ID または unprotected room',
     },
     401: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Missing or invalid bearer token',
+      description: 'bearer token が欠落 / 不正',
     },
     404: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Room not found',
+      description: 'room が見つからない',
     },
     429: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Rate limit exceeded',
+      description: 'rate limit 超過',
     },
   },
 });
@@ -204,32 +201,31 @@ const authRoute = createRoute({
   responses: {
     200: {
       content: { 'application/json': { schema: AuthResponseSchema } },
-      description: 'Password accepted; JWT issued',
+      description: 'password OK、JWT を発行',
     },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Invalid request, malformed ID, or unprotected room',
+      description: '不正な request / malformed ID / unprotected room',
     },
     401: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Wrong password',
+      description: 'password 不一致',
     },
     404: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Room not found',
+      description: 'room が見つからない',
     },
     429: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Rate limit exceeded',
+      description: 'rate limit 超過',
     },
   },
 });
 
-// Chain `.openapi()` calls so the export retains the merged route schema
-// (required by `hc<AppType>` for end-to-end type inference). Rate-limit
-// middleware is declared inline on each route via `createRoute({ middleware })`
-// rather than via `OpenAPIHono.use()` — chaining `.use()` collapses the typed
-// route info to `any` and breaks the `hc` client.
+// `.openapi()` を chain することで、export が merge 済 route schema を保つ
+// (`hc<AppType>` の end-to-end 型推論に必要)。rate-limit middleware は
+// `OpenAPIHono.use()` ではなく `createRoute({ middleware })` で各 route に inline 宣言
+// する — `.use()` chain は typed route info を `any` に潰して `hc` client を壊すため。
 export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
   .openapi(
     createRoomRoute,
@@ -237,10 +233,9 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
       const form = c.req.valid('form');
       const { image, password } = form;
       const turnstileToken = form['cf-turnstile-response'];
-      // Phase 10.B: optional per-room TTL override. Empty / absent → undefined,
-      // service falls back to `deps.ttlMs` (env default = 24h). The Number()
-      // call is safe because the Zod schema already pinned the string shape
-      // to /^\d+$/, so it cannot return NaN here.
+      // optional な room ごとの TTL override。空 / 欠落なら undefined を渡し、service
+      // が `deps.ttlMs` (env default = 24h) に fallback する。`Number()` は Zod schema
+      // が `/^\d+$/` で string 形を確定させているので NaN にはならない。
       const ttlMs = form.ttlMs !== undefined ? Number(form.ttlMs) : undefined;
       const room = await buildRoomService(c.env).create(image, {
         password,
@@ -248,12 +243,11 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
         remoteIp: extractClientIp(c.req.raw),
         ...(ttlMs !== undefined ? { ttlMs } : {}),
       });
-      // Phase 7.6 既知-5 fix: protected room を作成した uploader は自分で
-      // password を入力したばかりなので、URL 遷移後に再度ゲートを出すのは
-      // UX 的にバグ。room.auth が立っている場合のみ token を発行して
-      // レスポンスに含め、クライアント側 (useImageSource) で sessionStorage
-      // に保存する。GET /rooms/:id では token を返さず、protected ルームの
-      // 受信者は従来通り authRoute (POST /rooms/:id/auth) で token 取得。
+      // protected room を作成した uploader は直前に自分で password を入力している
+      // ため、URL 遷移後に再度 gate を出すのは UX 上のバグ。`room.auth` が立つ場合
+      // だけ token を発行して response に含め、client 側 (useImageSource) で
+      // sessionStorage に保存する。GET /rooms/:id では token を返さず、protected room
+      // の受信者は従来通り authRoute (POST /rooms/:id/auth) で token を取得する。
       const token = room.auth ? await buildTokenService(c.env).issue(room.id) : undefined;
       return c.json({ ...toPublicRoom(room), ...(token ? { token } : {}) }, 201);
     },
@@ -291,17 +285,16 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
       const passwordService = buildPasswordService();
       const tokenService = buildTokenService(c.env);
 
-      const room = await roomService.get(id); // throws AppError(404) if missing
+      const room = await roomService.get(id); // 見つからないとき AppError(404) を throw
       if (!room.auth) {
         throw new AppError(400, 'INVALID_REQUEST', 'Room is not password-protected', { id });
       }
       const ok = await passwordService.verify(password, room.auth);
       if (!ok) {
-        // Phase 8.x error-envelope review #11 L2: rely on AppError's
-        // logContext (warned once by `onAppError`) instead of a separate
-        // explicit `logger.warn` that produced two ledger entries for one
-        // event. Public message stays uniform regardless of failure mode
-        // so it cannot leak timing.
+        // 明示的な `logger.warn` を別に出さず、AppError の `logContext` に乗せて
+        // `onAppError` が一度だけ warn 出力する形にする (以前は 1 イベントに対して
+        // ledger エントリが 2 行出ていた)。公開 message は failure mode に関係なく
+        // uniform に保ち、timing も漏れないようにする。
         throw new AppError(401, 'UNAUTHORIZED', 'Invalid password', {
           id,
           event: 'auth_failed',
@@ -322,16 +315,16 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
     wsTicketRoute,
     async (c) => {
       const { id } = c.req.valid('param');
-      const room = await buildRoomService(c.env).get(id); // throws 404 if missing
-      // Unprotected rooms hit RL_SYNC directly on the WS upgrade — they do
-      // not need a ticket. Returning 400 keeps the contract narrow: web
-      // clients only call this when `room.protected` is true.
+      const room = await buildRoomService(c.env).get(id); // 見つからないとき 404 を throw
+      // unprotected room は WS upgrade で直接 RL_SYNC を踏むので ticket 不要。ここで
+      // 400 を返すことで contract が narrow に保たれる (web client は `room.protected`
+      // が true のときだけここを叩く想定)。
       if (!room.auth) {
         throw new AppError(400, 'INVALID_REQUEST', 'Room is not password-protected', { id });
       }
       const bearer = extractBearerToken(c.req.header('authorization'));
       if (!bearer) {
-        // Public message must not vary on bearer absence vs invalid format.
+        // 公開 message を bearer 欠落 / 形式不正で出し分けない (timing leak を防ぐ)。
         logger.warn('ws-ticket denied: missing bearer', { id });
         throw new AppError(401, 'UNAUTHORIZED', 'Bearer token required', { id });
       }
@@ -343,7 +336,7 @@ export const roomsRoute = new OpenAPIHono<{ Bindings: Bindings }>()
       }
       const ws = createWsTicketService({ kv: c.env.WS_TICKETS });
       const { ticket } = await ws.issue(id);
-      // Never log the ticket — only an issued boolean.
+      // ticket 自体は log に出さない — 発行成否の boolean だけを残す。
       logger.info('ws-ticket issued', { id, issued: true });
       return c.json({ ticket }, 201);
     },

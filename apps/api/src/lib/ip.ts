@@ -1,24 +1,24 @@
-// Phase 7: client IP utilities for rate limiting and observability.
+// rate limit / observability 用の client IP utility。
 //
-// `redactIp` is mandatory before logging — full IPs are personal data under
-// GDPR / Japanese PIPC, and the Cloudflare logs we surface in `wrangler tail`
-// already carry enough geo signal without per-octet detail.
+// `redactIp` は logging 前に必ず通すこと。full IP は GDPR / 個人情報保護法 (PIPC) で
+// 個人データ扱いであり、`wrangler tail` で見える Cloudflare 側 log にも既に十分な
+// geo 情報があるため、octet 単位の詳細は不要。
 
 const IPV4_RE = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
 export const redactIp = (ip: string | null | undefined): string => {
   if (!ip) return 'unknown';
   if (IPV4_RE.test(ip)) return ip.replace(/\.\d+$/, '.xxx');
-  // IPv6 (or anything that contains ':'). Mask the last :-delimited group.
+  // IPv6 (`:` を含む形式)。`:` 区切りの最後のグループを mask する。
   if (ip.includes(':')) return ip.replace(/[^:]*$/, 'xxx');
-  // Unknown / spoofed format — never let it reach logs untouched.
+  // 未知 / spoofed 形式 — そのまま log に到達させない。
   return 'redacted';
 };
 
-// `cf-connecting-ip` is set by Cloudflare and impossible to spoof at the
-// edge. `x-forwarded-for` is a fallback for `wrangler dev` (which does not
-// inject the cf header). The final `127.0.0.1` keeps the rate-limit key
-// stable in unit tests without a Request that has either header.
+// `cf-connecting-ip` は Cloudflare が edge で設定するので、edge で spoof 不能。
+// `x-forwarded-for` は cf header を inject しない `wrangler dev` 用の fallback。
+// 最終 `127.0.0.1` は header を持たない Request の unit test 用 (rate-limit key を
+// 安定させる)。
 export const extractClientIp = (req: Request): string => {
   const cf = req.headers.get('cf-connecting-ip');
   if (cf && cf.length > 0) return cf;

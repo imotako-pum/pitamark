@@ -11,23 +11,23 @@ import { createWsTicketService } from './services/ws-ticket-service';
 import { createR2ImageStorage } from './storage/r2-image-storage';
 import { createR2MetaStorage } from './storage/r2-meta-storage';
 
-// `SnapShareYDO` subclasses `YDurableObjects` to wire up DO Alarms for TTL
-// cleanup. The class is bound via `class_name = "SnapShareYDO"` in
-// wrangler.toml; migration v2 renames v1's `YDurableObjects` to this class
-// so existing live DOs survive the rollout.
+// `SnapShareYDO` は `YDurableObjects` を継承し、TTL クリーンアップ用 DO Alarm を
+// 配線する。class は `wrangler.toml` の `class_name = "SnapShareYDO"` で bind され、
+// migration v2 で v1 の `YDurableObjects` をこの class に rename することで、稼働中の
+// DO が rollout を生き延びる。
 export class SnapShareYDO extends YDurableObjects<{ Bindings: Bindings }> {
   protected override async onStart(): Promise<void> {
-    // y-durableobjects' onStart bootstraps the inner Yjs doc + storage. Always
-    // run super FIRST — accessing `this.doc` before super resolves is UB.
+    // y-durableobjects の onStart が内側の Yjs doc + storage を初期化する。super
+    // を必ず先に呼ぶこと — super 解決前に `this.doc` にアクセスすると UB。
     await super.onStart();
 
-    // Set the cleanup alarm exactly once per DO lifetime: subsequent restarts
-    // (Hibernation wake) skip the setAlarm call since `getAlarm()` is non-null.
+    // クリーンアップ alarm は DO 1 lifecycle に 1 回だけ設定する。Hibernation
+    // wake などの再起動時は `getAlarm()` が non-null なので setAlarm を skip。
     const existing = await this.state.storage.getAlarm();
     if (existing != null) return;
 
-    // `idFromName(roomId)` is what yRoute uses, so `state.id.name` carries
-    // the roomId for any DO created via the WS upgrade path.
+    // yRoute が `idFromName(roomId)` を使うので、WS upgrade 経由で作られた DO は
+    // `state.id.name` に roomId が乗っている。
     const roomId = this.state.id.name;
     if (!roomId) return;
 
@@ -43,8 +43,8 @@ export class SnapShareYDO extends YDurableObjects<{ Bindings: Bindings }> {
     logger.info('alarm fired, cleaning up room', { id: roomId });
     const images = createR2ImageStorage(this.env.IMAGES);
     const meta = createR2MetaStorage(this.env.IMAGES);
-    // `getMeta` may throw on storage errors — non-fatal here, the DO storage
-    // wipe at the end is the authoritative cleanup signal.
+    // `getMeta` は storage error で throw することがあるが、ここでは致命的扱いにし
+    // ない (最終の DO storage wipe が cleanup の正本)。
     const room = await meta.getMeta(roomId).catch(() => null);
     if (room) {
       await images.deleteImage(room.image.key);
@@ -54,14 +54,12 @@ export class SnapShareYDO extends YDurableObjects<{ Bindings: Bindings }> {
   }
 }
 
-// Keep the original name available so any external tooling that still
-// references `YDurableObjects` (legacy migrations, debug logs) keeps resolving.
+// 元の名前を残しておくことで、`YDurableObjects` を参照する外部 tooling (legacy
+// migration / debug log 等) が壊れずに resolve できる。
 export { YDurableObjects, yRoute };
 
-// Phase 8.x Hono review #4 L2: renamed from `buildRoomService` to make it
-// unambiguous that this WS-side factory is read-only (no `turnstile` /
-// `blocklist` deps because we never `create` from this path). The
-// rooms.ts factory keeps its full-featured name.
+// WS 側の read-only factory。`turnstile` / `blocklist` 依存は持たない (この経路から
+// `create` することはないため)。`rooms.ts` 側の factory は full-featured で別名。
 const buildRoomReadService = (env: Bindings) =>
   createRoomService({
     images: createR2ImageStorage(env.IMAGES),
@@ -71,17 +69,16 @@ const buildRoomReadService = (env: Bindings) =>
     password: createPasswordService(),
   });
 
-// Validate room existence + (when protected) token authorization before
-// letting yRoute upgrade the connection. ROOM_ID_REGEX rejects malformed
-// paths (path-traversal etc.) before we touch storage.
+// yRoute に upgrade を渡す前に、room の存在 + (protected なら) token authorization
+// を検証する。`ROOM_ID_REGEX` は storage に触れる前に malformed path
+// (path-traversal 等) を弾く。
 //
-// Phase 8.x Hono review #4 M1: `syncRoute` stays as plain `Hono` + `.use()`
-// chain (NOT `OpenAPIHono` + `createRoute({ middleware })`) because it is
-// a WebSocket upgrade path consumed only by `y-websocket`'s
-// `WebsocketProvider` (see `apps/web/src/hooks/useYjsAnnotationsStore.ts`).
-// Mounted on `app` (not `routed`) in `apps/api/src/index.ts` so it does not
-// leak into `AppType` — the Decisions Log "no .use() chain" policy applies
-// only to AppType-exposed routes, which require typed `hc<AppType>` shape.
+// `syncRoute` は OpenAPIHono + `createRoute({ middleware })` ではなく、plain `Hono` +
+// `.use()` チェーンのまま。WebSocket upgrade path で、`y-websocket` の
+// `WebsocketProvider` (apps/web/src/hooks/useYjsAnnotationsStore.ts) からのみ叩かれる。
+// `apps/api/src/index.ts` で `routed` ではなく `app` に mount しているので `AppType` に
+// 漏れず、「.use() chain 禁止」policy は AppType 公開 route (= typed `hc<AppType>`
+// shape を要求するもの) にだけ適用される構造を保つ。
 export const syncRoute = new Hono<{ Bindings: Bindings }>()
   .use('/:id', async (c, next) => {
     const id = c.req.param('id');
@@ -97,13 +94,12 @@ export const syncRoute = new Hono<{ Bindings: Bindings }>()
       return c.json(errorEnvelope('NOT_FOUND', 'Room not found'), 404);
     }
     if (room.auth) {
-      // Phase 8.x security review #13 H1: protected rooms now exchange a
-      // 32-hex one-shot ticket here, not the long-lived JWT. The web client
-      // calls `POST /rooms/:id/ws-ticket` first, then opens the WS with
-      // `?ticket=<hex>`. The ticket is consumed (deleted from KV) on first
-      // use so URL leaks (wrangler tail, Referer, browser history) cannot
-      // be replayed beyond the 30s TTL window. Never log the ticket itself;
-      // `ticketPresent` and the consume reason are sufficient for triage.
+      // protected room はここで 32 hex の one-shot ticket を交換する (long-lived JWT
+      // ではない)。web client は先に `POST /rooms/:id/ws-ticket` を叩き、その後
+      // `?ticket=<hex>` で WS を開く。ticket は初回 use で KV から削除されるので、
+      // URL 漏洩 (wrangler tail / Referer / browser history) を 30s TTL を超えて
+      // replay できない。ticket 自体は決して log に出さない — `ticketPresent` と
+      // consume 失敗 reason だけで triage は十分。
       const ticket = c.req.query('ticket');
       if (!ticket) {
         logger.warn('sync ws denied: missing ticket', { id, ticketPresent: false });
@@ -120,16 +116,15 @@ export const syncRoute = new Hono<{ Bindings: Bindings }>()
         return c.json(errorEnvelope('UNAUTHORIZED', 'Invalid ticket'), 401);
       }
     } else {
-      // Phase 7: protected rooms already pay PBKDF2 + token verify, which is
-      // an effective rate limit on its own. Unprotected rooms have no such
-      // pacing, so apply RL_SYNC keyed on the visitor IP. Fail open if the
-      // binding errors so a transient RL outage does not break collab.
+      // protected room は既に PBKDF2 + token verify のコストを払っており、それ自体
+      // が実質的な rate limit になっている。unprotected room はそれが無いので、
+      // visitor IP をキーに RL_SYNC を適用する。binding が error を返したときは
+      // fail-open: 一時的な RL 障害で collab が壊れないようにする。
       //
-      // Phase 7.6: BYPASS_RATE_LIMIT="true" は dev/E2E 用エスケープハッチ。
-      // `withRateLimit` middleware と挙動を揃える (未適用だと room-share の
-      // Yjs 同期 spec が CI Linux で `sync ws denied: rate limit` のため
-      // 3 retry 全敗していた既知の死角)。production は env 未設定 / "false" で
-      // 通常の RL_SYNC が効く。
+      // BYPASS_RATE_LIMIT="true" は dev / E2E 用 escape hatch。`withRateLimit`
+      // middleware と挙動を揃えていないと、CI Linux で room-share の Yjs 同期 spec
+      // が `sync ws denied: rate limit` で 3 retry 全敗する死角があった。production
+      // では env 未設定 / "false" で通常の RL_SYNC が効く。
       const rl = c.env.BYPASS_RATE_LIMIT === 'true' ? undefined : c.env.RL_SYNC;
       if (rl) {
         const ip = extractClientIp(c.req.raw);

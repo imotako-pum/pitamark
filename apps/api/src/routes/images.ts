@@ -14,37 +14,36 @@ const getImageRoute = createRoute({
   tags: ['images'],
   request: {
     params: idParamSchema,
-    // Phase 8.x Hono review #4 M2: declare the optional Bearer header here
-    // so `hc<AppType>` clients can pass it via the typed `header` field
-    // (otherwise web's `fetchProtectedImage` would have to fall back to
-    // raw fetch). Server-side handler still reads the header via
-    // `c.req.header('authorization')` so this is purely a typing hook.
+    // optional な Bearer header をここで宣言することで、`hc<AppType>` client が
+    // typed `header` field 経由で渡せる (宣言しないと web の `fetchProtectedImage`
+    // は raw fetch に fallback せざるを得ない)。server 側 handler は引き続き
+    // `c.req.header('authorization')` で読むので、ここは純粋な typing 用 hook。
     headers: z.object({
       authorization: z.string().optional().openapi({
-        description: 'Bearer <jwt> for protected rooms; absent for public rooms.',
+        description: 'protected room には `Bearer <jwt>` を渡す。public room では省略。',
       }),
     }),
   },
-  // 200 deliberately omits `content` so the handler can return a raw Response
-  // carrying the R2 binary stream + custom cache/disposition headers.
+  // 200 は `content` を意図的に省略する。handler が R2 binary stream とカスタム
+  // cache / disposition header を持つ raw Response を返すため。
   responses: {
-    200: { description: 'Image binary (image/png, image/jpeg, image/webp, image/svg+xml)' },
+    200: { description: '画像 binary (image/png, image/jpeg, image/webp, image/svg+xml)' },
     400: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
       description: 'Invalid room ID',
     },
     401: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Missing or invalid bearer token for protected room',
+      description: 'protected room の bearer token が欠落 / 不正',
     },
     404: {
       content: { 'application/json': { schema: ErrorResponseSchema } },
-      description: 'Room or image not found',
+      description: 'room または image が見つからない',
     },
   },
 });
 
-// Chain `.openapi()` so the export retains the merged route schema for `hc`.
+// `.openapi()` を chain することで、export が `hc` 用に merge 済 route schema を保つ。
 export const imagesRoute = new OpenAPIHono<{ Bindings: Bindings }>().openapi(
   getImageRoute,
   async (c) => {
@@ -52,14 +51,12 @@ export const imagesRoute = new OpenAPIHono<{ Bindings: Bindings }>().openapi(
     const meta = await createR2MetaStorage(c.env.IMAGES).getMeta(id);
     if (!meta) throw new AppError(404, 'NOT_FOUND', 'Room not found', { id });
 
-    // Authorization gate: only protected rooms require a token. Unprotected
-    // rooms keep their original public behavior so existing share flows stay
-    // unchanged.
+    // 認可 gate: token を要求するのは protected room だけ。unprotected room は元の
+    // public 挙動を維持し、既存 share フローを壊さない。
     if (meta.auth) {
-      // Phase 8.x error-envelope review #11 L2: collapse explicit
-      // `logger.warn` + `AppError` pairs into single AppError throws —
-      // `onAppError` consumes `logContext` and writes one warn line per
-      // failure (was two before).
+      // 明示的な `logger.warn` + `AppError` のペアを単一の AppError throw に集約する。
+      // `onAppError` が `logContext` を consume して 1 失敗 = 1 warn 行になる
+      // (以前は 2 行出ていた)。
       const token = extractBearerToken(c.req.header('authorization'));
       if (!token) {
         throw new AppError(401, 'UNAUTHORIZED', 'Token required', {
@@ -81,7 +78,8 @@ export const imagesRoute = new OpenAPIHono<{ Bindings: Bindings }>().openapi(
 
     const obj = await createR2ImageStorage(c.env.IMAGES).getImage(meta.image.key);
     if (!obj) {
-      // Meta exists but image is gone — orphan state, separate from a plain "no such room" miss.
+      // meta はあるが image が消えている — orphan state。「room 自体が無い」miss
+      // とは区別する。
       logger.warn('image object missing for existing meta', { id, key: meta.image.key });
       throw new AppError(404, 'NOT_FOUND', 'Image not found', { id, key: meta.image.key });
     }
@@ -89,17 +87,17 @@ export const imagesRoute = new OpenAPIHono<{ Bindings: Bindings }>().openapi(
     const headers = new Headers();
     obj.writeHttpMetadata(headers);
     headers.set('etag', obj.httpEtag);
-    // Prevent MIME sniffing: browsers must honor the Content-Type set by R2.
+    // MIME sniffing 防止: browser には R2 が設定した Content-Type を必ず honor させる。
     headers.set('x-content-type-options', 'nosniff');
-    // Protected rooms must not leak via browser/CDN cache. Phase 2 stored
-    // `Cache-Control: public, max-age=3600` on the R2 object for unprotected
-    // rooms; override here so a Bearer-authenticated response is never
-    // re-served from a shared cache to an unauthenticated client.
+    // protected room を browser / CDN cache 経由で漏らさない。R2 object 側は
+    // unprotected room に対して `Cache-Control: public, max-age=3600` を設定するが、
+    // ここで上書きし、Bearer 認証済 response が共有 cache から未認証 client に再配信
+    // されないようにする。
     if (meta.auth) {
       headers.set('cache-control', 'private, no-store');
     }
-    // SVG can carry inline scripts that execute when opened directly in a browser tab.
-    // Force download to neutralise the XSS vector while still allowing <img src=...> rendering.
+    // SVG はブラウザタブで直接開くと inline script が実行され得る。`<img src=...>`
+    // 経由の表示は許可しつつ、直接開いた場合の XSS を無効化するため download を強制する。
     if (meta.image.contentType === 'image/svg+xml') {
       headers.set('content-disposition', `attachment; filename="image.svg"`);
     }
