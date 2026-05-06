@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 
-// Phase 7: thin wrapper around `window.turnstile` injected by the
-// `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js">`
-// tag in `index.html`. The widget renders invisibly; users only see a
-// challenge if Cloudflare flags the request.
+// `index.html` の `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js">`
+// で読み込まれる `window.turnstile` の薄い wrapper。widget は invisible で描画され、
+// Cloudflare が request を flag したときだけユーザに challenge が見える。
 
 declare global {
   interface Window {
@@ -37,9 +36,9 @@ export const TurnstileWidget = ({ siteKey, onSuccess, onError }: TurnstileWidget
     const container = containerRef.current;
     if (!container) return;
 
-    // The Turnstile script is `async defer` so it may not have finished
-    // executing by the time React mounts this component. Poll briefly until
-    // `window.turnstile` shows up; bail out if the script never loads.
+    // Turnstile script は `async defer` のため、React がこのコンポーネントを mount する
+    // 時点でまだ実行が終わっていないことがある。`window.turnstile` が現れるまで短く
+    // poll し、永遠に読み込まれない場合は諦める。
     let cancelled = false;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
     let attempts = 0;
@@ -50,7 +49,7 @@ export const TurnstileWidget = ({ siteKey, onSuccess, onError }: TurnstileWidget
       if (!ts) {
         attempts += 1;
         if (attempts > 50) {
-          // ~5s of polling at 100ms each — give up rather than hang forever.
+          // 100ms × 50 回 ≒ 5 秒で諦める (永遠に hang するのを避ける)。
           container.dataset.turnstileStatus = 'error';
           onError?.();
           return;
@@ -58,10 +57,9 @@ export const TurnstileWidget = ({ siteKey, onSuccess, onError }: TurnstileWidget
         pollTimer = setTimeout(tryRender, 100);
         return;
       }
-      // `data-turnstile-status` is the only test-visible signal that the
-      // verification callback has fired — useful for E2E that needs to drop
-      // a file *after* the upload gate becomes unblocked. Production code
-      // never reads it.
+      // `data-turnstile-status` は verification callback の発火状態を E2E から観測する
+      // ための唯一の signal で、upload gate が外れた後にファイルを drop したいテストで
+      // 使う。production code は読まない。
       container.dataset.turnstileStatus = 'pending';
       widgetIdRef.current = ts.render(container, {
         sitekey: siteKey,
@@ -89,6 +87,6 @@ export const TurnstileWidget = ({ siteKey, onSuccess, onError }: TurnstileWidget
     };
   }, [siteKey, onSuccess, onError]);
 
-  // `aria-hidden` because the widget is invisible; nothing to announce.
+  // widget は invisible なので screen reader にも知らせる必要が無く `aria-hidden`。
   return <div ref={containerRef} aria-hidden="true" />;
 };

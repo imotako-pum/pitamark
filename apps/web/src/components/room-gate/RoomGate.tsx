@@ -12,9 +12,8 @@ type Props = Readonly<{
   onAuthenticated: (token: string) => void;
 }>;
 
-// Phase 10.E: AuthFailure → i18n key map. Phase 7 のコメント (RL_AUTH 10 req/min)
-// は元の `ERROR_TEXT` 経由で残していたが、key 経由に切替後も方針は同じ —
-// 公開メッセージは閾値を漏らさない。
+// AuthFailure → i18n key の map。公開メッセージで rate limit 閾値 (RL_AUTH の
+// 10 req/min など) を漏らさない方針は、key 経由でも維持する。
 const ERROR_KEY: Record<AuthFailure, I18nKey> = {
   'wrong-password': 'gate.error.wrongPassword',
   'rate-limited': 'gate.error.rateLimited',
@@ -36,18 +35,16 @@ export const RoomGate = ({ roomId, onAuthenticated }: Props) => {
     if (submitting || password.length === 0) return;
     setSubmitting(true);
     setError(null);
-    // Phase 8.x React review #3 L3: `authenticateRoom` already wraps fetch in
-    // try/catch and surfaces failures via `{ ok: false, reason: 'network' }`,
-    // but a regression in that contract (or a bug downstream) would leave
-    // this async handler with an unhandled rejection. Wrapping here makes
-    // the contract explicit at the call site and ensures `submitting` is
-    // always cleared.
+    // `authenticateRoom` は既に fetch を try/catch で包み `{ ok: false, reason: 'network' }`
+    // で失敗を露出するが、その契約が将来 regress した場合や下流のバグでこの async
+    // handler が unhandled rejection を出すことがある。call site でも try/catch を持つ
+    // ことで契約を明示し、`submitting` が常に解除される保証も得る。
     try {
       const result = await authenticateRoom(roomId, password);
       if (result.ok) {
         setRoomToken(roomId, result.token);
         onAuthenticated(result.token);
-        // Do NOT clear `submitting`: parent will unmount us on success.
+        // 成功時は `submitting` を解除しない (親が unmount するため)。
         return;
       }
       setError(result.reason);

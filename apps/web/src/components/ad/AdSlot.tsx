@@ -1,9 +1,8 @@
-// Phase 10.H: AdSense slot placeholder. Reserves space for future Google
-// AdSense placement so that wiring `<ins class="adsbygoogle">` later (Phase
-// 11+) does not introduce CLS or layout shift. The visible content is a
-// neutral label only — no script, no `<ins>` tag, no policy-flag inducing
-// copy. `min-height` is fixed in **px** (not `clamp()` / `dvh`) per the
-// CLS guidance from Google Publisher Tag docs.
+// 将来の Google AdSense 配置用 placeholder。後で `<ins class="adsbygoogle">` を
+// 配線するときに CLS / layout shift を起こさないよう領域だけ確保しておく。中身は
+// neutral label のみで、script や `<ins>` tag、policy 違反になりそうなコピーは
+// 一切持たない。`min-height` は Google Publisher Tag docs の CLS ガイダンスに従い、
+// `clamp()` / `dvh` ではなく **px** で固定する。
 
 import { useTranslation } from '../../i18n';
 
@@ -11,12 +10,12 @@ type Variant = 'rail' | 'bottom';
 
 type AdSlotProps = Readonly<{
   variant: Variant;
-  /** Only used by `rail`. Determines `left-0` vs `right-0`. */
+  /** `rail` のときのみ使う。`left-0` / `right-0` を決定する。 */
   side?: 'left' | 'right';
 }>;
 
-// Tailwind `lg:w-40` (10rem) — kept in sync with EditorShell stage inset
-// so the rail does not overlap the canvas.
+// Tailwind の `lg:w-40` (10rem) と同期。EditorShell の stage inset と揃えて
+// rail が canvas と重ならないようにする。
 export const RAIL_WIDTH_PX = 160;
 export const RAIL_MIN_HEIGHT_PX = 600;
 export const BOTTOM_HEIGHT_PX = 100;
@@ -47,17 +46,15 @@ export const AdSlot = ({ variant, side = 'left' }: AdSlotProps) => {
     );
   }
 
-  // Phase 10.H: bottom variant is sticky/fixed so it stays visible at the
-  // bottom of the viewport on narrow widths regardless of scroll position.
-  // Owner feedback: "常に出てないと。bottomに固定で出さないといけないのでは？"
-  // Layout consumers (EditorShell / LandingShell) reserve `BOTTOM_HEIGHT_PX`
-  // of bottom inset so this fixed bar does not overlap content.
+  // bottom variant は sticky/fixed で、narrow 幅のとき viewport bottom にスクロール
+  // 位置に関係なく常時表示する (要望: 常に出てないと困る → bottom 固定)。layout
+  // consumer (EditorShell / LandingShell) 側で `BOTTOM_HEIGHT_PX` の bottom inset を
+  // 確保しているので、この fixed bar が content に被らない。
   //
-  // iOS safe-area: `padding-bottom: env(safe-area-inset-bottom)` keeps the
-  // visible content (label + note) above the home indicator on iPhones with
-  // a notch / pill. With Tailwind's preflight `box-sizing: border-box`, the
-  // padding is included inside the 100px height, so the bar's outer extent
-  // stays at 100px and the EditorShell stage inset math is unchanged.
+  // iOS safe-area: `padding-bottom: env(safe-area-inset-bottom)` で notch/pill の
+  // home indicator より上に visible content (label + note) を保つ。Tailwind preflight
+  // の `box-sizing: border-box` により padding は 100px 内に含まれるので、bar の外形
+  // 100px は不変、EditorShell の stage inset 計算も変わらない。
   return (
     <aside
       aria-label={ariaLabel}

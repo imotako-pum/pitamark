@@ -9,11 +9,10 @@ describe('AdSlot', () => {
   let root: Root;
 
   beforeEach(() => {
-    // Defeat localStorage / lang state leaks from other suites that may have
-    // called setLang('en'). __resetI18nForTesting reads localStorage on
-    // reset, so clearing happens **before** the reset. Then pin to 'ja'
-    // explicitly because happy-dom's navigator.language defaults to en-US
-    // (Phase 10.E pattern: don't rely on detectInitialLang in tests).
+    // 他 suite で setLang('en') が呼ばれた等の localStorage / lang state 漏洩を遮断する。
+    // __resetI18nForTesting は reset 時に localStorage を読むので、clear → reset の順。
+    // happy-dom の navigator.language は en-US default のため、テストでは
+    // detectInitialLang に頼らず 'ja' を明示的に pin する。
     window.localStorage.clear();
     __resetI18nForTesting();
     setLang('ja');

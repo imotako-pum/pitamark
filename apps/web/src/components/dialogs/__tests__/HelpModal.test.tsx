@@ -55,7 +55,7 @@ describe('HelpModal', () => {
     // 主要な行ラベルが描画されていること
     expect(document.body.textContent).toContain(ja['help.row.select']);
     expect(document.body.textContent).toContain(ja['help.row.nextColor']);
-    // Phase 7.8-5: 「次手予測」セクションが描画されていること
+    // 「次手予測」セクションが描画されていること
     expect(document.body.textContent).toContain(ja['help.section.predict']);
     // 主要な kbd が表示されていること
     const kbds = Array.from(document.body.querySelectorAll('kbd')).map((k) => k.textContent);
@@ -77,9 +77,9 @@ describe('HelpModal', () => {
     m.unmount();
   });
 
-  // Phase 7.8-5: 次手予測 (矢印→テキスト / 矩形→矢印) のキー規約は HelpModal で
-  // 発見できる必要がある。Enter (確定) と ⌫ (pending クリア) は新セクション
-  // 固有のラベル — Esc は他セクションでも出現するので一意性は要求しない。
+  // 次手予測 (矢印→テキスト / 矩形→矢印) のキー規約は HelpModal で発見できる必要が
+  // ある。Enter (確定) と ⌫ (pending クリア) は新セクション固有のラベル — Esc は他
+  // セクションにも出るので一意性までは要求しない。
   it('lists the Auto-next predict section with Enter / Esc / ⌫ kbds', () => {
     const m = renderModal({ open: true });
     expect(document.body.textContent).toContain(ja['help.section.predict']);
@@ -92,8 +92,8 @@ describe('HelpModal', () => {
     m.unmount();
   });
 
-  // Phase 7.8-5: DialogDescription 2 文目に Auto-next の確定/破棄キーが
-  // 明文化されること。長文化したことで modal 内に説明が載る前提を守る。
+  // DialogDescription 2 文目に Auto-next の確定/破棄キーが明文化されること。modal を
+  // 開いた時点で説明が読める前提を守る。
   it('exposes Auto-next confirm/cancel keys in the dialog description', () => {
     const m = renderModal({ open: true });
     const desc = document.body.querySelector('[data-slot="dialog-description"]');

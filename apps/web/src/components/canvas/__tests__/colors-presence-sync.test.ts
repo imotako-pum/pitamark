@@ -1,13 +1,8 @@
-// Phase 8.x SSOT review #1 L3 → re-evaluated as theme 3 follow-up: the
-// Konva hex `AWARENESS_USER_PALETTE` and the OKLCH `--color-presence-N`
-// CSS variables in `tokens.css` are kept in physical sync (CLAUDE.md
-// cross-cutting rule 4 — Konva does not resolve CSS variables).
-//
-// A full OKLCH→sRGB equivalence check would require pulling in `culori`
-// and a deltaE tolerance which is heavier than the drift it would catch.
-// The realistic regression mode is "someone added a presence color in
-// one file but forgot the other" — count, indexing, and the OKLCH parse
-// are sufficient to surface that.
+// Konva hex の `AWARENESS_USER_PALETTE` と `tokens.css` の OKLCH `--color-presence-N`
+// CSS 変数を物理的に同期させる (CLAUDE.md cross-cutting rule 4 — Konva は CSS 変数を
+// 解決しない)。OKLCH→sRGB の完全等価チェックには `culori` と deltaE 許容差が必要で、
+// 検出したい drift に対して overkill。現実的な regression は「片方に presence color を
+// 追加してもう片方を忘れる」パターンなので、count / indexing / OKLCH parse で十分捕まる。
 
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
