@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
 
-// Phase 7.8-3 フォントサイズ変更 UI の E2E。`activeFontSize` が SSOT になり、
-// Toolbar A-/A+ と `[`/`]` shortcut の双方が「常に active 更新 + 選択中 text なら適用」
-// で動作すること、min/max でクランプされること、text 編集中は shortcut が
-// browser default に素通しされることを担保する。
+// フォントサイズ変更 UI の E2E。`activeFontSize` を SSOT にし、Toolbar の A-/A+ と
+// `[`/`]` shortcut の双方が「常に active 更新 + 選択中 text なら適用」で動作する
+// こと、min/max でクランプされること、text 編集中は shortcut が browser default に
+// 素通しされることを担保する。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 const DEFAULT_FONT_SIZE = 18;

@@ -14,10 +14,9 @@ test.describe('password-protected rooms', () => {
     const page1 = await ctx1.newPage();
     await page1.goto('/');
 
-    // Phase 7.6 既知-2 fix 後: panel を Toolbar 直下 (top-16) に逃がした
-    // ことで pointer-events が通るようになったため、Phase 7.5 の keyboard
-    // 迂回をやめて直接 click に戻す。直接 click 経路は別 spec
-    // (landing-password-toggle.spec.ts) で個別に actionability を担保している。
+    // 過去には panel が toolbar に被って pointer-events が通らず、keyboard 迂回で
+    // 動かしていた。現在は panel 配置を見直して直接 click できるので、こちらの経路
+    // に戻している。actionability の単独検証は landing-password-toggle.spec.ts。
     const protectCheckbox = page1.getByRole('checkbox', { name: /パスワードで保護する/ });
     await protectCheckbox.click();
     await page1.getByLabel('ルームのパスワード').fill(PASSWORD);
@@ -25,10 +24,9 @@ test.describe('password-protected rooms', () => {
     await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
     const sharedUrl = page1.url();
 
-    // Phase 7.6 既知-5 fix: uploader 本人は POST /rooms の応答に含まれる
-    // token が sessionStorage に書かれているはずで、`/r/:id` 遷移後に
-    // RoomGate を経由せず直接エディタが見えるべき。RoomGate 見出しが
-    // 一瞬でも現れたら回帰なので明示的に hidden を assert。
+    // uploader 本人は POST /rooms の応答に含まれる token が sessionStorage に書かれて
+    // いるはずで、`/r/:id` 遷移後は RoomGate を経由せず直接エディタが見えるべき。
+    // RoomGate の見出しが一瞬でも現れたら regression なので、明示的に hidden を assert。
     await expect(page1.getByRole('toolbar', { name: '編集ツール' })).toBeVisible({
       timeout: 10_000,
     });

@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.6 既知-3 補完: Toolbar の "画像をクリア" は実装上は注釈削除のみ
-// (画像は API が源として保持し続ける) なので、ラベルを実挙動に合わせて
-// "注釈をすべて削除" に揃えた。ダイアログタイトルは既に「注釈をすべて
-// 削除しますか？」と書かれていたので、そちらは現状維持。
+// Toolbar の「画像をクリア」は実装上は注釈削除だけで、画像は API 側で保持され続ける。
+// ラベルを実挙動に合わせて「注釈をすべて削除」に揃え、ダイアログタイトルも
+// 「注釈をすべて削除しますか？」と整合させてある。
 test.describe('room clear-annotations flow', () => {
   test('「注釈をすべて削除」ボタンで注釈は消えるが画像は残る', async ({ page }, testInfo) => {
     test.skip(

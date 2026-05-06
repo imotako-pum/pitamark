@@ -17,7 +17,7 @@ const crc32 = (() => {
   return (buf: Uint8Array): number => {
     let c = 0xffffffff;
     for (let i = 0; i < buf.length; i++) {
-      // biome-ignore lint/style/noNonNullAssertion: index in [0,255] always defined
+      // biome-ignore lint/style/noNonNullAssertion: index は [0,255] 範囲で常に定義済
       c = table[(c ^ buf[i]!) & 0xff]! ^ (c >>> 8);
     }
     return (c ^ 0xffffffff) >>> 0;
@@ -33,9 +33,9 @@ const writeChunk = (type: string, data: Uint8Array): Buffer => {
   return Buffer.concat([length, typeBytes, data, crc]);
 };
 
-/** Build an in-memory RGBA PNG of the given size with a solid color.
- *  Used by E2E to produce images large enough for zoom/pan clamping logic
- *  to actually move (the checked-in sample.png is 1×1). */
+/** 指定サイズの RGBA PNG を solid color でメモリ上に構築する。E2E が zoom/pan の
+ *  clamp ロジックを実際に動かせる程度の画像サイズが必要な場面で使う (commit 済の
+ *  sample.png は 1×1 で動かない)。 */
 export const buildSolidPng = (
   width: number,
   height: number,
@@ -50,20 +50,20 @@ export const buildSolidPng = (
   ihdr.writeUInt8(0, 10); // compression
   ihdr.writeUInt8(0, 11); // filter
   ihdr.writeUInt8(0, 12); // interlace
-  // Filter byte 0 (None) per scanline + raw RGBA pixels.
+  // 各 scanline の filter byte = 0 (None) + raw RGBA pixels。
   const stride = width * 4 + 1;
   const raw = Buffer.alloc(stride * height);
   for (let y = 0; y < height; y++) {
     raw[y * stride] = 0;
     for (let x = 0; x < width; x++) {
       const o = y * stride + 1 + x * 4;
-      // biome-ignore lint/style/noNonNullAssertion: hardcoded tuple
+      // biome-ignore lint/style/noNonNullAssertion: ハードコードされた tuple
       raw[o] = rgba[0]!;
-      // biome-ignore lint/style/noNonNullAssertion: hardcoded tuple
+      // biome-ignore lint/style/noNonNullAssertion: ハードコードされた tuple
       raw[o + 1] = rgba[1]!;
-      // biome-ignore lint/style/noNonNullAssertion: hardcoded tuple
+      // biome-ignore lint/style/noNonNullAssertion: ハードコードされた tuple
       raw[o + 2] = rgba[2]!;
-      // biome-ignore lint/style/noNonNullAssertion: hardcoded tuple
+      // biome-ignore lint/style/noNonNullAssertion: ハードコードされた tuple
       raw[o + 3] = rgba[3]!;
     }
   }
@@ -77,19 +77,18 @@ export const buildSolidPng = (
 };
 
 /**
- * Phase 7 で導入された invisible Turnstile widget の verification callback が
- * 走るまで `LocalEditor.handleLoad` は早期 return + toast のみで、画像 drop が
- * サイレントに無視される。`TurnstileWidget` は callback 完了で container の
- * `data-turnstile-status="ready"` を立てるので、その立ち上がりを待ってから
- * drop / paste を発火する。site key 未設定 (status === 'disabled') 経路は
- * data attribute が立たないので 1s 程度で諦め、本来の挙動 (gate 不要) に進む。
+ * invisible Turnstile widget の verification callback が走るまで `LocalEditor.handleLoad`
+ * は早期 return + toast だけで、画像 drop は silently に無視される。`TurnstileWidget`
+ * は callback 完了で container の `data-turnstile-status="ready"` を立てるので、その
+ * 立ち上がりを待ってから drop / paste を発火する。site key 未設定 (status === 'disabled')
+ * 経路では data attribute が立たないので 1s で諦め、本来の挙動 (gate 不要) に進む。
  */
 async function waitForTurnstileGate(page: Page): Promise<void> {
   const widget = page.locator('[data-turnstile-status]');
   try {
     await widget.first().waitFor({ state: 'attached', timeout: 1_000 });
   } catch {
-    // 'disabled' (no site key) — widget never mounts. Drop straight away.
+    // 'disabled' (site key 未設定) — widget が mount されない。すぐ drop に進む。
     return;
   }
   await page.waitForFunction(
@@ -104,10 +103,10 @@ async function waitForTurnstileGate(page: Page): Promise<void> {
 }
 
 /**
- * DropZone は drag&drop / paste / file-picker click のいずれでも画像を受け付け
- * る（apps/web/src/components/empty-state/DropZone.tsx）。E2E では
- * `page.evaluateHandle` で構築した DataTransfer を locator.dispatchEvent
- * 経由で渡し、React の合成イベント機構に到達させる。
+ * DropZone は drag&drop / paste / file-picker click のいずれでも画像を受け付ける
+ * (apps/web/src/components/empty-state/DropZone.tsx)。E2E では `page.evaluateHandle`
+ * で構築した DataTransfer を locator.dispatchEvent 経由で渡し、React の合成イベント
+ * 機構に到達させる。
  */
 export async function dropImage(
   page: Page,
@@ -119,9 +118,8 @@ export async function dropImage(
   await dropImageBuffer(page, buffer, fileName, mimeType);
 }
 
-/** Same as dropImage but takes an in-memory buffer instead of a file path.
- *  Useful for E2E that needs a specific image size (e.g. zoom/pan tests
- *  where the 1×1 sample.png makes clampPan trivially zero out movement). */
+/** dropImage の buffer 版。file path ではなく in-memory buffer を受ける。zoom/pan テスト
+ *  のように特定サイズの画像が必要な E2E (1×1 sample.png だと clampPan が動かない) で使う。 */
 export async function dropImageBuffer(
   page: Page,
   buffer: Buffer,
@@ -144,19 +142,18 @@ export async function dropImageBuffer(
     { b64: base64, name: fileName, type: mimeType },
   );
 
-  // dragOver と drop を順に dispatch すると DropZone の handleDragOver で
-  // setIsOver(true) → handleDrop で setIsOver(false) という想定経路を踏める。
-  // Phase 8.x perf review #10 H1: `EditorPage` を `React.lazy()` boundary
-  // にしたため、`page.goto('/')` 直後は Suspense fallback が表示されている
-  // 状態。DropZone (LocalEditor 内) が visible になるのを明示的に待つことで、
-  // lazy chunk のロード待ちを担保する (低速 CI で flaky 発生していたため)。
+  // dragOver → drop の順で dispatch することで、DropZone の handleDragOver で
+  // setIsOver(true)、続く handleDrop で setIsOver(false) という想定経路を踏める。
+  // `EditorPage` を `React.lazy()` boundary にしたため、`page.goto('/')` 直後は
+  // Suspense fallback の状態。DropZone (LocalEditor 内) の visible を明示的に
+  // 待つことで lazy chunk のロード待ちも担保する (低速 CI で flaky 発生していたため)。
   const dropZone = page.locator('section[aria-labelledby="dropzone-heading"]');
   await dropZone.waitFor({ state: 'visible', timeout: 10_000 });
   await dropZone.dispatchEvent('dragover', { dataTransfer });
   await dropZone.dispatchEvent('drop', { dataTransfer });
 }
 
-/** Test helper for the e2e file-picker check itself — also gates on Turnstile. */
+/** E2E の file-picker チェック自体に使うヘルパ — Turnstile gate も同時にくぐる。 */
 export async function awaitUploadReady(page: Page): Promise<void> {
   await waitForTurnstileGate(page);
 }

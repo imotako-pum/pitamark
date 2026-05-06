@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.7-2 リファクタ後の E2E:
-// - swatch クリック 1 回 = アクティブカラー更新 + 選択中があれば適用
-// - アクティブカラーは全注釈タイプ共通(レーン分離撤廃)
+// 色まわりの仕様確認 E2E:
+// - swatch クリック 1 回 = active color 更新 + 選択中があれば適用
+// - active color は全注釈タイプ共通 (レーン分離は撤廃済)
 // - stage の空白部分クリックは全ツール共通で選択解除
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';

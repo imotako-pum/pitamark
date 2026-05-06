@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
 
-// Phase 7.8-2 Auto-next-B 直対応の E2E。矩形 mouseup 直後に既定矢印プレビューが
-// 立ち、Enter で確定 → Phase 7.8-1 Auto-next-A に連鎖して text 編集が起動する。
-// BS / Esc / 別ツールキー / マウス mousedown でキャンセルできる。Cmd+Z 連打で
-// text → 矢印 → 矩形 の 3 段巻き戻しになる。
+// Auto-next-B 直対応の E2E。矩形 mouseup 直後に既定矢印プレビューが立ち、Enter で
+// 確定 → Auto-next-A に連鎖して text 編集が起動する。BS / Esc / 別ツールキー / マウス
+// mousedown のいずれでもキャンセルでき、Cmd+Z 連打で text → 矢印 → 矩形 の 3 段巻き
+// 戻しになる。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 const TOOL_KEY = '__SNAP_SHARE_TOOL__';

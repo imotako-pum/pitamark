@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.7-1 E2E: 矩形 / ハイライトの Konva.Transformer 8 ハンドルリサイズと、
-// 矢印の from / to 端点 Circle ハンドルによる伸縮をロックする。reducer / Yjs
-// mutation 経路は既に存在するため、ここでは UI から実際のドラッグで起動して
-// store snapshot に反映されるかを検証する。
+// 矩形 / ハイライトの Konva.Transformer 8 ハンドルリサイズと、矢印の from / to 端点
+// Circle ハンドルによる伸縮を lock する E2E。reducer / Yjs mutation 経路は既存なので、
+// ここでは UI から実際の drag で起動して store snapshot に反映されるかを検証する。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 const TRANSFORM_KEY = '__SNAP_SHARE_STAGE_TRANSFORM__';
@@ -18,9 +17,9 @@ const readAnnotations = async (page: import('@playwright/test').Page) =>
     ANNOTATIONS_KEY,
   );
 
-// Phase 7.7-3: getRelativePointerPosition / Stage transform 導入により、注釈の
-// x/y は logical 座標になった。ドラッグハンドルを掴むには screen 座標に変換
-// する必要がある。fit-to-viewport が走る画像ではこの変換無しに座標がズレる。
+// `getRelativePointerPosition` / Stage transform 導入により、注釈の x/y は logical
+// 座標になった。ドラッグハンドルを掴むには screen 座標に変換する必要がある。
+// fit-to-viewport が走る画像ではこの変換無しに座標がズレる。
 const logicalToScreen = async (
   page: import('@playwright/test').Page,
   logical: { x: number; y: number },
@@ -155,10 +154,10 @@ test.describe('annotation resize — Transformer (rect / highlight) と Arrow en
 
     await page.getByRole('button', { name: '矢印' }).click();
     await dragOnStage(page, { x: 100, y: 100 }, { x: 240, y: 240 });
-    // Phase 7.8-1 Auto-next-A: 矢印確定で空 text + IME 起動が走るため、まず Esc で
-    // text を破棄。Auto-next の text 削除に伴い selectedId は null になる
-    // (annotation/remove reducer が selectedId クリア) ので、矢印中点を click して
-    // 再選択し to 端点ハンドルを表示させてから操作する。
+    // 矢印確定で Auto-next-A の空 text + IME 起動が走るため、まず Esc で text を破棄。
+    // text 削除に伴って selectedId は null になる (annotation/remove reducer が
+    // selectedId クリア) ので、矢印中点を click して再選択し、to 端点ハンドルを
+    // 表示させてから操作する。
     await page.keyboard.press('Escape');
     await expect.poll(() => readAnnotations(page).then((a) => a.length)).toBe(1);
 
