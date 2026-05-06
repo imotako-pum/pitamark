@@ -47,10 +47,9 @@ const highlight = (id: string, createdAt = 1): Annotation => ({
   color: '#ffeb3b',
 });
 
-// Yjs requires Y.Map values to be integrated into a Y.Doc before reads work.
-// Tests use this helper so the round-trip mirrors the real call site
-// (`yAnnotations.set(id, annotationToYMap(a))` inside a useYjsAnnotationsStore
-// reducer).
+// Yjs は Y.Map を Y.Doc に integrate しないと読めない。テストはこのヘルパで
+// round-trip を組み、実 call site (`useYjsAnnotationsStore` reducer 内の
+// `yAnnotations.set(id, annotationToYMap(a))`) と同じ経路を再現する。
 const attach = (a: Annotation): { ya: Y.Map<Y.Map<unknown>>; entry: Y.Map<unknown> } => {
   const doc = new Y.Doc();
   const ya = doc.getMap<Y.Map<unknown>>('annotations');

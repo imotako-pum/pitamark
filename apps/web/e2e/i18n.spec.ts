@@ -1,30 +1,28 @@
-// Phase 10.E E2E: language toggle round-trip on the landing screen.
+// landing 画面における language toggle の round-trip を検証する E2E。
 //
-// What this guards:
-// 1. The default UI language is JA (per playwright.config locale='ja-JP').
-// 2. Clicking the EN button in the LangToggle switches all visible UI text.
-// 3. `<html lang>` reflects the change.
-// 4. The choice is persisted in localStorage under the contracted key.
+// 担保するもの:
+// 1. デフォルト UI 言語は JA (playwright.config の locale='ja-JP' に従う)。
+// 2. LangToggle の EN ボタンで visible な UI テキストが全部切り替わる。
+// 3. `<html lang>` が更新される。
+// 4. 選択結果が contract された key で localStorage に永続化される。
 //
-// Notes:
-// - This is the only E2E that asserts EN labels; the rest of the suite runs
-//   under the JA pin from playwright.config.
-// - We assert via `getByRole('toolbar', { name })` so the test is decoupled
-//   from layout / styling — only the i18n value is checked.
+// メモ:
+// - EN ラベルを assert する唯一の E2E。他の spec は playwright.config の JA pin で動く。
+// - `getByRole('toolbar', { name })` 経由で assert することで、layout / styling から
+//   独立に i18n 値だけを検証する。
 
 import { expect, test } from '@playwright/test';
 
 test.describe('i18n — LangToggle', () => {
-  // Each test gets a fresh Playwright context (empty localStorage), so we
-  // don't need explicit cleanup in beforeEach — the i18n auto-detect will
-  // fall through to navigator.language (= ja-JP per playwright.config) and
-  // pin the default to 'ja'. The "persisted on reload" case below relies on
-  // localStorage being preserved across `page.reload()` within the same test.
+  // 各 test は fresh な Playwright context (空 localStorage) を持つので、beforeEach での
+  // 明示クリーンアップは不要。i18n の auto-detect は navigator.language
+  // (= playwright.config の ja-JP) に fall through して 'ja' を pin する。下の
+  // 「reload で永続」ケースは同一 test 内の `page.reload()` をまたぐ localStorage
+  // が保たれることに依存する。
 
-  // Phase 10.H: Toolbar is hidden on landing (source === null), so we can't
-  // probe the toolbar's i18n aria-label here. The DropZone heading is the
-  // cleanest substitute — it's translated, always visible on landing, and
-  // unlikely to disappear.
+  // landing (source === null) では Toolbar が hidden なので、その i18n aria-label を
+  // 探れない。DropZone heading が最もクリーンな代替で、翻訳済 + landing で常に
+  // visible + 消えにくい signal。
   test('default lang is JA on landing (matches Playwright locale=ja-JP)', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();

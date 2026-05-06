@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-// Phase 10.B: TTL 仕様変更。default 24h / max 7d。フリーミアムで無制限化する伏線。
-// Server (`apps/api`) defaults via `wrangler.toml` ROOM_TTL_MS env var; clients
-// can override per-room via `POST /rooms` ttlMs (capped at MAX_ROOM_TTL_MS).
+// TTL の default は 24h、最大 7d。将来 freemium で無制限化する余地を残す形にしてある。
+// server (`apps/api`) 側 default は `wrangler.toml` の ROOM_TTL_MS env var で供給し、
+// client は `POST /rooms` の ttlMs で room ごとに override できる (上限 MAX_ROOM_TTL_MS)。
 export const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 export const MAX_ROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -24,8 +24,8 @@ export const RoomImageSchema = z
     key: z.string().min(1),
     contentType: z.enum(ALLOWED_IMAGE_MIME_TYPES),
     size: z.number().int().positive().max(MAX_IMAGE_BYTES),
-    // Phase 7: lowercase hex SHA-256 of the original bytes. Optional so older
-    // R2 metadata (created in Phase 5/6 before the field existed) still parses.
+    // 原 bytes の lowercase hex SHA-256。field 導入前に作成された古い R2 metadata
+    // でも parse が通るよう optional にしてある。
     sha256: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
@@ -35,8 +35,8 @@ export const RoomImageSchema = z
 
 export type RoomImage = z.infer<typeof RoomImageSchema>;
 
-// Stored on server as room metadata. `salt`/`hash` are base64url strings so the
-// whole envelope round-trips through JSON without bytes-vs-string ambiguity.
+// server 側で room metadata として保存される shape。`salt` / `hash` は base64url
+// string にしてあるので、bytes vs string の曖昧さなく JSON を round-trip できる。
 export const RoomAuthSchema = z
   .object({
     algo: z.literal('PBKDF2-SHA256'),
@@ -48,8 +48,8 @@ export const RoomAuthSchema = z
 
 export type RoomAuth = z.infer<typeof RoomAuthSchema>;
 
-// Server-side shape — what `r2-meta-storage` writes/reads. `auth` optional so
-// a room is "unprotected" when the field is absent.
+// `r2-meta-storage` が書き込み / 読み出しする server 側 shape。`auth` は optional で、
+// 欠落しているときは「unprotected room」と解釈する。
 export const RoomStoredSchema = z
   .object({
     id: z.string().regex(ROOM_ID_REGEX),
@@ -62,15 +62,15 @@ export const RoomStoredSchema = z
 
 export type RoomStored = z.infer<typeof RoomStoredSchema>;
 
-// Backwards-compatible alias: existing imports of `RoomSchema` / `Room` keep
-// working. Phase 5 introduces stored vs public distinction; older callers
-// receive the stored shape (auth optional) which is a strict superset.
+// backwards-compatible な alias。既存の `RoomSchema` / `Room` import を壊さない。
+// stored vs public の区別を導入する以前の caller は stored shape (auth optional)
+// を受け取るが、これは public shape の strict superset なので互換性が保たれる。
 export const RoomSchema = RoomStoredSchema;
 export type Room = RoomStored;
 
-// Public (API response) shape. Protected rooms hide `image` so unauthenticated
-// clients cannot derive the R2 object key. `protected: false` always carries
-// the image; `protected: true` always omits it.
+// public (API response) shape。protected room では `image` を hide することで、
+// 未認証 client が R2 object key を逆算できないようにする。`protected: false` は
+// 必ず image を持ち、`protected: true` は必ず省略する (refine で enforce)。
 const roomPublicShape = z.object({
   id: z.string().regex(ROOM_ID_REGEX),
   createdAt: z.number().int().nonnegative(),
@@ -91,10 +91,10 @@ export const RoomPublicSchema = roomPublicShape
 
 export type RoomPublic = z.infer<typeof RoomPublicSchema>;
 
-// POST /rooms 専用のレスポンス。protected room を作成した uploader が、
-// 直後にゲートを再表示されないよう server で発行した access token を含める。
-// GET /rooms/:id では token を返さないため `RoomPublicSchema` とは分離している
-// (token 漏洩を schema レベルで遮断)。token は protected の場合のみ存在。
+// POST /rooms 専用の response。protected room を作成した uploader に直後の gate
+// 再表示が出ないよう、server 発行 access token を同梱する。GET /rooms/:id は token
+// を返さないので `RoomPublicSchema` とは別 schema にする (token 漏洩を schema 層で
+// 遮断する)。token は protected room のときだけ存在する。
 export const RoomCreatedSchema = roomPublicShape
   .extend({
     token: z.string().min(1).optional(),
@@ -104,11 +104,10 @@ export const RoomCreatedSchema = roomPublicShape
 
 export type RoomCreated = z.infer<typeof RoomCreatedSchema>;
 
-// POST /rooms/:id/auth レスポンス。Phase 8.x SSOT review #1 M1: 元々 api
-// workspace 内の routes/rooms.ts に inline 定義されていたが、web 受信側は
-// schema を import できず `as { token: string }` で素通ししていた。同じ
-// 「API レスポンス schema」を packages/shared で一本化することで、両 workspace が
-// safeParse 経由で runtime 検証できる構造に揃える。
+// POST /rooms/:id/auth の response。元々 api workspace の routes/rooms.ts に inline
+// 定義していたが、web 受信側は schema を import できず `as { token: string }` で
+// 素通しになっていた。`packages/shared` に集約することで両 workspace が safeParse
+// 経由で runtime 検証できる構造に揃える。
 export const AuthResponseSchema = z
   .object({
     token: z.string().min(1),
@@ -117,11 +116,10 @@ export const AuthResponseSchema = z
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
-// POST /rooms/:id/ws-ticket レスポンス。Phase 8.x PR #15 self-review M1:
-// `AuthResponseSchema` と同じ pattern で shared に集約。32 hex 文字の制約は
-// `ws-ticket-service.ts` で生成側、ここで受信側、`yjs.ts` の
-// `isValidTicketShape` で consume 側、と 3 箇所で同じ regex を持っていた
-// ものをこの 1 箇所に統合する。
+// POST /rooms/:id/ws-ticket の response。`AuthResponseSchema` と同じパターンで shared
+// に集約する。32 hex 文字の制約は元々 `ws-ticket-service.ts` (生成側) / ここ (受信側) /
+// `yjs.ts` の `isValidTicketShape` (consume 側) の 3 箇所で同 regex を持っていたが、
+// この 1 箇所に統合する。
 export const WsTicketResponseSchema = z
   .object({
     ticket: z.string().regex(/^[0-9a-f]{32}$/),
@@ -138,7 +136,7 @@ export const toPublicRoom = (stored: RoomStored): RoomPublic => {
   return { id, createdAt, ttlMs, protected: false, image };
 };
 
-// Returns true once `now` has crossed the TTL boundary.
-// `>` (not `>=`) means a room is still valid at the exact instant of `createdAt + ttlMs`.
+// `now` が TTL 境界を越えたら true を返す。`>=` ではなく `>` にしてあるので、
+// `createdAt + ttlMs` 時点ではまだ valid 扱い。
 export const isExpired = (room: RoomStored, now: number): boolean =>
   now > room.createdAt + room.ttlMs;

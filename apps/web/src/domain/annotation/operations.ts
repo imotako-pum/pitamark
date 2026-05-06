@@ -79,11 +79,10 @@ export const setText = (
 ): ReadonlyArray<Annotation> =>
   annotations.map((a) => (a.id === id && a.type === 'text' ? { ...a, text } : a));
 
-// text 専用の fontSize 更新。fontSize は TextAnnotation のみ持つフィールドの
-// ため、setText と同型に type guard で text 以外は no-op にする。
-// Phase 8.x tests review #8 M2: when no text matches the id (non-text or
-// unknown), short-circuit to the input array so the reducer can rely on
-// reference equality to suppress empty undo steps.
+// text 専用の fontSize 更新。fontSize は TextAnnotation のみ持つフィールドのため、
+// setText と同じ形で type guard を使い text 以外は no-op にする。id が match しない
+// (非 text / 未知) ときは入力配列をそのまま返し、reducer が reference equality で
+// 空 undo step を抑制できる契約を保つ。
 export const setFontSize = (
   annotations: ReadonlyArray<Annotation>,
   id: string,
@@ -94,10 +93,9 @@ export const setFontSize = (
   return annotations.map((a) => (a === target ? { ...a, fontSize } : a));
 };
 
-// All four annotation types share the same `color` field. Splitting per-type
-// (the old setStroke / setFill) was only necessary while rectangles/arrows
-// used `stroke` and text/highlights used `fill`. Now: one setter, one Yjs
-// mutation, one reducer action.
+// 4 種類の annotation が同じ `color` field を共有する。型別に setter を分ける必要が
+// あったのは、rectangle/arrow が `stroke` を、text/highlight が `fill` を使っていた頃
+// だけ。今は 1 setter / 1 Yjs mutation / 1 reducer action に集約。
 export const setColor = (
   annotations: ReadonlyArray<Annotation>,
   id: string,

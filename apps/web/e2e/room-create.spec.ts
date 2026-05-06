@@ -29,10 +29,9 @@ test.describe('room creation flow', () => {
       'cross-origin canvas 経路は chromium 1 プロジェクトで検証する',
     );
 
-    // Phase 7.6 既知-1 補完: sender 側もルーム作成後は RoomEditor が
-    // mount し直し、画像を API 経由で再フェッチする (= cross-origin)。
-    // 受信側 spec (room-export-receiver.spec.ts) と対をなす形で、送信側
-    // 経路の tainted canvas 回帰も CI でロックする。
+    // sender 側もルーム作成後は RoomEditor が mount し直し、画像を API 経由で再
+    // fetch する (= cross-origin)。受信側 spec (room-export-receiver.spec.ts) と対を
+    // なす形で、送信側経路の tainted canvas 回帰も CI で lock する。
     await page.goto('/');
     await dropImage(page);
     await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });

@@ -11,15 +11,10 @@ const measureViewport = (): StageSize =>
     : { width: 0, height: 0 };
 
 /**
- * Track the viewport size for Konva's logical stage dimensions.
- *
- * Phase 8.x perf review #10 M2: previously this hook listened to
- * `window.resize`. EditorShell also listened to `window.resize` separately
- * for `stageRect`, so a single resize triggered two React re-renders.
- * Switching to ResizeObserver on `document.documentElement` (which always
- * mirrors the viewport) collapses the registration into a single
- * observation source. EditorShell's `stageRect` observer now watches the
- * stage container directly, so the two concerns never share a listener.
+ * Konva の logical stage 寸法用に viewport size を追跡する。
+ * `document.documentElement` (常に viewport を反映) に対する ResizeObserver で
+ * 1 つの観測源にまとめている。EditorShell の `stageRect` 観測は stage container を
+ * 直接見ているので、`window.resize` を共有して二重再レンダーになる経路は避けてある。
  */
 export const useStageSize = (): StageSize => {
   const [size, setSize] = useState<StageSize>(measureViewport);

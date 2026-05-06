@@ -6,7 +6,7 @@ import { buildEnv, DEFAULT_ROOM_TOKEN_SECRET } from './helpers/build-env';
 
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const SVG_BYTES = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>');
-// Phase 7: every multipart upload must carry `cf-turnstile-response`.
+// 全 multipart upload は `cf-turnstile-response` を載せる必要がある。
 const TEST_TS_TOKEN = 'test-turnstile-token';
 
 type CreatedRoom = { id: string };
@@ -24,7 +24,7 @@ const createRoomWithImage = async (
   return (await res.json()) as CreatedRoom;
 };
 
-// Phase 8.x error-envelope review #11 L3: see rooms.test.ts.
+// error envelope は rooms.test.ts と同じパターンで shared を再利用する。
 type ErrorBody = ErrorEnvelope;
 
 describe('GET /rooms/:id/image', () => {
@@ -142,10 +142,9 @@ describe('GET /rooms/:id/image (Phase 5 — protected rooms)', () => {
   });
 
   it('overrides Cache-Control to private/no-store for protected rooms', async () => {
-    // HIGH-1 regression: R2 stores `public, max-age=3600` httpMetadata for
-    // every image (Phase 2 default). Phase 5 protected images must override
-    // this so a Bearer-authenticated response is never re-served from a
-    // shared cache to an unauthenticated client.
+    // R2 は default で全 image に `public, max-age=3600` の httpMetadata を保持する。
+    // protected image は Bearer 認証済 response が共有 cache から未認証 client に
+    // 再配信されないよう、これを必ず上書きする必要がある。
     const env = buildEnv();
     const created = await createProtectedRoomWithImage(env, 'letmein');
     const token = await issueRoomToken(created.id, DEFAULT_ROOM_TOKEN_SECRET);
@@ -162,14 +161,14 @@ describe('GET /rooms/:id/image (Phase 5 — protected rooms)', () => {
 });
 
 describe('GET /rooms/:id/image (Phase 7.6 — CORS for cross-origin <img crossorigin="anonymous">)', () => {
-  // Phase 7.6 既知-1 回帰検知: 公開ルームの受信側で Pages → Workers の
-  // cross-origin 画像取得を <img crossorigin="anonymous"> 経路で踏むと、
-  // サーバが Access-Control-Allow-Origin を返さない限り browser が canvas
-  // を tainted 化し PNG export (`stage.toCanvas().toBlob()`) を `SecurityError`
-  // で落とす。CORS middleware が GET /rooms/:id/image でも origin allowlist
-  // と一致した時に ACAO + `Vary: Origin` を返すことを保証する。
-  const PAGES_ORIGIN = 'https://snap-share.pages.dev';
-  const PREVIEW_ORIGIN = 'https://abc123.snap-share.pages.dev';
+  // 公開 room の受信側で Pages → Workers の cross-origin 画像取得を
+  // `<img crossorigin="anonymous">` 経路で踏むとき、server が Access-Control-Allow-Origin
+  // を返さないと browser が canvas を tainted 化し PNG export
+  // (`stage.toCanvas().toBlob()`) が `SecurityError` で落ちる。CORS middleware が
+  // `GET /rooms/:id/image` でも origin allowlist 一致時に ACAO + `Vary: Origin` を
+  // 返すことをここで担保する。
+  const PAGES_ORIGIN = 'https://pitamark.app';
+  const PREVIEW_ORIGIN = 'https://abc123.pitamark.app';
   const FOREIGN_ORIGIN = 'https://evil.example.com';
 
   it('returns Access-Control-Allow-Origin for an exact-match Pages origin', async () => {

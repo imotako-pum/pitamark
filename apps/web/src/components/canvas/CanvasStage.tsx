@@ -23,16 +23,16 @@ type CanvasStageProps = Readonly<{
   store: AnnotationsStore;
   editingTextId: string | null;
   onTextDoubleClick: (id: string) => void;
-  /** Phase 7.8-1: `options.autoNext` が true のときは Auto-next-A 連鎖中であることを
-   *  EditorShell に伝え、text 編集確定/キャンセル後に tool=select に戻すフラグ管理に使う。 */
+  /** `options.autoNext` が true のときは Auto-next-A 連鎖中であることを EditorShell に
+   *  伝え、text 編集の確定/キャンセル後に tool=select に戻すフラグ管理に使う。 */
   onStartTextEditing: (id: string, options?: { autoNext?: boolean }) => void;
-  /** Stage-relative cursor position. Null when the pointer leaves the stage. */
+  /** Stage 基準の cursor 位置。pointer が Stage を離れたら null。 */
   onCursorMove?: (point: { x: number; y: number } | null) => void;
-  /** Extra Konva layers rendered on top of the annotation layer. */
+  /** annotation layer の上に重ねる追加 Konva layer。 */
   extraLayers?: ReactNode;
-  /** Ref to the underlying Konva.Stage (for PNG export). */
+  /** PNG export 用の Konva.Stage への ref。 */
   stageRef?: Ref<Konva.Stage>;
-  /** Stage transform (scale + position). Identity when unset. */
+  /** Stage transform (scale + position)。未設定時は identity。 */
   transform: StageTransform;
   /** Pinch / Cmd+wheel ズーム。pointer は Stage absolute 座標。*/
   onZoom: (pointer: { x: number; y: number }, factor: number) => void;
@@ -40,15 +40,14 @@ type CanvasStageProps = Readonly<{
   onPan: (dx: number, dy: number) => void;
   /** ImageLayer から伝播される画像 natural サイズ。null は src 切替リセット。*/
   onImageLoaded?: (size: { width: number; height: number } | null) => void;
-  /** Phase 7.8-2 Auto-next-B: pending 中の既定矢印プレビュー(半透明)を描画する。
-   *  null のときはプレビュー無し。state は EditorShell に置き、ここでは受け取って
-   *  描画するだけ。 */
+  /** Auto-next-B: pending 中の既定矢印プレビュー (半透明) を描画する。null のときは
+   *  プレビュー無し。state は EditorShell に置き、ここでは受け取って描画するだけ。 */
   pendingAutoArrow: { from: Point; to: Point; color: string; strokeWidth: number } | null;
-  /** Phase 7.8-2: 矩形 mouseup 直後に呼ばれる。EditorShell が pending state を立てる。 */
+  /** 矩形 mouseup 直後に呼ばれる。EditorShell が Auto-next-B の pending state を立てる。 */
   onAutoNextRectangle: (rect: { x: number; y: number; width: number; height: number }) => void;
-  /** Phase 7.8-2: マウス mousedown 任意座標で pending をキャンセルする経路。
-   *  pending が null のときは no-op、null でないときは EditorShell が pending を null
-   *  にする。CanvasStage はクリア後に通常の mousedown 処理を続行する。 */
+  /** マウス mousedown 任意座標で pending をキャンセルする経路。pending が null のときは
+   *  no-op、null でないときは EditorShell が pending を null にする。CanvasStage は
+   *  クリア後に通常の mousedown 処理を続行する。 */
   onCancelAutoArrowIfAny: () => void;
 }>;
 
@@ -56,9 +55,9 @@ const MIN_DRAG_PIXELS = 4;
 
 type DragStart = Readonly<{ x: number; y: number; id: string; createdAt: number }>;
 
-// All draft builders take the active color so the new annotation is born with
-// it. Phase 7.7-2 split this into sync/highlight lanes; we collapsed it back to
-// one because the lane indicator discontinuity bothered users.
+// 全 draft builder は active color を引数に取り、新規 annotation が生成時点でその色を
+// 持つようにする。以前 sync/highlight でレーンを分けていたが、tool 切替時の indicator
+// 不連続が UX 上の違和感だったので 1 レーンに集約した。
 const buildDraftRectangle = (
   start: DragStart,
   x: number,
@@ -102,11 +101,9 @@ const buildDraftArrow = (start: DragStart, x: number, y: number, color: string):
   strokeWidth: DEFAULT_STROKE_WIDTH,
 });
 
-// Phase 8.x extensibility review #7 L3: drag-based tools がここに集まる。
-// `Exclude<Tool, 'select' | 'text'>` で「select は drag を持たず、text は
-// mousedown その場確定 (drag 不要)」という設計を型に埋める。新しい
-// drag-based tool を `Tool` union に追加すると、この Record に key を
-// 増やさない限りコンパイルエラーになる。
+// drag-based tool だけを集める。`Exclude<Tool, 'select' | 'text'>` で「select は drag を
+// 持たず、text は mousedown その場確定 (drag 不要)」という設計を型に埋め込む。新規 drag
+// tool を `Tool` union に追加すると、この Record に key を増やさない限りコンパイルエラー。
 type DraftBuilder = (start: DragStart, x: number, y: number, color: string) => Annotation;
 
 const DRAFT_BUILDERS: Readonly<Record<Exclude<Tool, 'select' | 'text'>, DraftBuilder>> = {
@@ -138,25 +135,23 @@ export const CanvasStage = ({
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations, activeColor, activeFontSize } = state;
-  // draft and dragStart live in refs so consecutive mouse events within a single
-  // React render cycle (mousedown -> mousemove -> mouseup) always observe the
-  // latest values without waiting for state flush. The state mirror keeps the
-  // draft visible during the drag preview.
+  // draft と dragStart は ref に置く。1 React render cycle 内で連続発火する mouse event
+  // (mousedown → mousemove → mouseup) が state flush を待たずに最新値を観測できる必要が
+  // ある。state 側にもミラーするのは drag preview を可視にするため。
   const dragStartRef = useRef<DragStart | null>(null);
   const draftRef = useRef<Annotation | null>(null);
   const [draft, setDraft] = useState<Annotation | null>(null);
-  // Pan-mode bookkeeping. Space turns mousedown/move/up into pan instead of
-  // the active tool. spaceDownRef arms the next mousedown; panActiveRef
-  // tracks the in-flight pan and survives Space release while the mouse is
-  // still down, mirroring Figma/Photoshop behavior.
+  // pan モードの状態管理。Space は mousedown/move/up を active tool ではなく pan 扱いに
+  // する。spaceDownRef が次の mousedown を arm し、panActiveRef は in-flight 中の pan を
+  // 追跡してマウスを離すまで Space 解放にも耐える (Figma / Photoshop と同じ挙動)。
   const spaceDownRef = useRef(false);
   const panActiveRef = useRef(false);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
   const internalStageRef = useRef<Konva.Stage | null>(null);
 
-  // Cursor feedback for Space-pan. We tweak the underlying canvas container's
-  // CSS cursor directly because react-konva does not surface a className prop
-  // on Stage and the wrapping div is owned by react-konva internals.
+  // Space-pan の cursor フィードバック。react-konva は Stage に className prop を露出
+  // しないし、wrapping div は react-konva 内部所有なので、canvas container の CSS cursor
+  // を直接いじる。
   const setCursor = useCallback((cursor: string) => {
     const stage = internalStageRef.current;
     if (!stage) return;
@@ -174,7 +169,7 @@ export const CanvasStage = ({
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return;
       spaceDownRef.current = false;
-      // If a pan is mid-flight (mouse still down), let mouseup finish it.
+      // pan が in-flight (mouse 押下継続中) なら mouseup で終わらせる。
       if (!panActiveRef.current) {
         setCursor('');
       }
@@ -193,7 +188,7 @@ export const CanvasStage = ({
       if (typeof stageRef === 'function') {
         stageRef(node);
       } else if (stageRef) {
-        // Mutating a Ref<T> requires the cast — React types ref as readonly.
+        // React の Ref<T> は readonly 型なので、書き込みには cast が必要。
         (stageRef as { current: Konva.Stage | null }).current = node;
       }
     },
@@ -205,9 +200,8 @@ export const CanvasStage = ({
       const stage = e.target.getStage();
       if (!stage) return;
 
-      // Space + drag → pan, regardless of the active tool. We use absolute
-      // pointer position so the delta math is in screen pixels (matches
-      // Stage.x/y which are also in screen space).
+      // Space + drag → 現在 tool に関係なく pan。delta 計算を screen pixel で行うため
+      // absolute pointer 位置を使う (Stage.x/y も screen space)。
       if (spaceDownRef.current) {
         const pos = stage.getPointerPosition();
         if (!pos) return;
@@ -217,25 +211,24 @@ export const CanvasStage = ({
         return;
       }
 
-      // Phase 7.8-2: pending Auto-arrow があれば、マウスクリック (任意座標) で
-      // キャンセル。クリック自体は通常の mousedown 処理を続行する (stage クリックで
-      // 選択解除など) → ユーザーが「右下既定矢印が合わない」時に自前で矢印を描き
-      // 始められる。pending が null のときは EditorShell 側で no-op になる。
+      // pending Auto-arrow があれば、マウスクリック (任意座標) でキャンセル。クリック
+      // 自体は通常の mousedown 処理を続行 (stage クリックで選択解除など) するので、ユーザは
+      // 「右下既定矢印が合わない」時に自前で矢印を描き始められる。pending が null の
+      // ときは EditorShell 側で no-op になる。
       onCancelAutoArrowIfAny();
 
       const isStageClick = e.target === stage;
 
-      // Universal deselect rule: empty-stage click clears selection regardless
-      // of tool. Without this, drawing tools left the previous selection
-      // hanging until a new annotation got created.
+      // 共通の deselect ルール: stage の何も無いところをクリックしたら tool に関わらず
+      // 選択を解除する。これが無いと drawing tool で前の選択が新規 annotation 生成まで
+      // 残り続けていた。
       if (isStageClick && selectedId) {
         dispatch({ type: 'select/set', id: null });
       }
 
       if (tool === 'select') return;
 
-      // Hit-test in logical coords so Stage transform (scale/pan) does not
-      // throw off where the new annotation lands.
+      // Stage transform (scale/pan) で着地点がずれないよう、logical 座標で hit-test。
       const pos = stage.getRelativePointerPosition();
       if (!pos) return;
       if (e.target !== stage) return;
@@ -283,7 +276,7 @@ export const CanvasStage = ({
       const stage = e.target.getStage();
       if (!stage) return;
 
-      // Active pan: stream screen-space deltas to the parent.
+      // active pan 中: screen 座標の delta を親に流す。
       if (panActiveRef.current) {
         const screen = stage.getPointerPosition();
         const last = panLastRef.current;
@@ -295,9 +288,8 @@ export const CanvasStage = ({
 
       const pos = stage.getRelativePointerPosition();
 
-      // Broadcast the logical pointer position so presence can throttle and
-      // emit. Logical coords keep peers' cursor render aligned regardless of
-      // local zoom.
+      // logical pointer 位置を broadcast し、presence layer 側で throttle して emit する。
+      // logical 座標で送ることで、peer 側の cursor 表示が local zoom に左右されない。
       if (onCursorMove) {
         onCursorMove(pos ? { x: pos.x, y: pos.y } : null);
       }
@@ -305,10 +297,9 @@ export const CanvasStage = ({
       const dragStart = dragStartRef.current;
       if (!dragStart || !pos) return;
 
-      // Phase 8.x extensibility review #7 L3: lookup via `DRAFT_BUILDERS`
-      // (typed `Record<Exclude<Tool, 'select' | 'text'>, ...>`) replaces the
-      // old `else if` chain. `tool === 'select' | 'text'` is filtered first
-      // because select has no draft + text commits at mousedown.
+      // `DRAFT_BUILDERS` (型 `Record<Exclude<Tool, 'select' | 'text'>, ...>`) で lookup
+      // し、`else if` チェーンを置き換えている。`select` は draft を持たず、`text` は
+      // mousedown 時点で確定するので、ここで両者を最初に除外する。
       if (tool === 'select' || tool === 'text') return;
       const next = DRAFT_BUILDERS[tool](dragStart, pos.x, pos.y, activeColor);
       draftRef.current = next;
@@ -318,9 +309,8 @@ export const CanvasStage = ({
   );
 
   const handleMouseLeave = useCallback(() => {
-    // Bypass any rAF throttle the parent may have applied: we want the
-    // cursor to disappear from peers' canvases immediately, not on the next
-    // animation frame after the pointer is already gone.
+    // 親の rAF throttle をバイパス。pointer が既に Stage を出ているのに、次の
+    // animation frame まで peer 側の cursor が残るのを避けたい。
     if (onCursorMove) onCursorMove(null);
   }, [onCursorMove]);
 
@@ -344,10 +334,9 @@ export const CanvasStage = ({
         dispatch({ type: 'annotation/add', annotation: currentDraft });
         dispatch({ type: 'select/set', id: currentDraft.id });
 
-        // Phase 7.8-2 Auto-next-B: 矩形確定直後に既定矢印プレビューを立てる。
-        // pending state は EditorShell に置き、stopUndoCapture の呼出も
-        // EditorShell 側 (handleAutoNextRectangle 内) に集約。ここでは callback
-        // で通知するだけ。
+        // Auto-next-B: 矩形確定直後に既定矢印のプレビューを立てる。pending state は
+        // EditorShell に置き、stopUndoCapture の呼び出しも EditorShell 側
+        // (handleAutoNextRectangle 内) に集約。ここでは callback で通知するだけ。
         if (currentDraft.type === 'rectangle') {
           onAutoNextRectangle({
             x: currentDraft.x,
@@ -357,15 +346,14 @@ export const CanvasStage = ({
           });
         }
 
-        // Phase 7.8-1 Auto-next-A: 矢印確定直後に終端 +offset で空 text 注釈を
-        // 即時編集モードで起動する。既存の text ツール即時編集パターン
-        // (handleMouseDown の tool === 'text' 分岐, L207 周辺) と同じ shape を、
-        // 座標と tool 切替だけ差し替えて再利用する。EditorShell 側は autoNext=true
-        // を受けて「commit/cancel 後に tool=select に戻す」フラグを立てる。
+        // Auto-next-A: 矢印確定直後に終端 +offset の位置で空 text annotation を即時
+        // 編集モードで起動する。tool === 'text' 分岐と同じ shape を座標と tool 切替
+        // だけ差し替えて再利用。EditorShell 側は autoNext=true を受けて「commit/cancel
+        // 後に tool=select に戻す」フラグを立てる。
         if (currentDraft.type === 'arrow') {
-          // 矢印 add(直前の dispatch)と text add を独立 undo step に分けるための
-          // break point。Yjs UndoManager の captureTimeout(500ms)が原因で、
-          // これを呼ばないと連続操作が 1 step に merge され Cmd+Z 1 回で両方消える。
+          // 矢印 add (直前の dispatch) と text add を独立 undo step に分けるための
+          // break point。Yjs UndoManager の captureTimeout(500ms) を呼び出さないと
+          // 連続操作が 1 step に merge され Cmd+Z 1 回で両方消える。
           store.stopUndoCapture();
 
           const offset = computeAutoNextTextOffset(
@@ -409,11 +397,11 @@ export const CanvasStage = ({
 
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
-      // Modifier matrix:
+      // modifier 別の挙動:
       //   - Cmd/Ctrl+wheel + macOS trackpad pinch (ctrlKey=true) → zoom
-      //   - Shift+wheel → horizontal pan (vertical wheel delta が deltaX に変換)
-      //   - modless wheel (mouse / trackpad 2-finger swipe) → pan (deltaX/Y そのまま)
-      // すべての wheel をアプリ側で扱うので preventDefault は無条件。
+      //   - Shift+wheel → 横 pan (vertical wheel delta を deltaX に変換)
+      //   - modifier なし wheel (mouse / trackpad 2 本指スワイプ) → pan (deltaX/Y そのまま)
+      // 全 wheel をアプリ側で扱うので preventDefault は無条件。
       e.evt.preventDefault();
       const stage = e.target.getStage();
       if (!stage) return;
@@ -532,7 +520,7 @@ export const CanvasStage = ({
               pendingAutoArrow.to.x,
               pendingAutoArrow.to.y,
             ]}
-            // Phase 7.8-1 の反転を踏襲: 矢じり = from = 矩形右辺中央、尾 = to = 起点。
+            // 矢じり = from = 矩形右辺中央、尾 = to = 起点 (Auto-next-A の反転を踏襲)。
             pointerAtBeginning
             pointerAtEnding={false}
             pointerLength={ARROW_POINTER_LENGTH}

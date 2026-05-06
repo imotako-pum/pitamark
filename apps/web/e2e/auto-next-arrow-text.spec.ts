@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
 
-// Phase 7.8-1 Auto-next-A 直対応の E2E。矢印 mouseup 直後に空 text + IME 即時起動が
-// 走り、commit / cancel いずれの経路でも tool='select' に復帰すること、Cmd+Z で
+// Auto-next-A 直対応の E2E。矢印 mouseup 直後に空 text + IME 即時起動が走り、
+// commit / cancel いずれの経路でも tool='select' に復帰すること、Cmd+Z で
 // text → 矢印 の順に独立巻き戻せること、通常の text ツールは Auto-next の影響を
 // 受けないことを担保する。
 

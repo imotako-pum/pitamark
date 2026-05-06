@@ -59,10 +59,10 @@ describe('withRateLimit', () => {
     expect(res.status).toBe(200);
   });
 
-  // Phase 7.6: BYPASS_RATE_LIMIT は dev/E2E 用エスケープハッチ。production は
-  // wrangler.toml [vars] で "false" を明示し、middleware は文字列 "true" のみ
-  // を bypass トリガとして扱う。本番で誤って有効化されると RL が無効化される
-  // ため、unit レベルで両分岐をロックする。
+  // BYPASS_RATE_LIMIT は dev / E2E 用 escape hatch。production は wrangler.toml
+  // [vars] で "false" を明示し、middleware は "true" 文字列のみを bypass trigger と
+  // して扱う。production で誤って有効化されると RL 全体が無効化されるため、unit
+  // レベルで両分岐を lock する。
   it('passes through when BYPASS_RATE_LIMIT="true" even if the binding would block', async () => {
     const app = buildApp(createStubRateLimit({ alwaysBlock: true }));
     const env = { BYPASS_RATE_LIMIT: 'true' } as Bindings;

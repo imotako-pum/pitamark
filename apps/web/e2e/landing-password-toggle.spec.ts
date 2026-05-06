@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-// Phase 7.6 既知-2 補完: ランディングの「パスワードで保護する」チェックボックスは
-// Toolbar と同じ z-10 帯に重なっており、Playwright の actionability check が
-// "intercepted by another element" として fail する状態だった。Phase 7.5 の
-// room-protected.spec.ts は keyboard 経路 (focus + Space) で迂回したが、
-// 実態は本物のバグ (UX 上もユーザーがクリックできない) で、Phase 7.6 の
-// 既知-2 として上がった。本 spec は「直接 click が通る」ことを assertion して、
-// pointer-events 遮断の回帰を CI で永続的にロックする。
+// landing の「パスワードで保護する」チェックボックスが Toolbar と同じ z-10 帯に
+// 重なって Playwright の actionability check が "intercepted by another element" で
+// fail していた regression の lock。room-protected.spec.ts は keyboard 経路
+// (focus + Space) で迂回していたが、実態は UX 上もクリックできない本物のバグ
+// だった。本 spec は「直接 click が通る」を assert して、pointer-events 遮断の
+// regression を CI で永続的に lock する。
 test.describe('landing password toggle visibility', () => {
   test('画像未ロード時に password 保護パネルが見えて直接クリックできる', async ({
     page,
@@ -20,8 +19,8 @@ test.describe('landing password toggle visibility', () => {
 
     const checkbox = page.getByRole('checkbox', { name: /パスワードで保護する/ });
     await expect(checkbox).toBeVisible();
-    // focus + Space ではなく直接 click — actionability check が通ることが
-    // 既知-2 fix の本質。intercepted で fail するなら本物のバグ回帰。
+    // focus + Space ではなく直接 click — actionability check が通ること自体が
+    // この regression test の本質。intercepted で fail するなら本物のバグ回帰。
     await checkbox.click();
 
     // チェック ON → パスワード入力欄が現れる

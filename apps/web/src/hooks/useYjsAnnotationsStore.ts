@@ -23,17 +23,15 @@ export type YjsAnnotationsStore = AnnotationsStore &
     status: ConnectionStatus;
     doc: Y.Doc;
     /**
-     * The provider's Awareness instance for cursor / selection broadcast.
-     * Null while the context is being created or when a test stub provider
-     * is used that does not expose awareness.
+     * カーソル / 選択を broadcast するための Awareness。context 構築中、または
+     * awareness を露出しない test stub provider 使用時は null。
      */
     awareness: AwarenessLike | null;
   }>;
 
 const EMPTY_ANNOTATIONS: ReadonlyArray<Annotation> = Object.freeze([]);
-// Stable Y.Doc returned while the context is being created on first render.
-// Callers that read `store.doc` get a non-null reference; the real doc
-// replaces it once the effect-driven context is ready.
+// 初回 render で context 構築中に返す stable な Y.Doc。`store.doc` を読む側に
+// 必ず非 null を渡し、effect 完了後に実 doc に差し替える。
 const PLACEHOLDER_DOC = new Y.Doc();
 
 export const useYjsAnnotationsStore = (
@@ -41,17 +39,13 @@ export const useYjsAnnotationsStore = (
   providerFactory?: ProviderFactory,
   token?: string | null,
 ): YjsAnnotationsStore => {
-  // Phase 8.x security review #13 H1: protected rooms exchange the 24h JWT
-  // for a 30s one-shot ticket BEFORE opening the WebSocket. The ticket —
-  // not the JWT — appears on the upgrade URL so platform-level access logs
-  // (wrangler tail, CDN logs, browser history) never see the JWT.
-  //
-  // Unprotected rooms (token is null/undefined) bypass this entirely: they
-  // hit RL_SYNC on the upgrade and need no ticket. Test stubs that supply
-  // their own `providerFactory` skip this whole flow.
+  // protected room は WebSocket open 前に 24h JWT を 30s one-shot ticket に交換する。
+  // upgrade URL に乗るのは ticket だけで、JWT は wrangler tail / CDN log / ブラウザ履歴に
+  // 残らない。unprotected room (token null/undefined) はこの flow を bypass し、stub
+  // providerFactory を渡す test も同様に skip する。
   const [wsTicket, setWsTicket] = useState<string | null>(null);
   useEffect(() => {
-    // Stub providers handle their own auth — never call the API.
+    // stub provider は自前で auth を処理する — API は呼ばない。
     if (providerFactory) {
       setWsTicket(null);
       return;
@@ -75,14 +69,9 @@ export const useYjsAnnotationsStore = (
     };
   }, [roomId, providerFactory, token]);
 
-  // y-websocket constructs the connection URL as `${serverUrl}/${roomName}`,
-  // so we pass `${wsBase}/sync` as serverUrl and `roomId` as roomName.
-  // Putting roomId into serverUrl with an empty roomName produces a trailing
-  // slash (`/sync/<id>/`) which the Hono `/sync/:id` route rejects.
-  //
-  // For protected rooms we wait until `wsTicket` resolves before booting
-  // the provider. Until then `factory` returns a no-op stub so the
-  // upstream effect's dependency tracking still works.
+  // y-websocket は `${serverUrl}/${roomName}` で URL を組むため、serverUrl=`${wsBase}/sync`、
+  // roomName=`roomId` で渡す。roomId を serverUrl 側に入れて roomName を空にすると
+  // trailing slash (`/sync/<id>/`) が付き、Hono の `/sync/:id` route が拒否する。
   const factory = useMemo<ProviderFactory>(
     () =>
       providerFactory ??
@@ -94,22 +83,18 @@ export const useYjsAnnotationsStore = (
     [roomId, providerFactory, wsTicket],
   );
 
-  // Block context creation for protected rooms until the ticket arrives.
-  // This avoids opening a WebSocket that the API would 401-reject.
+  // protected room では ticket が届くまで context 構築を block (早すぎる WebSocket open は
+  // API が 401 で拒否するため)。`ready` の 3 項論理は: token なし (unprotected) ∨
+  // stub provider 経由 ∨ ticket 取得済、のいずれか満たせば boot 可。
   const ctxBootDeps = useMemo(
     () => ({ factory, ready: !token || providerFactory !== undefined || wsTicket !== null }),
     [factory, token, providerFactory, wsTicket],
   );
 
-  // StrictMode-safe lifecycle: the CRDT context is created inside an effect
-  // so the dev double-invoke (mount → cleanup → mount) reliably tears down
-  // the first provider and creates a fresh one on the second mount. With
-  // `useMemo`, the same destroyed context would be reused on remount,
-  // leaving the WebSocket dead before the y-websocket sync handshake.
-  //
-  // Phase 8.x: protected rooms wait for `ctxBootDeps.ready` (i.e. ticket
-  // resolved) before booting the provider — avoids racing the WS open
-  // against a not-yet-issued ticket.
+  // StrictMode 安全な lifecycle: CRDT context を effect 内で構築する。
+  // dev の double-invoke (mount → cleanup → mount) で最初の provider を確実に destroy し、
+  // 2 回目の mount で新規構築できる。`useMemo` だと destroy 済 context が再利用されて
+  // WebSocket が dead のまま sync handshake に到達できなくなる。
   const [ctx, setCtx] = useState<YjsAnnotationsContext | null>(null);
   useEffect(() => {
     if (!ctxBootDeps.ready) return;
@@ -121,7 +106,7 @@ export const useYjsAnnotationsStore = (
     };
   }, [ctxBootDeps]);
 
-  // Tool / selectedId / activeColor / activeFontSize are client-local — do NOT persist via CRDT.
+  // tool / selectedId / activeColor / activeFontSize は client-local — CRDT で persist しない。
   const [tool, setTool] = useStateRef<Tool>('select');
   const [selectedId, setSelectedId, selectedIdRef] = useStateRef<string | null>(null);
   const [activeColor, setActiveColor] = useStateRef<string>(DEFAULT_SYNC_COLOR);
@@ -210,19 +195,17 @@ export const useYjsAnnotationsStore = (
     setSelectedId(null);
   }, [ctx, setSelectedId]);
 
-  // Phase 7.8-1: Auto-next-A で矢印 add と text add を独立 undo step に分割するため、
-  // Yjs UndoManager の captureTimeout(500ms) を中間でリセットする。これを呼ばないと
-  // 同 LOCAL_ORIGIN の連続操作が 1 step に merge され、Cmd+Z 1 回で両方が消える。
+  // Auto-next-A で矢印 add と text add を独立 undo step に分割するため、Yjs UndoManager の
+  // captureTimeout(500ms) を中間でリセット。呼ばないと同 LOCAL_ORIGIN の連続操作が
+  // 1 step に merge され Cmd+Z 1 回で両方が消える。
   const stopUndoCapture = useCallback(() => {
     ctx?.undoManager.stopCapturing();
   }, [ctx]);
 
-  // Phase 8.x tests review #8 M3: expose `stopUndoCapture` to E2E so the
-  // spec can split undo groups deterministically without `waitForTimeout`
-  // (annotation-tools.spec.ts previously slept 700ms to let
-  // `captureTimeout` lapse — flaky on slow CI). DEV-only so production
-  // bundles strip the assignment via Vite tree-shaking; matches the
-  // `__SNAP_SHARE_ANNOTATIONS__` pattern.
+  // `stopUndoCapture` を E2E に露出して undo group を `waitForTimeout` 無しで決定論的に
+  // 分割する (旧 spec は captureTimeout 失効を 700ms sleep で待っていて CI で flaky だった)。
+  // DEV-only にし、production bundle では Vite の tree-shaking で代入ごと除去される —
+  // `__SNAP_SHARE_ANNOTATIONS__` と同 pattern。
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (
@@ -238,13 +221,10 @@ export const useYjsAnnotationsStore = (
     activeFontSize,
   };
 
-  // y-websocket exposes `awareness` on its provider; tests use a stub that
-  // omits this field, so we narrow at the seam rather than in callers.
-  // Phase 8.x typesafety review #6 M3: `Awareness` is a structural superset
-  // of `AwarenessLike` (now derived via `Pick<Awareness, ...>` in
-  // presence-context), so the assignment is type-safe without an `as`
-  // cast — y-protocols version drift will surface as a compiler error
-  // instead of silent runtime breakage.
+  // y-websocket は provider に `awareness` を露出するが、test stub はこの field を持たない
+  // ため caller 側ではなく seam で narrow する。`AwarenessLike` は `Pick<Awareness, ...>` で
+  // 派生しているので `as` cast 不要のまま型安全に代入でき、y-protocols の version drift は
+  // runtime でなくコンパイル時に検知される。
   const awareness: AwarenessLike | null = ctx
     ? ((ctx.provider as { awareness?: Awareness }).awareness ?? null)
     : null;

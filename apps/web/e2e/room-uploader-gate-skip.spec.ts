@@ -3,12 +3,12 @@ import { dropImage } from './fixtures/upload';
 
 const PASSWORD = 'e2e-uploader-skip-XYZ';
 
-// Phase 7.6 既知-5: protected room を作成した uploader は自分で password を
-// 入力したのに、URL 遷移後に RoomGate で再度入力させられていた。
-// 修正は POST /rooms の応答に access token を含めて、useImageSource が
-// sessionStorage に保存してから URL push する形。本 spec は uploader 経路
-// 単独で「ゲートを見ずにエディタに直接到達する」ことを CI でロックする。
-// 受信者経路 (URL 共有された別 browser) は room-protected.spec.ts が担当。
+// protected room を作成した uploader は自分で password を入力したのに、URL 遷移後の
+// RoomGate で再度入力させられていた問題への regression test。修正は POST /rooms
+// 応答に access token を含めて、useImageSource が sessionStorage に保存してから URL
+// push する形。本 spec は uploader 経路で「gate を経由せずエディタへ直接到達する」
+// ことを CI で lock する。受信者経路 (URL 共有された別 browser) は
+// room-protected.spec.ts が担当。
 test.describe('uploader gate skip for protected rooms', () => {
   test('password 入力 + D&D した本人は RoomGate を経由せずエディタに到達する', async ({
     page,

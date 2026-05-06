@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
 
-// Phase 7.7-3 E2E: Stage transform (scale + position) のキーボード/wheel/Space-drag
-// 経路を検証する。
+// Stage transform (scale + position) のキーボード / wheel / Space-drag 経路を
+// 検証する E2E。
 //
 // Playwright headless Chromium では Meta+0 / Meta+1 がブラウザ側で先に
 // 横取りされて keydown が JS に届かないことがある。代わりに EditorShell が

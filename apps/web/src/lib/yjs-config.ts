@@ -1,14 +1,14 @@
-// Re-exported so all hooks (useYjsAnnotationsStore + UndoManager) share the
-// SAME symbol identity for origin tracking. Importing the symbol from two
-// different paths without going through this barrel breaks `trackedOrigins`.
+// 全 hook (useYjsAnnotationsStore + UndoManager) が origin tracking 用に **同一**
+// symbol identity を共有するための barrel re-export。複数経路から symbol を import
+// すると identity が分かれ `trackedOrigins` が機能しなくなる。
 export { LOCAL_ORIGIN } from '../domain/annotation/yjs-mutations';
 
 type WsLocation = Readonly<{ protocol: string; host: string }>;
 
 /**
- * WebSocket base URL for the Yjs sync endpoint.
- * Resolution order: VITE_API_WS_URL env → derived from `window.location` →
- * (last resort) `ws://localhost:8787` for non-browser callers.
+ * Yjs sync endpoint 用の WebSocket base URL。
+ * 解決順: VITE_API_WS_URL env → `window.location` から derive →
+ * 最終手段として non-browser 呼び出し用 `ws://localhost:8787`。
  */
 export const resolveWsBaseUrl = (
   env: ImportMetaEnv = import.meta.env,
@@ -23,13 +23,12 @@ export const resolveWsBaseUrl = (
 };
 
 /**
- * Build the full WS URL for a given roomId.
+ * 指定 roomId 用の WS URL を構築する。
  *
- * NOTE: For password-protected rooms, the JWT token rides on the upgrade
- * request via y-websocket's `params: { token }` option (set in
- * `useYjsAnnotationsStore`), NOT through this URL builder. WebSocket cannot
- * send Authorization headers, so token-as-query is the chosen transport, but
- * y-websocket owns the encoding so this helper stays token-free.
+ * 注意: protected room の JWT は y-websocket の `params: { token }` 経由で upgrade
+ * request に乗る (`useYjsAnnotationsStore` 側で設定)。この URL builder は token を
+ * 取らない。WebSocket は Authorization header を送れないため query 渡しが必要だが、
+ * encoding は y-websocket に寄せ、このヘルパは token-free に保つ。
  */
 export const buildSyncUrl = (roomId: string, baseUrl: string = resolveWsBaseUrl()): string =>
   `${baseUrl}/sync/${encodeURIComponent(roomId)}`;

@@ -1,13 +1,12 @@
-// Phase 10.E: I18nKey union derived from the JA dict shape so adding a new
-// string anywhere requires only editing `ja.ts` (and TypeScript will then
-// force matching keys in `en.ts`). The single-source design avoids the
-// 3-way drift problem (union ↔ ja ↔ en).
+// I18nKey union を JA 辞書の shape から派生させる。新文言の追加は `ja.ts` を編集する
+// だけで済み、TS が `en.ts` の対応 key を要求してくれる。SSOT 設計で union ↔ ja ↔ en
+// の 3 重 drift を防ぐ。
 
 import type { ja } from './ja';
 
 export type I18nKey = keyof typeof ja;
 
-// Supported languages. Keep this stable — the LangToggle UI iterates over
-// this union to render buttons, and `setLang(...)` accepts only these.
+// サポート言語。LangToggle UI がこの union を走査してボタンを描画し、`setLang(...)` も
+// この値しか受け付けないので、安定させること。
 export type Lang = 'ja' | 'en';
 export const SUPPORTED_LANGS: readonly Lang[] = ['ja', 'en'] as const;

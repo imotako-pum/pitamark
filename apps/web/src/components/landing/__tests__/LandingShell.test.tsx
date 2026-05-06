@@ -44,7 +44,7 @@ describe('Landing components', () => {
         act(() => {
           root.render(<Hero dropzone={<div data-testid="dz">DZ</div>} />);
         });
-        // h2 (not h1) — the header still owns the page's h1 "pitamark".
+        // h2 (h1 ではない) — page の h1 は header の "pitamark" 側が所有する。
         const heading = container.querySelector('#landing-hero-heading');
         expect(heading?.tagName).toBe('H2');
         expect(heading?.textContent).toBe('画像にサクッと注釈、URL で一瞬共有');
@@ -64,7 +64,7 @@ describe('Landing components', () => {
         const picture = container.querySelector('picture');
         expect(picture).not.toBeNull();
         const img = picture?.querySelector('img');
-        // v1: SVG editor mock; Phase 11+ swaps in a real WebP screenshot.
+        // v1 では SVG editor mock。将来は実 editor の WebP screenshot に差し替え予定。
         expect(img?.getAttribute('src')).toBe('/landing-hero.svg');
         expect(img?.getAttribute('width')).toBe('1200');
         expect(img?.getAttribute('height')).toBe('750');
@@ -120,7 +120,7 @@ describe('Landing components', () => {
         });
         const details = container.querySelectorAll('details');
         expect(details.length).toBe(4);
-        // Closed by default — content is in the DOM but visibility is browser-managed.
+        // default で closed — DOM には content があるが、visibility は browser 管理。
         for (const el of details) {
           expect(el.hasAttribute('open')).toBe(false);
         }
@@ -143,10 +143,10 @@ describe('Landing components', () => {
         expect(sections[1]?.getAttribute('aria-labelledby')).toBe('landing-features-heading');
         expect(sections[2]?.getAttribute('aria-labelledby')).toBe('landing-howto-heading');
         expect(sections[3]?.getAttribute('aria-labelledby')).toBe('landing-faq-heading');
-        // Bottom AdSlot moved to EditorShell (page-shell, fixed bottom) so
-        // it is NOT a child of LandingShell anymore.
+        // bottom AdSlot は EditorShell (page-shell、fixed bottom) に移ったため、
+        // LandingShell の子ではなくなっている。
         expect(container.querySelector('[data-testid="ad-slot-bottom"]')).toBeNull();
-        // DropZone slot is forwarded into Hero.
+        // DropZone slot は Hero に forward される。
         expect(container.querySelector('[data-testid="dz"]')).not.toBeNull();
       } finally {
         teardown(container, root);

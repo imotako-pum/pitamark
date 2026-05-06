@@ -1,17 +1,16 @@
 /// <reference types="vite/client" />
 
-// Phase 8.x typesafety review #6 M2: declare the VITE_* env vars once so
-// callers can read `import.meta.env.VITE_FOO` directly instead of
-// `(import.meta.env as { VITE_FOO?: string }).VITE_FOO`. Each new env var
-// added in a `.env.*` file MUST be added here; the missing-key cast
-// pattern was hiding additions from typecheck.
+// VITE_* env var をここで一括宣言する。caller は `import.meta.env.VITE_FOO` を
+// `(import.meta.env as { VITE_FOO?: string }).VITE_FOO` にせずに直接読める。
+// `.env.*` に新 env を追加したら必ずここにも追加すること — 過去の missing-key cast
+// パターンが追加分を typecheck から隠していた。
 
 interface ImportMetaEnv {
-  /** Empty in `vite dev` so /rooms + /sync are proxied to wrangler. */
+  /** `vite dev` では空にして、/rooms + /sync を wrangler に proxy する。 */
   readonly VITE_API_URL?: string;
-  /** Direct WebSocket origin — must NOT go through Vite's WS proxy. */
+  /** WebSocket origin。Vite の WS proxy は経由してはいけない。 */
   readonly VITE_API_WS_URL?: string;
-  /** Public Cloudflare Turnstile site key. Safe to ship in the bundle. */
+  /** Cloudflare Turnstile の public site key。bundle に乗せても安全。 */
   readonly VITE_TURNSTILE_SITE_KEY?: string;
 }
 

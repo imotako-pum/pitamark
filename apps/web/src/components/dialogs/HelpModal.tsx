@@ -13,19 +13,18 @@ type Props = Readonly<{
   onOpenChange: (open: boolean) => void;
 }>;
 
-// Phase 10.E: rows are described as i18n keys instead of literal strings, so
-// the cheat-sheet swaps language with the rest of the UI. Some keycaps are
-// also locale-specific (`ホイール` / `ドラッグ` vs `Wheel` / `Drag`); they go
-// through the dict via `keyKeys`. Plain symbols stay as literals.
+// row 定義は文字列リテラルではなく i18n key で持つ。cheat-sheet が UI 全体と一緒に
+// 言語切替するため。キーキャップ自体もロケール依存 (`ホイール` / `ドラッグ` vs
+// `Wheel` / `Drag`) のものがあり、それらは `keyKeys` 経由で辞書を引く。`⌘`/`?` 等の
+// 記号はそのまま literal で書く。
 
 type KeyAtom = string | { readonly key: I18nKey };
 type Row = Readonly<{ labelKey: I18nKey; keys: ReadonlyArray<KeyAtom> }>;
 type Section = Readonly<{ titleKey: I18nKey; rows: ReadonlyArray<Row> }>;
 
-// Phase 8.x extensibility review #7 M1 案 B: `Readonly<Record<Tool, Row>>`
-// 化することで、新しい `Tool` を追加した時点でこの map に key 漏れが
-// コンパイルエラーで surface する。`TOOL_ROWS` (配列) は `TOOLS` から
-// 順序を借りて生成する。
+// `Readonly<Record<Tool, Row>>` 化することで、新しい `Tool` を追加した瞬間に
+// この map の key 漏れがコンパイルエラーで surface する。`TOOL_ROWS` (配列) は
+// `TOOLS` の順序を借りて生成する。
 const TOOL_ROW_BY_TOOL: Readonly<Record<Tool, Row>> = {
   select: { labelKey: 'help.row.select', keys: ['V'] },
   rectangle: { labelKey: 'help.row.rectangle', keys: ['R'] },
@@ -46,11 +45,10 @@ const TEXT_ROWS: ReadonlyArray<Row> = [
   { labelKey: 'help.row.fontSizeDecrease', keys: ['['] },
 ];
 
-// Phase 7.8-5: 次手予測 (矢印→テキスト / 矩形→矢印) のキー規約。Enter は
-// pending サジェスト確定 (矩形→矢印プレビューを矢印に確定 + Auto-next-A 連鎖)、
-// Esc は pending クリア + 選択解除、Backspace は pending クリア優先 (pending
-// なし時は通常の選択削除に戻る)。Backspace は他セクションの「Del」と挙動が
-// 異なるため記号 ⌫ で視覚的に分離する。
+// 次手予測 (矢印→テキスト / 矩形→矢印) のキー規約。Enter は pending suggestion 確定
+// (矩形→矢印プレビューを矢印に確定 + Auto-next-A 連鎖)、Esc は pending クリア + 選択
+// 解除、Backspace は pending クリア優先 (pending 無し時は通常の選択削除に戻る)。
+// Backspace は他セクションの「Del」と挙動が異なるため、記号 ⌫ で視覚的に分離する。
 const PREDICT_ROWS: ReadonlyArray<Row> = [
   { labelKey: 'help.row.suggestionAccept', keys: ['Enter'] },
   { labelKey: 'help.row.suggestionDismiss', keys: ['Esc'] },

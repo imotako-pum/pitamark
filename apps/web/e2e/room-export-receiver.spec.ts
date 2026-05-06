@@ -1,18 +1,18 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.6 既知-1 回帰検知:
+// cross-origin PNG export の regression 検知:
 //
-// 公開ルームの受信側（画像をアップロードした本人ではない別ブラウザ context）が
-// PNG エクスポートを踏むと、`<img>` の crossOrigin が anonymous でなければ
-// canvas が tainted 化し `stage.toCanvas().toBlob()` が `SecurityError` を
-// 投げ、エラートーストが出てダウンロードが発生しない。
+// 公開ルームの受信側 (画像を upload した本人ではない別ブラウザ context) で PNG export
+// を踏んだとき、`<img>` の crossOrigin が anonymous でないと canvas が tainted 化して
+// `stage.toCanvas().toBlob()` が `SecurityError` を投げ、error toast が出て download
+// が発生しない。
 //
-// localhost:5173 (web) ↔ localhost:8787 (api) は port が異なる別 origin の
-// ため、本 spec は本番（snap-share.pages.dev ↔ snap-share-api.workers.dev）と
-// 同じ cross-origin 経路を踏む。`useImage(src, 'anonymous')` が再投入され、
-// API の CORS middleware が ACAO + Vary: Origin を返している限り、受信側でも
-// PNG export は success toast → download 発火に到達する。
+// localhost:5173 (web) ↔ localhost:8787 (api) は port が異なる別 origin なので、本 spec
+// は本番 (pitamark.app ↔ api.pitamark.app) と同じ cross-origin 経路を踏める。
+// `useImage(src, 'anonymous')` が再投入され、API の CORS middleware が ACAO + Vary:
+// Origin を返している限り、受信側でも PNG export が success toast → download 発火に
+// 到達することを担保する。
 test.describe('cross-origin PNG export from a receiver context', () => {
   test('受信側で PNG 保存が成功し download が発火する', async ({ browser }, testInfo) => {
     test.skip(

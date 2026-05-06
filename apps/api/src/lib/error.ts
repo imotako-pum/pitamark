@@ -3,19 +3,19 @@ import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { logger } from './logger';
 
-// Single source of truth for error codes. The Zod enum below derives from this
-// tuple, so adding a new code propagates to OpenAPI / hc clients automatically.
+// error code の SSOT。下の Zod enum がこの tuple から派生するので、新 code を
+// 追加すると OpenAPI / hc client にも自動伝搬する。
 export const ERROR_CODES = [
   'INVALID_REQUEST',
   'UNSUPPORTED_MEDIA_TYPE',
   'PAYLOAD_TOO_LARGE',
   'NOT_FOUND',
   'UNAUTHORIZED',
-  // Phase 7: image blocklist hits get a 422 distinct from generic 400 to keep
-  // the client-side toast wording specific ("画像が使えない" vs "リクエスト不正").
+  // image blocklist hit は generic 400 と区別して 422 を割り当てる。client 側 toast
+  // を「画像が使えない」と「リクエスト不正」で出し分けるため。
   'UNPROCESSABLE_ENTITY',
-  // Phase 7: rate-limit hits. Surfaced separately so the UI can show a
-  // distinct cooldown hint instead of conflating it with auth failure.
+  // rate-limit hit。auth failure と混同せず UI で固有の cooldown ヒントを出せる
+  // ように別 code にしている。
   'RATE_LIMITED',
   'INTERNAL',
 ] as const;
@@ -29,8 +29,8 @@ export type ErrorEnvelope = {
 
 type AppErrorStatus = 400 | 401 | 404 | 413 | 415 | 422 | 429 | 500;
 
-// Shared OpenAPI / hc error response schema. Kept here (not in routes/) so
-// every route's response schema picks up new codes automatically.
+// OpenAPI / hc 共通の error response schema。各 route の response schema が新 code
+// を自動的に拾えるように、`routes/` ではなくここに置く。
 export const ErrorResponseSchema = z.object({
   ok: z.literal(false),
   error: z.object({
@@ -41,11 +41,11 @@ export const ErrorResponseSchema = z.object({
 
 const PUBLIC_PATH_MAX = 80;
 const sanitizePath = (path: string): string => {
-  // Strip ASCII control bytes (0x00-0x1F and DEL 0x7F) so attacker-controlled paths
-  // cannot smuggle log-injection sequences (e.g. fake `\n[api] admin logged in`) into
-  // structured logs, then cap length to bound response/log size.
-  // Using \xNN escapes (not literal control bytes) for source-code readability.
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: deliberate stripping of ASCII control bytes.
+  // ASCII control byte (0x00-0x1F + DEL 0x7F) を除去する。attacker-controlled な
+  // path から偽の `\n[api] admin logged in` のような log-injection sequence が
+  // structured log に混入するのを防ぐため。その後 length も cap して response /
+  // log size を抑える。可読性のため literal control byte ではなく \xNN escape を使う。
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ASCII control byte を意図的に除去するため
   const stripped = path.replace(/[\x00-\x1f\x7f]/g, '');
   return stripped.length > PUBLIC_PATH_MAX
     ? `${stripped.slice(0, PUBLIC_PATH_MAX - 1)}…`
@@ -60,10 +60,10 @@ export const errorEnvelope = (code: ErrorCode, message: string): ErrorEnvelope =
 export class AppError extends HTTPException {
   readonly code: ErrorCode;
   /**
-   * @param status HTTP status to return.
-   * @param code Machine-readable error code surfaced to clients.
-   * @param publicMessage Safe, generic message returned to clients (no internal IDs / paths / user input).
-   * @param logContext Optional structured details for server logs only.
+   * @param status 返す HTTP status。
+   * @param code client に出す machine-readable な error code。
+   * @param publicMessage client に返す安全な generic message (internal ID / path / user 入力を含めない)。
+   * @param logContext server log だけに残す optional な structured 詳細。
    */
   readonly logContext?: Record<string, unknown>;
   constructor(
@@ -79,7 +79,7 @@ export class AppError extends HTTPException {
 }
 
 export const onAppNotFound = (c: Context) => {
-  // Do not echo the raw request path back to the client; only log it server-side.
+  // raw な request path を client に返さない。server-side log にだけ残す。
   logger.warn('route not found', { path: sanitizePath(c.req.path), method: c.req.method });
   return c.json(errorEnvelope('NOT_FOUND', 'Route not found'), 404);
 };

@@ -1,11 +1,9 @@
-// Phase 10.E: i18n core TDD specs. The infrastructure (useTranslation +
-// useCurrentLang + setLang + interpolate) must be exercised independently
-// from the dict contents so future contributors can edit translations
-// without breaking lang state.
+// i18n core の TDD spec。infrastructure (useTranslation + useCurrentLang + setLang +
+// interpolate) を辞書中身から独立に検証することで、後続 contributor が翻訳を編集して
+// も lang state を壊せない構造を保つ。
 //
-// Hook tests use the project's existing `renderHookCapture` pattern (React
-// 19's `act` + `createRoot`) rather than @testing-library/react which is
-// not a dep of this workspace.
+// hook テストは、本 workspace の依存に無い @testing-library/react を避け、既存の
+// `renderHookCapture` パターン (React 19 の `act` + `createRoot`) を使う。
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -66,10 +64,9 @@ describe('i18n — dict integrity', () => {
   });
 
   it('en has no empty values (every key is translated, even if draft) — except documented placeholders', () => {
-    // `dropzone.instructionSuffix` is intentionally empty in EN because the
-    // Japanese template has a trailing particle that has no English analogue;
-    // the suffix slot collapses cleanly. Mark and exempt it explicitly so
-    // accidental empties elsewhere still fail.
+    // `dropzone.instructionSuffix` は EN で意図的に空。JA template に末尾助詞があり
+    // 英語に対応物が無いため、suffix slot を空文字で潰す形にしてある。ここで明示的に
+    // 例外登録し、それ以外の場所での誤った空文字は今後も検知できるようにする。
     const intentionalEmpties = new Set(['dropzone.instructionSuffix']);
     const empties = Object.entries(en)
       .filter(([k, v]) => v.length === 0 && !intentionalEmpties.has(k))
@@ -176,9 +173,9 @@ describe('i18n — legacy localStorage migration (Phase 10.D)', () => {
     window.localStorage.setItem('snap-share-lang', 'fr');
     __resetI18nForTesting();
     const handle = renderHookCapture(() => useCurrentLang());
-    // 'fr' is not a supported lang — should not be persisted as new key.
+    // 'fr' はサポート対象外なので新 key として永続化されてはいけない。
     expect(window.localStorage.getItem('pitamark-lang')).toBeNull();
-    // Legacy key dropped to avoid revisiting on every load.
+    // legacy key も削除して、毎 load で再 visit しないようにする。
     expect(window.localStorage.getItem('snap-share-lang')).toBeNull();
     handle.cleanup();
   });
@@ -189,9 +186,8 @@ describe('i18n — legacy localStorage migration (Phase 10.D)', () => {
     __resetI18nForTesting();
     const handle = renderHookCapture(() => useCurrentLang());
     expect(handle.current).toBe('en');
-    // Legacy key is left alone in this branch — only touched when `pitamark-lang`
-    // is absent. (It can be cleaned up by a future "no current key + legacy
-    // present" run, which is fine.)
+    // この分岐では legacy key は触らない — `pitamark-lang` が無いときだけ migration
+    // を走らせる。「新 key 無し + legacy あり」の将来 run で掃除されれば十分。
     expect(window.localStorage.getItem('snap-share-lang')).toBe('ja');
     handle.cleanup();
   });

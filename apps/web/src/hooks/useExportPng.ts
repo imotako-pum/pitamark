@@ -10,23 +10,21 @@ export type UseExportPngParams = Readonly<{
   awarenessLayerRef?: RefObject<Konva.Layer | null>;
   roomId: string | null;
   pixelRatio?: number;
-  /** Image natural dimensions. When provided, the export captures only the
-   *  image region at native resolution (regardless of the user's zoom/pan)
-   *  by temporarily resetting the stage transform during toCanvas.
-   *  When null, falls back to the legacy "whole stage" capture. */
+  /** 画像の natural サイズ。指定時は toCanvas 中だけ stage transform をリセットし、
+   *  user の zoom/pan に関係なく画像領域だけをネイティブ解像度で書き出す。
+   *  null のときは従来の「stage 全体」capture に fallback する。 */
   imageSize?: { width: number; height: number } | null;
 }>;
 
 /**
- * Returns a memoized async exporter that:
- *   1. Hides the awareness layer (so peer cursors are not baked in).
- *   2. Temporarily resets stage transform so zoom/pan don't affect output.
- *   3. Renders the (image-bounded) region to a PNG Blob via `stage.toCanvas`.
- *   4. Triggers a download with `pitamark-{roomId}-{timestamp}.png`.
- *   5. Restores transform and the awareness layer in `finally`.
+ * memoized な async exporter を返す:
+ *   1. awareness layer を hide (peer の cursor を焼き込まない)。
+ *   2. stage transform を一時的にリセットして zoom/pan を出力に影響させない。
+ *   3. `stage.toCanvas` で (画像領域に絞った) PNG Blob を生成。
+ *   4. `pitamark-{roomId}-{timestamp}.png` で download をトリガ。
+ *   5. `finally` で transform と awareness layer を復元。
  *
- * Failures are surfaced through `sonner` toasts and `logger.warn`; the caller
- * should not need to catch them.
+ * 失敗は `sonner` toast と `logger.warn` で表に出すので、caller 側で catch 不要。
  */
 export const useExportPng = ({
   stageRef,
@@ -36,9 +34,8 @@ export const useExportPng = ({
   imageSize = null,
 }: UseExportPngParams): (() => Promise<void>) => {
   const t = useTranslation();
-  // Translation function via ref so the export callback's deps don't include
-  // `t` (which changes identity on every lang switch). Toast messages always
-  // pull the **current** language at the time the toast fires.
+  // 翻訳関数を ref で保持して、export callback の deps に `t` を入れずに済ませる
+  // (`t` は言語切替の度に identity が変わる)。toast は発火時点の最新言語を引く。
   const tRef = useRef(t);
   tRef.current = t;
   return useCallback(async () => {
@@ -57,9 +54,9 @@ export const useExportPng = ({
       awareness?.hide();
       hidden = true;
       if (imageSize) {
-        // Set the flag BEFORE the setters so a partial mutation (any of these
-        // throwing) still triggers the restore branch in `finally`. Konva
-        // setters don't throw in practice, but the ordering removes the cliff.
+        // mutated フラグを setter より前に立てておく。setter のいずれかが throw しても
+        // partial mutation が `finally` の restore 経路に流れる。Konva setter は実際には
+        // throw しないが、この順序にしておくことで cliff を消せる。
         mutated = true;
         stage.scaleX(1);
         stage.scaleY(1);

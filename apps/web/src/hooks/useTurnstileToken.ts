@@ -1,12 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 
-// Phase 7: state machine for the invisible Turnstile widget.
-//
-// `disabled` is the dev-without-key state — `consumeToken()` returns an
-// empty string and the API short-circuits via `BYPASS_TURNSTILE=true`.
-// `pending` is "site key configured, widget hasn't fired yet". `ready`
-// carries the single-use token; `error` is an explicit failure to render.
-
+// invisible Turnstile widget の state machine。
+// `disabled` は dev で site key 未設定の状態 — `consumeToken()` は空文字列を返し、
+// API 側は `BYPASS_TURNSTILE=true` で short-circuit する。`pending` は「site key 設定済、
+// widget が未発火」、`ready` は使い捨て token を保持、`error` は描画失敗。
 export type TurnstileTokenState =
   | { status: 'disabled' }
   | { status: 'pending' }
@@ -19,10 +16,9 @@ export type UseTurnstileTokenResult = Readonly<{
   setError: () => void;
   reset: () => void;
   /**
-   * Returns the current usable token, or the empty string when the widget is
-   * disabled (caller must handle the empty-string case as "don't gate"); the
-   * server treats an empty token as a Zod validation error UNLESS
-   * `BYPASS_TURNSTILE=true`, which is the dev/CI default.
+   * 現在使える token を返す。widget が disabled なときは空文字列を返すので、caller 側で
+   * "ゲートしない" 扱いにすること。server は `BYPASS_TURNSTILE=true` (dev/CI default)
+   * 以外で空 token を Zod validation error として弾く。
    */
   consumeToken: () => string;
 }>;
@@ -41,9 +37,8 @@ export const useTurnstileToken = (siteKey: string | undefined): UseTurnstileToke
     if (state.status === 'ready') return state.token;
     return '';
   }, [state]);
-  // Memoize the result so consumers depending on the whole object (e.g. a
-  // `useCallback([..., turnstile])` in the page component) do not invalidate
-  // every render.
+  // 全体オブジェクトに依存する consumer (例: page component の
+  // `useCallback([..., turnstile])`) が毎 render で invalidate されないように memo 化する。
   return useMemo(
     () => ({ state, setToken, setError, reset, consumeToken }),
     [state, setToken, setError, reset, consumeToken],

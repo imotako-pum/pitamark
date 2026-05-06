@@ -13,21 +13,19 @@ type ImageSource = Readonly<{
 }>;
 
 export type UseImageSourceOptions = Readonly<{
-  /** Fired with the created room id when `POST /rooms` succeeds. */
+  /** `POST /rooms` 成功時に作成された roomId を流す callback。 */
   onRoomCreated?: (roomId: string) => void;
 }>;
 
 type UseImageSource = Readonly<{
   source: ImageSource | null;
-  // Phase 10.E: surface a stable i18n key instead of a pre-translated string
-  // so DropZone can re-render in the user's chosen language even if the
-  // validation ran while the previous language was active.
+  // 翻訳済 string ではなく安定した i18n key を露出する。validation 実行時の言語と
+  // DropZone の re-render 時の言語が違っても、key 経由で正しい翻訳を引ける。
   errorKey: ImageValidationErrorKey | null;
   /**
-   * Validates and previews the image, then fires `POST /rooms`. The
-   * `turnstileToken` argument carries the Turnstile widget value (empty
-   * string when the widget is disabled in dev). `password` is optional;
-   * when supplied (non-empty), the resulting room is password-protected.
+   * 画像を validate + preview してから `POST /rooms` を発火する。`turnstileToken` は
+   * Turnstile widget の値 (dev で無効化されているときは空文字列)。`password` は省略可で、
+   * non-empty を渡すと protected room として作成される。
    */
   loadFromFile: (file: File, turnstileToken: string, password?: string) => void;
   clear: () => void;
@@ -48,8 +46,8 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
   const urlRef = useRef<string | null>(null);
   const onRoomCreatedRef = useRef(options.onRoomCreated);
   onRoomCreatedRef.current = options.onRoomCreated;
-  // Translation function ref so the async createRoom failure handler can fire
-  // toasts without re-running the loadFromFile callback on every lang change.
+  // 翻訳関数を ref 経由で保持。非同期 createRoom 失敗時の toast が、言語切替のたびに
+  // loadFromFile callback を作り直さなくても最新の翻訳を引ける。
   const tRef = useRef(t);
   tRef.current = t;
 
@@ -82,18 +80,16 @@ export const useImageSource = (options: UseImageSourceOptions = {}): UseImageSou
     setSource({ url, contentType: result.contentType, bytes: result.bytes });
     logger.info('image loaded', { type: result.contentType, bytes: result.bytes });
 
-    // Fire-and-forget room creation. API failure leaves the editor in
-    // local-only mode (the ObjectURL above keeps the UX intact); a toast
-    // surfaces the specific reason. Success transitions the URL to /r/:id
-    // via the caller's onRoomCreated callback.
+    // fire-and-forget で room を作成。API 失敗時は editor を local-only モードのまま残し
+    // (ObjectURL で UX は維持)、reason を toast で出す。成功時は caller の onRoomCreated
+    // 経由で URL を /r/:id に遷移させる。
     void (async () => {
       const out = await createRoom(file, password, turnstileToken);
       if (out.ok) {
-        // Phase 7.6 既知-5 fix: protected room の uploader は server が返した
-        // token を sessionStorage に書いてから URL push する。これで
-        // RoomEditor の getRoomToken() が即ヒットし RoomGate を skip できる。
-        // 受信者経路 (URL 共有された別 browser) は sessionStorage が空なので
-        // 従来通り RoomGate → POST /rooms/:id/auth → token 取得。
+        // protected room の uploader は server から受け取った token を sessionStorage に
+        // 入れてから URL push する。RoomEditor の getRoomToken() が即ヒットし RoomGate を
+        // skip できる。受信者 (URL 共有された別 browser) は sessionStorage が空なので
+        // 従来通り RoomGate → POST /rooms/:id/auth → token 取得 の経路を辿る。
         if (out.token) setRoomToken(out.room.id, out.token);
         onRoomCreatedRef.current?.(out.room.id);
         return;

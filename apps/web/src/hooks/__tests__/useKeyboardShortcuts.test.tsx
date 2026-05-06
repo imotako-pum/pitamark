@@ -43,7 +43,7 @@ const setupMount = () => {
 
 const press = (init: KeyboardEventInit & { key: string }) => {
   const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
-  // happy-dom respects preventDefault; track via a flag.
+  // happy-dom は preventDefault を尊重する。flag で発火状況を追跡する。
   let prevented = false;
   const orig = event.preventDefault.bind(event);
   event.preventDefault = () => {
@@ -154,8 +154,8 @@ describe('useKeyboardShortcuts', () => {
     const onCycleColorNext = vi.fn();
     const onCycleColorPrev = vi.fn();
     mount.render(<Harness shortcuts={baseShortcuts({ onCycleColorNext, onCycleColorPrev })} />);
-    // Browsers raise key to upper-case when Shift is down; useKeyboardShortcuts
-    // lower-cases internally so 'C' is matched as 'c'.
+    // browser は Shift 押下時に key を大文字化する。useKeyboardShortcuts は
+    // 内部で lower-case 化するので 'C' は 'c' として match する。
     const { prevented } = press({ key: 'C', shiftKey: true });
     expect(onCycleColorPrev).toHaveBeenCalledOnce();
     expect(onCycleColorNext).not.toHaveBeenCalled();

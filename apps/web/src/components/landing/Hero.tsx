@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from '../../i18n';
 
 type HeroProps = Readonly<{
-  /** DropZone slot — placed center so the primary CTA stays visible. */
+  /** DropZone slot — primary CTA を可視に保つため中央に配置する。 */
   dropzone: ReactNode;
 }>;
 
@@ -14,10 +14,9 @@ export const Hero = ({ dropzone }: HeroProps) => {
       className="flex flex-col items-center gap-6 px-4 pt-6 pb-10 sm:px-6 sm:gap-8 md:pt-10"
     >
       <div className="flex flex-col items-center gap-3">
-        {/* h2 (not h1) so the existing header h1 "pitamark" remains the page's
-            primary heading. The header h1 is hidden below the `md:` breakpoint
-            via `hidden md:block`, but on the landing surface this h2 carries
-            the actual "what this site is" message. */}
+        {/* h2 にしてあるのは、既存の header h1 "pitamark" をページの primary heading の
+            ままにするため。header h1 は `md:` breakpoint 未満で `hidden md:block` により
+            非表示になるが、landing 面ではこの h2 が「このサイトは何か」を伝える役割を担う。 */}
         <h2
           id="landing-hero-heading"
           className="max-w-3xl text-center text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl lg:text-5xl"
@@ -28,14 +27,13 @@ export const Hero = ({ dropzone }: HeroProps) => {
           {t('landing.hero.subhead')}
         </p>
       </div>
-      {/* dropzone slot may carry siblings (e.g. LocalEditor's protect-password
-          panel). Flex gap keeps them legibly separated without forcing each
-          slotted element to know about its neighbours. */}
+      {/* dropzone slot は兄弟要素 (例: LocalEditor の protect-password パネル) を
+          持つことがある。flex gap で見やすく区切り、slot 側の要素同士が互いを意識
+          しなくて済むようにする。 */}
       <div className="flex w-full max-w-2xl flex-col gap-3">{dropzone}</div>
-      {/* Phase 10.H v1: SVG editor mock so the picture works with no binary
-          assets. Phase 11+ will swap to a real WebP screenshot of the live
-          editor (cf. plan Task 11). The <picture> wrapper is kept so the
-          future <source srcSet="/landing-hero.webp" /> is a one-line add. */}
+      {/* バイナリアセット無しで動くよう SVG editor mock を採用。将来は実 editor の
+          WebP スクリーンショットに差し替える予定で、`<picture>` wrapper を残してある
+          ので `<source srcSet="/landing-hero.webp" />` 追加が 1 行で済む。 */}
       <picture className="block w-full max-w-3xl">
         <img
           src="/landing-hero.svg"

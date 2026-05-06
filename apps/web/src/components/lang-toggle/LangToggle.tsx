@@ -1,7 +1,6 @@
-// Phase 10.E: minimal language toggle. Two-button segmented control (JA / EN)
-// keyed off the i18n core's external store. Placed in the Toolbar (room +
-// local modes) and as a floating control in the empty-state DropZone, so
-// the user can switch language regardless of which surface they're on.
+// 最小構成の language toggle。i18n core の external store に紐づいた 2 ボタン
+// segmented control (JA / EN)。Toolbar (room + local モード) と empty-state DropZone の
+// floating control の両方に置き、どの面にいてもユーザが言語を切り替えられるようにする。
 
 import { cn } from '@/lib/utils';
 import { type Lang, SUPPORTED_LANGS, setLang, useCurrentLang, useTranslation } from '../../i18n';
@@ -19,7 +18,7 @@ export const LangToggle = ({ className }: Props) => {
   const t = useTranslation();
   const lang = useCurrentLang();
   return (
-    // biome-ignore lint/a11y/useSemanticElements: <fieldset> would inherit unwanted form semantics + browser default border. role="group" + aria-label cleanly groups the two language buttons without form coupling.
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> だと form semantics と browser default border が付いてくる。role="group" + aria-label で form 結合なしに 2 ボタンをまとめる。
     <div
       role="group"
       aria-label={t('common.langToggle.label')}

@@ -1,16 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.7-4 E2E: HelpModal の起動経路 (`?` キー / Toolbar ❓ ボタン) と
-// 閉じる経路 (Esc / 再 toggle) を担保する。chromium 1 プロジェクトに限定。
+// HelpModal の起動経路 (`?` キー / Toolbar ❓ ボタン) と閉じる経路 (Esc / 再 toggle)
+// を担保する E2E。chromium 1 プロジェクトに限定。
 //
-// `Shift+/` を `page.keyboard.press('Shift+/')` で発火させると、Playwright
-// 環境では keydown の `e.key` が必ずしも `?` に解決されないため (zoom-pan
-// spec の Meta+0/1 と同類の Playwright 制約)、合成 KeyboardEvent を
-// window に dispatch して useKeyboardShortcuts の listener を直接踏む。
-// これは「`?` キー → onShowHelp 発火 → setHelpOpen トグル」のパイプラインを
-// 検証するもので、useKeyboardShortcuts のキー判別自体は unit test
-// (apps/web/src/hooks/__tests__/useKeyboardShortcuts.test.tsx) でカバー済。
+// `Shift+/` を `page.keyboard.press('Shift+/')` で発火させても Playwright 環境では
+// keydown の `e.key` が必ずしも `?` に解決されないため (Meta+0/1 と同類の制約)、
+// 合成 KeyboardEvent を window に dispatch して useKeyboardShortcuts の listener
+// を直接踏む。本 spec は「`?` キー → onShowHelp 発火 → setHelpOpen toggle」の
+// パイプライン検証で、key 判別自体は unit test
+// (apps/web/src/hooks/__tests__/useKeyboardShortcuts.test.tsx) で別途カバー。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
@@ -29,19 +28,13 @@ const dispatchHelpKey = (page: import('@playwright/test').Page) =>
     );
   });
 
-// Phase 8.x perf review #10 H1: `EditorPage` was put behind `React.lazy()`
-// to split the canvas/Yjs vendor chunks out of the initial bundle. As a
-// side-effect, immediately dispatching keyboard events after `page.goto`
-// can race the lazy chunk: the Suspense fallback is still mounted when the
-// `?` event fires and the `useKeyboardShortcuts` listener (declared in
-// `EditorShell`, which lives inside the lazy boundary) is not attached
-// yet. Wait for the DropZone heading — it lives inside `EditorShell` and
-// guarantees mount + keyboard listeners are wired.
-//
-// Phase 10.H: was previously waiting on the editor toolbar, but the
-// toolbar is now hidden on landing (source === null). DropZone heading is
-// the most stable mount-completed signal that survives the toolbar-hidden
-// landing redesign.
+// `EditorPage` を `React.lazy()` boundary に分割して canvas/Yjs vendor chunk を
+// 初期 bundle から外している副作用で、`page.goto` 直後に keyboard event を発火
+// すると lazy chunk と race する: Suspense fallback がまだ mount されている状態で
+// `?` event が走ると、`EditorShell` (lazy boundary 内) 側の useKeyboardShortcuts
+// listener が未 attach。DropZone heading は EditorShell 内に出るので、これを待てば
+// mount + keyboard listener 配線が完了している。toolbar は landing
+// (source === null) では hidden なので、heading の方が安定した signal。
 const waitForEditorReady = (page: import('@playwright/test').Page) =>
   page.getByRole('heading', { name: '画像をドロップしてください' }).waitFor({ state: 'visible' });
 

@@ -1,15 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { api, authenticateRoom, createRoom, fetchRoom } from '../api-client';
 
-// Smoke test: verifies the hc<AppType> client is wired and the route tree
-// is reachable. We do NOT make real network calls here — the server is not
-// running during unit tests.
+// smoke test: hc<AppType> client が配線済で route tree が到達可能なことを確認する。
+// 実 network call はしない (unit test 中は server を立てていない)。
 //
-// Phase 8.x Hono review #4 M2: every web → api fetch (other than `createRoom`,
-// which uses raw multipart) routes through `hc<AppType>`. Each smoke
-// expectation below corresponds to one production call site in
-// `api-client.ts` so an API path rename surfaces as a typecheck failure
-// here first.
+// `createRoom` (raw multipart) を除く全ての web → api fetch は `hc<AppType>` を経由する。
+// 下の各 smoke 期待は `api-client.ts` の本番 call site に 1:1 で対応していて、API path
+// rename はまずここで typecheck failure として浮上する。
 describe('api client (smoke)', () => {
   it('exposes POST /rooms via api.rooms.$post (createRoom — raw multipart)', () => {
     expect(typeof api.rooms.$post).toBe('function');
@@ -36,9 +33,8 @@ describe('api client (smoke)', () => {
   });
 });
 
-// Phase 8.x SSOT review #1 H1 / typesafety review #6 H1: validate that
-// each fetch path now safeParse-s the response. A schema mismatch must
-// degrade to the documented failure reason, not flow into UI state.
+// 各 fetch path が response を safeParse するようになったことを検証する。schema
+// mismatch は規定の failure reason に降格し、UI state には流れ込まない契約を保つ。
 const stubResponse = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
     status,
@@ -46,10 +42,10 @@ const stubResponse = (status: number, body: unknown): Response =>
   });
 
 describe('api client (Zod response parsing)', () => {
-  // We swap `globalThis.fetch` directly so each test can stub the next
-  // resolution. `vi.spyOn` would be cleaner but its inferred return type
-  // does not play with `globalThis`'s broad surface; the fallback keeps
-  // the test code readable while still resetting between assertions.
+  // `globalThis.fetch` を直接差し替えて、各テストが次の resolution を stub できる
+  // ようにする。`vi.spyOn` の方が綺麗だが、推論される return type が `globalThis`
+  // の広い surface と相性が悪いため、この素朴な置換で readable + assertion 間 reset
+  // を両立させている。
   const originalFetch = globalThis.fetch;
   let calls: Array<Response> = [];
 

@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
 
-// Phase 7.7-4 success metric「マウス無し golden path」直対応の E2E。
+// 「マウス無し golden path」success metric 直対応の E2E。
 //
-// 完全に「マウス 0 回」は注釈の drag に必要なため不可能だが、metric の本意は
-// 「ツール選択 / 色変更 / undo / 出力 をツールバーに戻らずに完遂できる」点。
-// 本 spec は ツール切替 (V/R/A/T/H) / 色巡回 (C) / 出力 (⌘S) をすべて
-// キーボードで実行し、ツールバーボタンへの click 0 回で 4 種注釈配置から PNG
-// 保存までを通せることを担保する。
+// 注釈の drag にマウスは必須なので「マウス 0 回」は実現不可能だが、metric の本意は
+// 「ツール選択 / 色変更 / undo / 出力 をツールバーに戻らずに完遂できる」こと。
+// 本 spec はツール切替 (V/R/A/T/H) / 色巡回 (C) / 出力 (⌘S) をすべてキーボードで
+// 実行し、ツールバーボタンへの click 0 回で 4 種注釈配置 → PNG 保存まで通せること
+// を担保する。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 const TRANSFORM_ACTIONS_KEY = '__SNAP_SHARE_TRANSFORM_ACTIONS__';
@@ -63,8 +63,8 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
   await page.mouse.down();
   await page.mouse.move(box.x + 350, box.y + 300, { steps: 5 });
   await page.mouse.up();
-  // Phase 7.8-1 Auto-next-A: 矢印確定で空 text + IME 起動が走るため、Esc で text を
-  // 破棄して矢印のみ残す。本 spec の主旨は 4 種注釈が独立に作れること + ⌘S 出力で、
+  // 矢印確定で Auto-next-A の空 text + IME 起動が走るため、Esc で text を破棄して
+  // 矢印のみ残す。本 spec の主旨は 4 種注釈が独立に作れること + ⌘S 出力で、
   // Auto-next 連鎖は別 spec (auto-next-arrow-text.spec.ts) でカバー済。
   await page.keyboard.press('Escape');
 

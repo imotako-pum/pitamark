@@ -63,7 +63,7 @@ describe('createYjsAnnotationsContext.applyDataAction', () => {
 
     ctx.applyDataAction({ type: 'annotation/add', annotation: rect('r1') });
 
-    // snapshot is recomputed on observeDeep — drive it via subscribe.
+    // snapshot は observeDeep で再計算される — subscribe 経由で driving する。
     const listener = vi.fn();
     const unsub = ctx.subscribe(listener);
     ctx.applyDataAction({ type: 'annotation/add', annotation: rect('r2', 2) });

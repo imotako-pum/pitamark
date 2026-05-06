@@ -91,8 +91,8 @@ describe('getOrCreateLocalUser', () => {
       });
       const result = getOrCreateLocalUser(storage);
       expect(result.userId).toBe(newUser.userId);
-      // Legacy entry is left alone when the new key already exists. A future
-      // run with new-key absent + legacy present will clean it up.
+      // 新 key がある場合は legacy エントリには触らない。次回 run で「新 key 無し +
+      // legacy あり」になったときに migration が走って掃除される。
       expect(storage.getItem(LEGACY_STORAGE_KEY)).toBe(JSON.stringify(legacyUser));
     });
   });

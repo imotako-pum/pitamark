@@ -1,11 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.6 E2E 拡充: キーボードショートカットの作動を CI でロックする。
-// 主なリスク領域: useKeyboardShortcuts (apps/web/src/hooks/useKeyboardShortcuts.ts)
-// で window 全体の keydown を捕捉しているが、isEditableTarget が input/textarea
-// にフォーカスがあるときショートカットを無効化している。本 spec はその両方の
-// 経路を踏む。
+// キーボードショートカットの作動を CI で lock する E2E。主なリスク領域は
+// useKeyboardShortcuts (apps/web/src/hooks/useKeyboardShortcuts.ts) で window 全体の
+// keydown を捕捉する一方、isEditableTarget が input/textarea にフォーカスがあるとき
+// shortcut を無効化する点。本 spec は両経路を踏んで regression を防ぐ。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
@@ -71,9 +70,9 @@ test.describe('keyboard shortcuts', () => {
     await page.mouse.move(box.x + 200, box.y + 200, { steps: 5 });
     await page.mouse.up();
 
-    // Phase 7.8-2: 矩形 mouseup 直後に pending Auto-arrow が立つ。Esc は最初に
-    // pending クリアを優先するので、本 spec の「Esc で選択解除」をロックインする
-    // ためには Esc を 2 回押す (1 回目: pending クリア、2 回目: 選択解除)。
+    // 矩形 mouseup 直後に pending Auto-arrow が立つ。Esc は最初に pending クリアを
+    // 優先するため、本 spec の「Esc で選択解除」を lock するには Esc を 2 回押す
+    // (1 回目: pending クリア、2 回目: 選択解除)。
     await page.keyboard.press('Escape');
 
     // exact: true で「注釈をすべて削除」(Eraser) と区別
@@ -108,9 +107,9 @@ test.describe('keyboard shortcuts', () => {
     page,
   }, testInfo) => {
     skipNonChromium(testInfo);
-    // Phase 7.6 観点: text annotation の textarea 編集中に "v" を押しても
-    // select ツールに切り替わってはいけない (= ユーザーが入力したい "v" 文字
-    // がそのまま入る)。useKeyboardShortcuts の isEditableTarget が機能する。
+    // text annotation の textarea 編集中に "v" を押しても select ツールに切り替わ
+    // ってはいけない (= ユーザが入力したい "v" 文字がそのまま入る)。
+    // useKeyboardShortcuts の isEditableTarget が機能していることを確認。
     await waitForRoom(page);
 
     // テキストツールで textarea を起動

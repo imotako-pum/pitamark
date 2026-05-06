@@ -251,11 +251,9 @@ describe('annotationsReducer.annotation/set-font-size', () => {
     expect(next.annotations[0]).toBe(rect);
   });
 
-  // Phase 8.x tests review #8 M2: assert that the annotations array
-  // identity is preserved on a no-op so the upstream `historyReducer`
-  // never appends an empty undo step. Phase 7.8-3 review M1 hinged on
-  // handler-side gating; this test ensures the safety net at the
-  // reducer layer for non-text targets.
+  // no-op 時に annotations 配列の identity が保たれることを検証 (上位 historyReducer が
+  // 空 undo step を積まない最終 safety net)。handler 側の gating は別途検証済で、
+  // ここは reducer layer の非 text target に対する保証を担う。
   it('preserves annotations array identity when no-op on non-text id', () => {
     const seeded = seedWith([rect]);
     const next = annotationsReducer(seeded, {

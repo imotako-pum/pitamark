@@ -45,12 +45,10 @@ type ToolDef = Readonly<{
   shortcut: string;
 }>;
 
-// Phase 8.x extensibility review #7 M1 案 B: `Readonly<Record<Tool, ToolDef>>`
-// 化することで、`Tool` union に新しい kind を足すと TS が「TOOL_DEFS に key
-// が足りない」とコンパイル時に教えてくれる。iteration 順序は `TOOLS` 配列
-// (= `['select', ...ANNOTATION_TYPES]`、annotationsReducer.ts) に従う。
-// Phase 10.E: `label` を i18n key に置換。実文字列は `useTranslation()` で
-// レンダ時に解決する。
+// `Readonly<Record<Tool, ToolDef>>` 化することで、`Tool` union に新しい kind を足すと
+// TS が「TOOL_DEFS に key が足りない」とコンパイル時に教えてくれる。iteration 順は
+// `TOOLS` (`['select', ...ANNOTATION_TYPES]`、annotationsReducer.ts) に従う。`label` は
+// i18n key として持ち、実文字列は `useTranslation()` で render 時に解決する。
 const TOOL_DEFS: Readonly<Record<Tool, ToolDef>> = {
   select: { icon: MousePointer2, labelKey: 'toolbar.tool.select', shortcut: 'V' },
   rectangle: { icon: Square, labelKey: 'toolbar.tool.rectangle', shortcut: 'R' },
@@ -167,9 +165,8 @@ export const Toolbar = ({
           shortcut="?"
           onClick={onShowHelp}
         />
-        {/* Phase 10.H: LangToggle moved out of Toolbar into the EditorShell
-            header so it stays usable on landing (where the editor toolbar
-            is hidden because no image is loaded). */}
+        {/* LangToggle は EditorShell header 側に移したので、画像未ロード時 (= editor
+            toolbar が非表示) の landing でも使える。 */}
       </div>
     </TooltipProvider>
   );

@@ -4,22 +4,22 @@ import { AppError } from '../lib/error';
 import { extractClientIp, redactIp } from '../lib/ip';
 import { logger } from '../lib/logger';
 
-// Phase 7: thin Hono middleware around `RateLimit.limit({ key })`.
+// `RateLimit.limit({ key })` を薄く wrap した Hono middleware。
 //
-// Two intentional fail-open behaviours:
-//   1. `binding === undefined` → passthrough. Tests that build env without
-//      providing a stub still exercise the handler logic.
-//   2. `binding.limit(...)` throws → passthrough. If Cloudflare's RL plane
-//      glitches we would rather serve traffic than 500 every request.
+// 意図的な fail-open は 2 つ:
+//   1. `binding === undefined` → passthrough。stub を渡さずに env を組むテストでも
+//      handler ロジックを exercise できる。
+//   2. `binding.limit(...)` が throw → passthrough。Cloudflare の RL plane が glitch
+//      したときに毎 request 500 を返すよりも、traffic を流し続ける方が望ましい。
 
 export type RateLimitContext = Context<{ Bindings: Bindings }>;
 
 export type RateLimitOptions = Readonly<{
-  /** Resolves the binding from env (e.g. `(env) => env.RL_CREATE_ROOM`). */
+  /** env から binding を解決する (例: `(env) => env.RL_CREATE_ROOM`)。 */
   binding: (env: Bindings) => RateLimit | undefined;
-  /** Builds the limiter key. Receives the Hono context for `param()` access. */
+  /** limiter key を組む。`param()` を叩くため Hono context を受け取る。 */
   keyFn: (c: RateLimitContext) => string;
-  /** Identifier surfaced in logs (e.g. 'rooms-create'). */
+  /** log に出す識別子 (例: 'rooms-create')。 */
   routeId: string;
 }>;
 
@@ -27,10 +27,10 @@ export const withRateLimit = (
   opts: RateLimitOptions,
 ): MiddlewareHandler<{ Bindings: Bindings }> => {
   return async (c, next) => {
-    // Phase 7.6: BYPASS_RATE_LIMIT="true" is a dev/E2E escape hatch so the
-    // production limit (5/60s on RL_CREATE_ROOM) does not break Playwright
-    // suites that create 14+ rooms in parallel. Production env keeps this
-    // unset / "false" so the real RL applies.
+    // BYPASS_RATE_LIMIT="true" は dev / E2E 用の escape hatch。production の上限
+    // (RL_CREATE_ROOM の 5/60s) が、14+ rooms を並列作成する Playwright suite を
+    // 壊さないようにするため。production env では未設定 / "false" を維持して、
+    // 実 RL が効くようにする。
     if (c.env.BYPASS_RATE_LIMIT === 'true') {
       return next();
     }
@@ -51,8 +51,8 @@ export const withRateLimit = (
       }
     } catch (err: unknown) {
       if (err instanceof AppError) throw err;
-      // RL binding errored. Fail open so the API stays usable, but log so the
-      // outage is visible.
+      // RL binding が error。API を使える状態に保つため fail-open するが、障害が
+      // 観測できるよう log には残す。
       logger.error('rate limit binding error (fail-open)', {
         route: opts.routeId,
         err: err instanceof Error ? err.message : String(err),

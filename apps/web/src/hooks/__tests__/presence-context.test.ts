@@ -4,11 +4,10 @@ import { type AwarenessLike, createPresenceContext } from '../presence-context';
 
 const makeAwareness = (clientID = 1) => {
   const states = new Map<number, Record<string, unknown>>();
-  // `Awareness.on/off` (y-protocols) types its handler as the generic
-  // `Function` (Observable's broad event surface). Phase 8.x typesafety
-  // review #6 M3 derives `AwarenessLike` via `Pick<Awareness, ...>`, so
-  // the stub must accept the same width — `Function`, not `() => void`.
-  // biome-ignore lint/complexity/noBannedTypes: matches y-protocols' Observable.on
+  // `Awareness.on/off` (y-protocols) は handler を Observable の広い event 表面である
+  // `Function` で型付けする。`AwarenessLike` を `Pick<Awareness, ...>` 派生にした以上、
+  // stub も同じ width (= `Function`、`() => void` ではない) で揃える必要がある。
+  // biome-ignore lint/complexity/noBannedTypes: y-protocols の Observable.on と同じ型に揃えるため
   const handlers = new Set<Function>();
   states.set(clientID, {});
 

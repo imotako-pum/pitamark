@@ -1,4 +1,4 @@
-// Phase 8.x security review #13 H1: tests for the WS ticket exchange.
+// WS ticket 交換 service のテスト。
 
 import { describe, expect, it } from 'vitest';
 import { createInMemoryKv } from '../../__tests__/helpers/in-memory-kv';
@@ -14,7 +14,7 @@ describe('createWsTicketService.issue', () => {
     const { ticket } = await svc.issue(ROOM_ID);
 
     expect(ticket).toMatch(/^[0-9a-f]{32}$/);
-    // Stored under `ws-ticket:<ticket>` with the roomId as value.
+    // KV には `ws-ticket:<ticket>` を key、roomId を value として保存される。
     const stored = await kv.get(`ws-ticket:${ticket}`);
     expect(stored).toBe(ROOM_ID);
   });
@@ -40,11 +40,11 @@ describe('createWsTicketService.issue', () => {
     });
     await svc.issue(ROOM_ID);
 
-    // Just before TTL: still valid.
+    // TTL 直前: まだ有効。
     now += (WS_TICKET_TTL_SEC - 1) * 1000;
     expect(await kv.get(`ws-ticket:${'b'.repeat(32)}`)).toBe(ROOM_ID);
 
-    // Past TTL: KV returns null.
+    // TTL 経過後: KV は null を返す。
     now += 2_000;
     expect(await kv.get(`ws-ticket:${'b'.repeat(32)}`)).toBeNull();
   });
@@ -62,7 +62,7 @@ describe('createWsTicketService.consume', () => {
     const result = await svc.consume(ticket, ROOM_ID);
 
     expect(result).toEqual({ ok: true });
-    // Replay must fail.
+    // replay は必ず失敗する。
     const replay = await svc.consume(ticket, ROOM_ID);
     expect(replay).toEqual({ ok: false, reason: 'unknown' });
   });
@@ -78,7 +78,7 @@ describe('createWsTicketService.consume', () => {
     const result = await svc.consume(ticket, 'other-room');
 
     expect(result).toEqual({ ok: false, reason: 'sub_mismatch' });
-    // Probe-and-check enumeration is closed: the ticket must not survive.
+    // probe-and-check による列挙経路を塞ぐため、ticket は残してはいけない。
     const stored = await kv.get(`ws-ticket:${ticket}`);
     expect(stored).toBeNull();
   });

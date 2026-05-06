@@ -16,11 +16,10 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
 
-  // Phase 8.x React review #3 L1: store the latest `onFile` in a ref so the
-  // paste effect's dep array can stay empty. Previously `onFile` had to be
-  // memoized by callers (LocalEditor's `useCallback`) to avoid re-attaching
-  // the paste listener on every render — that contract was invisible from
-  // here. The ref pattern matches `useKeyboardShortcuts` for consistency.
+  // 最新の `onFile` を ref に格納して、paste effect の deps を空に保てるようにする。
+  // 以前は caller (LocalEditor の `useCallback`) で memo 化しないと render 毎に paste
+  // listener が再 attach される不可視の契約があった。`useKeyboardShortcuts` と同じ
+  // ref パターンで揃えている。
   const onFileRef = useRef(onFile);
   onFileRef.current = onFile;
 
@@ -54,7 +53,7 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) onFile(file);
-    // Reset so re-selecting the same file fires onChange again.
+    // 同じファイルを再選択しても onChange が発火するように reset する。
     e.target.value = '';
   };
 
@@ -92,9 +91,9 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
           </p>
           <p className="text-xs opacity-60">{t('dropzone.formats')}</p>
         </button>
-        {/* Phase 8.x a11y review #9 L2: pull the error out of the <button>'s
-            visible content so SR doesn't read button name + alert text as one
-            blob. The `aria-describedby` above keeps focus context coherent. */}
+        {/* error を <button> の表示内に置かないことで、screen reader が button 名と
+            alert 文を 1 塊で読み上げないようにする。focus 文脈は上の `aria-describedby`
+            で繋いでいる。 */}
         {error && (
           <p
             id={errorId}

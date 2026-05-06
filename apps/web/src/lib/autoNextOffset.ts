@@ -1,20 +1,19 @@
 import type { Point } from '@pitamark/shared';
 
-// Phase 7.8-1 Auto-next-A: 矢印終端から空 text を生成する位置の offset。矢印方向の
-// 単位ベクトルに distance を掛けるシンプル設計で、矢印の延長線上に text が並ぶ。
-// dogfood で 8/12/16 のどれが快適かは Phase 9 dogfood で再評価する。
+// Auto-next-A で矢印終端から空 text を生成する位置の offset。矢印方向の単位ベクトルに
+// distance を掛けるシンプル設計で、矢印の延長線上に text が並ぶ。8/12/16 のどれが
+// 快適かは dogfood で再評価する。
 export const AUTO_NEXT_TEXT_OFFSET_PX = 8;
 
 const MIN_VECTOR_LENGTH = 1;
 
 /**
- * Compute a small offset placed along the arrow's direction, used to position
- * the auto-next text annotation just past the arrow's tip.
+ * 矢印方向に置く小さな offset を計算する。auto-next の text annotation を矢印先端の
+ * すぐ先に配置するのに使う。
  *
- * Falls back to `{x: distance, y: 0}` when the arrow is degenerate (length
- * below 1px). In practice MIN_DRAG_PIXELS=4 in CanvasStage already filters
- * out tiny arrows, but the fallback keeps this function safe in isolation
- * and unit-testable.
+ * 矢印が degenerate (長さ 1px 未満) のときは `{x: distance, y: 0}` に fallback。
+ * CanvasStage の MIN_DRAG_PIXELS=4 で実用上は弾かれるが、関数単体で安全 + unit
+ * test 可能な状態を保つために fallback を残す。
  */
 export const computeAutoNextTextOffset = (from: Point, to: Point, distance: number): Point => {
   const dx = to.x - from.x;

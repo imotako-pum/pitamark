@@ -17,16 +17,15 @@ type Props = Readonly<{
   onRoomIdChange: (roomId: string | null) => void;
 }>;
 
-// Phase 8.x typesafety review #6 M2: vite-env.d.ts now declares the
-// VITE_* shape so direct property access typechecks without the cast.
+// vite-env.d.ts で VITE_* の shape を宣言しているので、cast 無しの直接 property
+// アクセスでも typecheck が通る。
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 /**
- * Local-only editor — Phase 3 behavior, extended in Phase 5 with optional
- * password protection and Phase 7 with invisible Cloudflare Turnstile.
- * Uploaded images call `POST /rooms` (with `password` if the user opted in
- * and a Turnstile token) and, on success, transition the URL to /r/:id;
- * the parent App then swaps in `RoomEditor`.
+ * local-only editor。任意の password 保護と invisible Cloudflare Turnstile を伴う
+ * upload 経路を持つ。画像 upload は `POST /rooms` (opt-in 時は password、常に
+ * Turnstile token 同梱) を叩き、成功時に URL を /r/:id に遷移させる。親 App は
+ * URL 変化を検知して `RoomEditor` に切り替える。
  */
 export const LocalEditor = ({ onRoomIdChange }: Props) => {
   const t = useTranslation();
@@ -41,9 +40,8 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
   const { source, errorKey, loadFromFile, clear } = useImageSource({
     onRoomCreated: handleRoomCreated,
   });
-  // Translate at render time so lang switches mid-error update the message
-  // shown in <DropZone>. `errorKey` is the source of truth; the translation
-  // is derived state.
+  // render 時点で翻訳することで、error 表示中に言語切替されても <DropZone> 内の
+  // 文言が追従する。SSOT は `errorKey` で、翻訳は derived state。
   const error = errorKey ? t(errorKey) : null;
   const store = useAnnotationsStore();
   const turnstile = useTurnstileToken(TURNSTILE_SITE_KEY);
@@ -58,19 +56,18 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
     store.reset();
   }, [clear, store]);
 
-  // Disable file load while the user has ticked "protect" but left the
-  // password empty — better than silently uploading unprotected.
+  // 「保護する」を ON にしたまま password が空のときは file load を block。黙って
+  // unprotected で upload するより安全。
   const blockedByEmptyPassword = protect && password.length === 0;
 
-  // Wraps `loadFromFile` so the active password (when the user opted in) is
-  // forwarded to `POST /rooms`. Empty/whitespace passwords are normalized to
-  // unprotected by the api-client layer. The Turnstile token is consumed
-  // each call; widget state machine returns empty string in `disabled` mode.
+  // `loadFromFile` を wrap して、opt-in 時の password を `POST /rooms` に流す。
+  // 空白だけの password は api-client 層で unprotected に正規化される。Turnstile
+  // token は呼び出し毎に消費し、disabled モードでは widget が空文字列を返す。
   //
-  // Gating is done inline (toast + early return) instead of swapping
-  // onLoadFile to undefined — passing undefined collapses EditorShell's
-  // DropZone branch into the room-mode "画像を読み込んでいます…" hint, which
-  // produced a flicker on first paint while Turnstile was still pending.
+  // gating は onLoadFile を undefined に差し替えるのではなく inline (toast + early
+  // return) で行う。undefined にすると EditorShell の DropZone branch が room-mode
+  // の「画像を読み込んでいます…」ヒントに崩れ、Turnstile pending 中の初回 paint で
+  // flicker していたため。
   const handleLoad = useCallback(
     (file: File) => {
       if (blockedByEmptyPassword) {
@@ -87,21 +84,19 @@ export const LocalEditor = ({ onRoomIdChange }: Props) => {
       }
       const pw = protect && password.length > 0 ? password : undefined;
       loadFromFile(file, turnstile.consumeToken(), pw);
-      // After consuming the (single-use) token, reset so the next upload
-      // attempt waits for a fresh one. `disabled` resets back to `disabled`.
+      // 単発 token を consume した後は reset し、次の upload は新しい token を待つ。
+      // `disabled` モードは reset 後も `disabled` のまま。
       turnstile.reset();
     },
     [blockedByEmptyPassword, protect, password, loadFromFile, turnstile, t],
   );
 
-  // Phase 10.H: protect-password panel renders **inline** within the landing
-  // flow (right under DropZone) instead of as a floating overlay below the
-  // header. The earlier `belowHeader` overlay design (Phase 7.6 既知-2 fix)
-  // collided with the new Hero h2 when source === null, because Hero starts
-  // at the top of the stage area and the floating panel sat on top of it.
-  // Inline placement removes the overlap, keeps the password panel close to
-  // the upload action it modifies, and frees `belowHeader` for editor-mode
-  // floating chrome should it be needed in the future.
+  // protect-password panel は landing flow の DropZone 直下に **inline** で描画する
+  // (header 下の floating overlay ではない)。旧 `belowHeader` overlay は source === null
+  // のとき Hero h2 と衝突していた (Hero が stage 領域上端から始まり、floating panel が
+  // その上に重なる) ため。inline 配置で重なりを解消しつつ、password panel と upload
+  // action の物理距離を近く保ち、`belowHeader` slot は将来 editor-mode の floating
+  // chrome に再利用できるよう空けておく。
   const protectPanel =
     source === null ? (
       <div className="flex flex-col gap-2 rounded-lg bg-(--color-surface) p-3 shadow-sm ring-1 ring-black/5">

@@ -7,10 +7,10 @@ test('landing page renders heading on desktop widths', async ({ page }) => {
   await expect(page.locator('h1')).toContainText('pitamark');
 });
 
-// Phase 10.H: Toolbar is hidden on landing (source === null). The disabled
-// tool buttons added no value before an image was loaded and crowded the
-// landing surface. The Toolbar mounts as soon as `source !== null`, which
-// is also the implicit "now you can edit" affordance.
+// landing (source === null) では Toolbar を非表示にする。disabled tool button は
+// 画像未ロード状態では情報価値ゼロで、landing 面を圧迫していた。`source !== null` に
+// なった瞬間 Toolbar が mount され、それが implicit な「ここから編集できる」signal
+// を兼ねる。
 test('editor toolbar is hidden on landing (no image loaded)', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeHidden();
@@ -28,9 +28,9 @@ test('brand h1 stays reachable at tablet width (768px) — toolbar still hidden'
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto('/');
 
-  // md breakpoint matches at 768px so the brand title remains visible…
+  // md breakpoint は 768px で発火するので brand title は visible のまま…
   await expect(page.locator('h1')).toBeVisible();
-  // …but the editor toolbar stays hidden on landing regardless of width.
+  // …が editor toolbar は landing では幅に関係なく hidden を保つ。
   await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeHidden();
 });
 
@@ -38,26 +38,24 @@ test('h1 hides on narrow viewports below md breakpoint (480px)', async ({ page }
   await page.setViewportSize({ width: 480, height: 800 });
   await page.goto('/');
 
-  // Header h1 ("pitamark") is gated behind `md:block`.
+  // Header h1 ("pitamark") は `md:block` で gate されている。
   await expect(page.locator('h1')).toBeHidden();
-  // Phase 10.H: toolbar stays hidden on landing regardless of viewport;
-  // the LangToggle now sits next to the header so language switching is
-  // still reachable from narrow widths.
+  // toolbar は landing では viewport に関係なく hidden を保つ。LangToggle は header
+  // の隣に置いているので、狭い幅でも language 切替には到達できる。
   await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeHidden();
   await expect(page.getByRole('group', { name: '言語' })).toBeVisible();
 });
 
-// Skipped — needs both `wrangler dev` and `vite` running. Verified by hand
-// in Phase 4; CI integration of the API workspace lands in Phase 7.
+// skip — `wrangler dev` と `vite` を両方起動する必要があり、CI 統合は別途。
+// 手元では確認済。
 test.skip('uploading an image transitions the URL to /r/:id (with API running)', async ({
   page,
 }) => {
   await page.goto('/');
 });
 
-// Phase 10.H: landing surface coverage. The ja Hero h2 is the canonical
-// "what this site is" message; matching the exact string keeps copy
-// changes intentional.
+// landing 面の coverage。ja の Hero h2 は「このサイトは何か」の canonical メッセージ。
+// 文字列を完全一致でマッチさせ、コピー変更が意図的に行われていることを担保する。
 
 test('landing hero h2 shows the headline copy (ja)', async ({ page }) => {
   await page.goto('/');
@@ -71,7 +69,7 @@ test('landing surface renders features / howto / faq sections', async ({ page })
   await expect(page.getByRole('heading', { level: 2, name: 'できること' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: '使い方は 3 ステップ' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'よくある質問' })).toBeVisible();
-  // 4 FAQ <details> entries are present (closed by default).
+  // 4 つの FAQ <details> エントリがあり、default は closed。
   await expect(page.locator('details')).toHaveCount(4);
 });
 
@@ -84,7 +82,7 @@ test('rail ad slots are visible on lg+ viewports with fixed pixel size (CLS guar
   const railRight = page.getByTestId('ad-slot-rail-right');
   await expect(railLeft).toBeVisible();
   await expect(railRight).toBeVisible();
-  // Inline styles encode the CLS-safe min-height + width contract.
+  // inline style に CLS-safe の min-height + width 契約が乗っていることを確認。
   await expect(railLeft).toHaveAttribute('style', /width:\s*160px/);
   await expect(railLeft).toHaveAttribute('style', /min-height:\s*600px/);
   await expect(railRight).toHaveAttribute('style', /width:\s*160px/);
@@ -93,10 +91,10 @@ test('rail ad slots are visible on lg+ viewports with fixed pixel size (CLS guar
 test('rail ad slots are hidden below lg, bottom slot takes over', async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 900 });
   await page.goto('/');
-  // Both rails exist in the DOM but are display:none below lg.
+  // 両 rail は DOM 上に存在するが、lg 未満では display:none。
   await expect(page.getByTestId('ad-slot-rail-left')).toBeHidden();
   await expect(page.getByTestId('ad-slot-rail-right')).toBeHidden();
-  // The landing surface emits the bottom AdSlot when image is unloaded.
+  // landing 面では画像未ロード時にも bottom AdSlot が emit される。
   const bottom = page.getByTestId('ad-slot-bottom');
   await expect(bottom).toBeVisible();
   await expect(bottom).toHaveAttribute('style', /min-height:\s*100px/);

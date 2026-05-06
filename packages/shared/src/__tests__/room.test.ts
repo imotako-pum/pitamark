@@ -35,7 +35,7 @@ describe('isExpired', () => {
     expect(isExpired(room, 2_500)).toBe(true);
   });
   it('uses 24 hours as default ttl', () => {
-    // Phase 10.B: 24h default + 7d max; フリーミアムで無制限化する伏線。
+    // default 24h、最大 7d。将来 freemium で無制限化する余地を残してある。
     expect(DEFAULT_ROOM_TTL_MS).toBe(24 * 60 * 60 * 1000);
   });
   it('caps ttl at 7 days via MAX_ROOM_TTL_MS', () => {

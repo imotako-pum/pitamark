@@ -1,11 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { dropImage } from './fixtures/upload';
 
-// Phase 7.6 E2E 拡充: 4 種注釈ツール (rectangle / arrow / text / highlight) と
-// Delete / Undo / Redo のクリティカルパスを CI でロックする。
-// 既存 spec は room-create で「ツールバー enabled」、room-share で
-// 「矩形 1 個の同期」までしか踏んでおらず、各ツールが独立に作動するか・
-// undo/redo が history を正しく辿るかは ZERO カバレッジだった。
+// 4 種注釈ツール (rectangle / arrow / text / highlight) と Delete / Undo / Redo の
+// critical path を CI で lock する E2E。room-create / room-share では各ツールが独立に
+// 作動するか・undo/redo が history を正しく辿るかまでは検証していなかった。
 
 const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
@@ -60,9 +58,9 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 60, y: 60 }, { x: 160, y: 160 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
-    // 矢印 — Phase 7.8-1 Auto-next-A で空 text + IME 起動が走るため、Esc で text を
-    // 破棄してから次の assert へ。矢印そのものが 1 件追加されることを確認する spec
-    // なので、Auto-next 経路を抜けた状態で count を見る。
+    // 矢印 — Auto-next-A で空 text + IME 起動が走るため、Esc で text を破棄してから
+    // 次の assert へ。本 spec は矢印そのものが 1 件追加されることを確認するもので、
+    // Auto-next 経路を抜けた状態で count を見る。
     await page.getByRole('button', { name: '矢印' }).click();
     await dragOnStage(page, { x: 200, y: 60 }, { x: 300, y: 160 });
     await page.keyboard.press('Escape');
@@ -124,10 +122,10 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 80, y: 80 }, { x: 200, y: 200 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
-    // Phase 7.8-2: 矩形 mouseup 直後に Auto-next-B の pending Auto-arrow が立つ。
-    // 本 spec は「Delete ボタン → 選択中の矩形が消える」のロックインなので、
-    // 先に Escape で pending を消してから Delete に進む。pending が立っている間は
-    // BS / Delete が pending クリア優先で吸収される設計。
+    // 矩形 mouseup 直後に Auto-next-B の pending Auto-arrow が立つ。本 spec は
+    // 「Delete ボタン → 選択中の矩形が消える」を lock するので、先に Escape で pending
+    // を消してから Delete に進む。pending 中は BS / Delete が pending クリア優先で
+    // 吸収される設計。
     await page.keyboard.press('Escape');
 
     // 削除ボタンが選択ありで enabled になる。exact: true で「注釈をすべて削除」(Eraser) と区別
@@ -159,20 +157,19 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     await dragOnStage(page, { x: 60, y: 60 }, { x: 160, y: 160 });
     await expect.poll(() => readAnnotationCount(page)).toBe(1);
 
-    // Phase 8.x tests review #8 M3: undo group の分離を deterministic に。
-    // 旧実装は captureTimeout (500ms) を超える sleep だったが、低速 CI で
-    // flaky。`__SNAP_SHARE_STOP_UNDO_CAPTURE__` (DEV-only window hatch、
-    // useYjsAnnotationsStore.ts:222 で expose) を直接呼んで undo step を
-    // 確定させる。
+    // undo group の分離を deterministic にする。旧実装は captureTimeout (500ms) を
+    // 超える sleep だったが低速 CI で flaky だったため、`__SNAP_SHARE_STOP_UNDO_CAPTURE__`
+    // (DEV-only window hatch、useYjsAnnotationsStore で expose) を直接呼んで undo step
+    // を確定させる。
     await page.evaluate(() => {
       (
         window as unknown as { __SNAP_SHARE_STOP_UNDO_CAPTURE__?: () => void }
       ).__SNAP_SHARE_STOP_UNDO_CAPTURE__?.();
     });
 
-    // 2 個目: 矢印 — Phase 7.8-1 Auto-next-A で空 text + IME 起動が走るため、Esc で
-    // text を破棄してから次の assert へ。矢印確定が 1 step として undo に積まれる
-    // ことを確認したい spec なので、Auto-next 由来の text は履歴に残さない。
+    // 2 個目: 矢印 — Auto-next-A で空 text + IME 起動が走るため、Esc で text を破棄
+    // してから次の assert へ。本 spec は矢印確定が 1 step として undo に積まれること
+    // を確認するもので、Auto-next 由来の text は履歴に残さない。
     await page.getByRole('button', { name: '矢印' }).click();
     await dragOnStage(page, { x: 200, y: 60 }, { x: 300, y: 160 });
     await page.keyboard.press('Escape');

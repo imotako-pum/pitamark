@@ -5,10 +5,10 @@ import { createWsTicketService } from '../services/ws-ticket-service';
 import { buildEnv } from './helpers/build-env';
 import { createStubRateLimit } from './helpers/in-memory-rl';
 
-// Phase 8.x error-envelope review #11 L3: see rooms.test.ts.
+// error envelope は rooms.test.ts と同じ shared 再利用 pattern。
 type ErrorBody = ErrorEnvelope;
 type CreatedRoom = { id: string };
-// Phase 7: every multipart upload must carry `cf-turnstile-response`.
+// 全 multipart upload は `cf-turnstile-response` を載せる必要がある。
 const TEST_TS_TOKEN = 'test-turnstile-token';
 
 const createUnprotectedRoom = async (env: ReturnType<typeof buildEnv>): Promise<CreatedRoom> => {
@@ -104,9 +104,8 @@ describe('GET /sync/:id (Phase 8.x — one-shot ticket authorization)', () => {
     expect(body.error.code).toBe('UNAUTHORIZED');
   });
 
-  // Phase 8.x security review #13 H1: the long-lived 24h JWT must NOT grant
-  // direct WS access — only one-shot tickets do. A leaked JWT in `?token=`
-  // would otherwise be exploitable for the JWT's full lifetime.
+  // 長寿命 24h JWT は WS upgrade を直接付与してはいけない (one-shot ticket 専用)。
+  // `?token=` 経由で JWT が漏洩すると、JWT の全 lifetime の間 exploit され続ける。
   it('does not accept the legacy ?token=<JWT> query — JWT alone cannot upgrade', async () => {
     const env = buildEnv();
     const created = await createProtectedRoomViaApi(env, 'letmein');
@@ -196,9 +195,9 @@ describe('GET /sync/:id (Phase 7 — sync rate limit on unprotected rooms)', () 
     expect(res.status).not.toBe(429);
   });
 
-  // Phase 7.6: dev/E2E 用エスケープハッチ。`withRateLimit` middleware と
-  // 同じ挙動を sync route の inline RL でも提供する。CI Linux の Playwright
-  // で room-share spec が 3 retry 全敗していた死角の fix。
+  // dev / E2E 用 escape hatch。`withRateLimit` middleware と同じ挙動を sync route の
+  // inline RL でも提供する。CI Linux の Playwright で room-share spec が 3 retry
+  // 全敗していた死角の fix。
   it('passes through (no 429) when BYPASS_RATE_LIMIT="true" even if RL_SYNC would block', async () => {
     const env = buildEnv({
       RL_SYNC: createStubRateLimit({ alwaysBlock: true }),

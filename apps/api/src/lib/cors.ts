@@ -1,13 +1,13 @@
 /**
- * Phase 7.5: API の CORS middleware が使う origin allowlist のパーサ / マッチャ。
+ * API の CORS middleware が使う origin allowlist のパーサ / マッチャ。
  *
- * 入力文字列は `env.CORS_ALLOWED_ORIGINS`（`wrangler.toml [vars]` または
- * `.dev.vars` から供給）。カンマ区切りで、各エントリは以下のいずれか:
- *   - 完全オリジン      `https://snap-share.pages.dev`
- *   - ワイルドカード接尾辞 `*.snap-share.pages.dev`
+ * 入力文字列は `env.CORS_ALLOWED_ORIGINS` (`wrangler.toml [vars]` または `.dev.vars`
+ * から供給)。カンマ区切りで、各エントリは以下のいずれか:
+ *   - 完全 origin       `https://pitamark.app`
+ *   - wildcard 接尾辞   `*.pitamark.app`
  *
- * ワイルドカードは `https://` 限定（http ダウングレード防止）。http の dev
- * origin を許可したい場合は完全オリジン形式で書く（例 `http://localhost:5173`）。
+ * wildcard は `https://` 限定 (http ダウングレード防止)。http の dev origin を許可
+ * したい場合は完全 origin 形式で書く (例 `http://localhost:5173`)。
  */
 
 export type AllowRule = { type: 'exact'; origin: string } | { type: 'suffix'; suffix: string };
