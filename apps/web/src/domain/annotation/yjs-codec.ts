@@ -16,7 +16,7 @@ export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {
       m.set('strokeWidth', annotation.strokeWidth);
       break;
     case 'arrow':
-      // Flat 4 fields: nesting Y.Map inside Y.Map complicates observeDeep.
+      // 平坦な 4 field で持つ。Y.Map を Y.Map にネストすると observeDeep の扱いが面倒になる。
       m.set('fromX', annotation.from.x);
       m.set('fromY', annotation.from.y);
       m.set('toX', annotation.to.x);
@@ -46,11 +46,10 @@ export const annotationToYMap = (annotation: Annotation): Y.Map<unknown> => {
   return m;
 };
 
-// Phase 8.x extensibility review #7 M1 案 A: switch + `const _: never` で
-// 網羅性をコンパイル時に enforce。新しい annotation 種を `Annotation` union
-// に追加した瞬間、ここで switch case 漏れがエラーになるので「忘れたら気付か
-// ない場所」が消える。runtime safeParse は引き続き Yjs migration safety net
-// として残す (外部ピアからの malformed sync を弾く)。
+// switch + `const _: never` で網羅性をコンパイル時に enforce する。新しい annotation
+// 種を `Annotation` union に追加した瞬間、ここで case 漏れがエラーになるので「忘れて
+// も気付かない場所」が消える。runtime safeParse は外部 peer からの malformed sync を
+// 弾く Yjs migration safety net として引き続き残す。
 export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
   const rawType = m.get('type');
   if (typeof rawType !== 'string') return null;
@@ -106,10 +105,9 @@ export const yMapToAnnotation = (m: Y.Map<unknown>): Annotation | null => {
       };
       break;
     default: {
-      // Unknown stringly-typed kind — ignore. Same lenient fallback as the
-      // pre-switch `else { return null }` to keep room for migrations from
-      // an old peer pushing a future annotation type. Compile-time
-      // exhaustiveness is enforced by the assignment to `never` below.
+      // 未知の stringly-typed 種別は無視する。switch 化前の `else { return null }` と
+      // 同じ lenient fallback で、未来の annotation 種を push してくる古い peer との
+      // migration 余地を残す。コンパイル時の網羅性は下の `never` 代入で担保している。
       const _exhaustive: never = type;
       void _exhaustive;
       return null;
