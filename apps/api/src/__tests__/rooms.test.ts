@@ -9,9 +9,9 @@ import { createStubRateLimit } from './helpers/in-memory-rl';
 const pngFile = (bytes = 4): File =>
   new File([new Uint8Array(bytes).fill(0)], 'cat.png', { type: 'image/png' });
 
-// Phase 7: every multipart upload must carry `cf-turnstile-response`. In
-// tests `BYPASS_TURNSTILE='true'` lets any non-empty token through, but the
-// field itself is still required by the Zod schema.
+// 全 multipart upload は `cf-turnstile-response` を載せること。テストでは
+// `BYPASS_TURNSTILE='true'` が non-empty token を全て通すが、field そのものは
+// Zod schema 上で依然 required。
 const TEST_TS_TOKEN = 'test-turnstile-token';
 
 const formWithImage = (file: File, extra: Record<string, string> = {}): FormData => {
@@ -22,9 +22,9 @@ const formWithImage = (file: File, extra: Record<string, string> = {}): FormData
   return form;
 };
 
-// Phase 8.x error-envelope review #11 L3: re-use the shared `ErrorEnvelope`
-// so the test asserts against the actual `ErrorCode` union — a typo or
-// removed code surfaces as a compile error here.
+// shared `ErrorEnvelope` をそのまま再利用することで、テストが実際の `ErrorCode`
+// union に対して assert する形になり、typo や code 削除がここで compile error
+// として浮上する。
 type ErrorBody = ErrorEnvelope;
 type PublicRoom = {
   id: string;
@@ -114,7 +114,7 @@ describe('POST /rooms', () => {
     expect(body.error.code).toBe('INVALID_REQUEST');
   });
 
-  // Phase 10.B: per-room ttlMs override surface tests.
+  // room ごとの ttlMs override surface のテスト。
   it('honours an explicit ttlMs within the cap and stores it on the room', async () => {
     const env = buildEnv();
     const requested = 3 * 24 * 60 * 60 * 1000; // 3 days, < MAX_ROOM_TTL_MS
@@ -140,7 +140,7 @@ describe('POST /rooms', () => {
     );
     expect(res.status).toBe(201);
     const body = (await res.json()) as PublicRoom;
-    // build-env helper now defaults to 24h (Phase 10.B production default).
+    // build-env helper の default は production と同じ 24h。
     expect(body.ttlMs).toBe(24 * 60 * 60 * 1000);
   });
 
@@ -158,7 +158,7 @@ describe('POST /rooms', () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as ErrorBody;
     expect(body.error.code).toBe('INVALID_REQUEST');
-    // Public message must not echo the requested value (Phase 8.x error-envelope review #11 pattern).
+    // 公開 message に要求値を echo しない契約 (error-envelope の方針)。
     expect(body.error.message).not.toContain(String(tooBig));
   });
 
@@ -480,7 +480,7 @@ describe('POST /rooms/:id/auth (Phase 5 — token issuance)', () => {
   });
 });
 
-// Phase 8.x security review #13 H1: WS upgrade ticket exchange.
+// WS upgrade ticket 交換のテスト。
 describe('POST /rooms/:id/ws-ticket (Phase 8.x — short-lived WS upgrade ticket)', () => {
   const fetchAuthToken = async (
     env: ReturnType<typeof buildEnv>,

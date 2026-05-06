@@ -1,14 +1,13 @@
-// Phase 7: counterpart to `in-memory-kv.ts` for the Workers `RateLimit`
-// binding shape. The real binding is asynchronous and counts are eventually
-// consistent across the edge; the stub is synchronous (per-process map) which
-// is fine for unit tests that only need pass/fail semantics.
+// `in-memory-kv.ts` の RateLimit binding 版。本物の binding は async で edge 越しに
+// eventually consistent。stub は process 内 map で synchronous だが、pass/fail
+// semantics だけ確認したい unit test には十分。
 
 export type StubRateLimitOptions = Readonly<{
-  /** Always return `{ success: false }` regardless of state. */
+  /** state に関係なく常に `{ success: false }` を返す。 */
   alwaysBlock?: boolean;
-  /** Per-period request budget. Defaults to 1000 (effectively unlimited). */
+  /** 期間ごとの request 予算。default 1000 (実質 unlimited)。 */
   limit?: number;
-  /** Period length in seconds. Defaults to 60. */
+  /** 期間長さ (秒)。default 60。 */
   period?: number;
 }>;
 

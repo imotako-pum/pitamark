@@ -1,12 +1,10 @@
-// Phase 7: minimal `KVNamespace` shim for service tests. Only the methods
-// `image-blocklist-service` actually calls (`get`, `put`, `delete`) are
-// implemented; the rest are stubbed to throw so any accidental dependency on
-// `list` / `getWithMetadata` shows up loudly in failures.
+// service テスト用の最小 `KVNamespace` shim。`image-blocklist-service` が実際に呼ぶ
+// (`get` / `put` / `delete`) だけを実装し、他は throw する stub にする。`list` /
+// `getWithMetadata` への意図しない依存は failure で大きく浮上させる方針。
 //
-// Phase 8.x: extended to honor `put`'s `expirationTtl` option so the WS
-// ticket service (which relies on KV TTL for one-shot consume semantics)
-// can be exercised under vitest. `now` is injectable for deterministic
-// expiry tests.
+// `put` の `expirationTtl` option も honor するよう拡張済。WS ticket service
+// (KV TTL に依存する one-shot consume semantics を持つ) を vitest で exercise
+// できるようにするため。`now` は決定論的な expiry テスト用に注入可能。
 
 export type InMemoryKvOptions = Readonly<{
   now?: () => number;

@@ -8,8 +8,8 @@ import { createR2MetaStorage, metaKey } from '../../storage/r2-meta-storage';
 import { createInMemoryR2WithControls } from '../helpers/in-memory-r2';
 
 const FIXED_NOW = 1_714_435_200_000; // synthetic Unix epoch ms; not a real timestamp
-// Phase 10.B: tests still default to the 7-day TTL (= MAX) to maximize the
-// surface area exercised. Per-room overrides are covered separately below.
+// テストは default で 7-day TTL (= MAX) を使い、surface area を最大化する。
+// room ごとの override は下の節で別途検証する。
 const TTL_MS = MAX_ROOM_TTL_MS;
 
 const buildService = () => {
@@ -44,8 +44,8 @@ describe('roomService.create', () => {
     expect(room.id).toMatch(/^[A-Za-z0-9_-]{21}$/);
     expect(room.createdAt).toBe(FIXED_NOW);
     expect(room.ttlMs).toBe(TTL_MS);
-    // Phase 7: `image.sha256` is now populated; assert shape per-field so the
-    // test stays robust to future additions.
+    // `image.sha256` は populate される。将来の field 追加にも壊れないよう、
+    // field 単位で shape を assert する。
     expect(room.image.key).toBe(`rooms/${room.id}/image.png`);
     expect(room.image.contentType).toBe('image/png');
     expect(room.image.size).toBe(4);
@@ -244,9 +244,8 @@ describe('roomService.create — TTL configuration guard', () => {
     });
   });
 
-  // Phase 8.x security review #13 M1 / error-envelope #11 M1: env var name
-  // belongs in the logContext, not in the public response body. The client
-  // should only see a generic "Internal server error" string.
+  // env 変数名は logContext に載せるべきで、public response body に出してはいけない。
+  // client は generic な「Internal server error」だけを受け取る契約を保つ。
   it('does not expose the env var name `ROOM_TTL_MS` in the public message', async () => {
     const { bucket } = createInMemoryR2WithControls();
     const service = createRoomService({
@@ -262,9 +261,9 @@ describe('roomService.create — TTL configuration guard', () => {
   });
 });
 
-// Phase 10.B: per-room TTL override. The server still owns the default via
-// `deps.ttlMs` (env-supplied 24h), but callers can request a longer TTL up to
-// MAX_ROOM_TTL_MS. Anything else is a 400.
+// room ごとの TTL override の検証。default は server 側 `deps.ttlMs` (env 由来の 24h)
+// が依然として保持し、caller は MAX_ROOM_TTL_MS までの範囲で長い TTL を要求できる。
+// それ以外は 400。
 describe('roomService.create — per-room ttlMs override', () => {
   const buildSvc = (ttlMs: number = TTL_MS) => {
     const { bucket } = createInMemoryR2WithControls();
