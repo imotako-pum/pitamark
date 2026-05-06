@@ -11,10 +11,9 @@ export type ValidImage = Readonly<{
   bytes: number;
 }>;
 
-// Phase 10.E: surface i18n keys instead of pre-translated strings, so the
-// consumer can switch language without re-running validation. The narrow
-// `errorKey` union (vs. a generic `I18nKey`) lets call sites exhaustively
-// switch on the failure reason if they need to log / toast differently.
+// 翻訳済み string ではなく i18n key を露出することで、consumer は validation を
+// 再実行せずに言語切替できる。`errorKey` を generic な `I18nKey` ではなく narrow な
+// union にしてあるので、call site が失敗 reason ごとに log / toast を網羅的に分岐できる。
 export type ImageValidationErrorKey = 'error.image.unsupportedFormat' | 'error.image.tooLarge';
 
 export type InvalidImage = Readonly<{
@@ -24,8 +23,8 @@ export type InvalidImage = Readonly<{
 
 export type ValidationResult = ValidImage | InvalidImage;
 
-// Compile-time guard: if `ImageValidationErrorKey` ever drifts from the i18n
-// dict, this assignment fails. Cheap, zero runtime cost.
+// コンパイル時 guard: `ImageValidationErrorKey` が i18n 辞書から外れた瞬間に
+// この代入が型エラーになる。安価で runtime コスト 0。
 type _Assert = ImageValidationErrorKey extends I18nKey ? true : never;
 const _check: _Assert = true;
 void _check;

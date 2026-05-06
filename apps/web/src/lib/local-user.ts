@@ -3,16 +3,14 @@ import { translateSync } from '../i18n';
 import { generateId } from './id';
 
 const STORAGE_KEY = 'pitamark/user-v1';
-// Phase 10.D: legacy key from snap-share era. One-shot migrated below so
-// existing users keep their presence identity (userId + color). Safe to
-// remove once adoption stabilizes (Phase 11+).
+// snap-share 時代の旧 key。下で 1 回限りの migration を行い、既存 user の presence
+// identity (userId + color) を維持する。利用が安定したら削除可。
 const LEGACY_STORAGE_KEY = 'snap-share/user-v1';
-// Phase 10.E: localized prefix at first-creation time. The display name is
-// persisted in localStorage so lang changes after the fact don't rename
-// existing users — that's intentional, names are stable identifiers.
+// 初回作成時のロケール依存 prefix。displayName は localStorage に永続化するので、
+// 後で言語切替しても既存 user の名前は変わらない (名前は安定 identifier として扱う)。
 const getDefaultNamePrefix = (): string => translateSync('localUser.namePrefix');
-// Defensive fallback if AWARENESS_USER_PALETTE is ever emptied. Matches
-// `tokens.css --color-presence-1` so the visual identity is preserved.
+// AWARENESS_USER_PALETTE が空になった場合の defensive fallback。
+// `tokens.css --color-presence-1` と一致させて視覚 identity を保つ。
 const FALLBACK_PRESENCE_COLOR = '#5b6dff';
 
 export type LocalUser = Readonly<{
@@ -21,7 +19,7 @@ export type LocalUser = Readonly<{
   color: string;
 }>;
 
-// FNV-1a 32-bit — small, deterministic, no deps. Used to pick a palette index.
+// FNV-1a 32-bit。小さく決定論的、依存なし。palette index 選択に使う。
 const hashString = (s: string): number => {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -40,15 +38,15 @@ const colorForUser = (userId: string): string => {
 const readPersistedRaw = (storage: Storage): string | null => {
   const current = storage.getItem(STORAGE_KEY);
   if (current !== null) return current;
-  // One-shot migration: copy legacy → current, drop legacy. Failures fall
-  // through to fresh user creation below — never block UX on storage errors.
+  // 1 回限りの migration: legacy → current にコピーして legacy を捨てる。失敗時は
+  // 下の新規作成へフォールスルー — storage error で UX を止めない方針。
   const legacy = storage.getItem(LEGACY_STORAGE_KEY);
   if (legacy !== null) {
     try {
       storage.setItem(STORAGE_KEY, legacy);
       storage.removeItem(LEGACY_STORAGE_KEY);
     } catch {
-      // Quota / privacy modes — ignore, keep legacy value in memory.
+      // quota / privacy mode — 無視して legacy 値をメモリ上で使う。
     }
     return legacy;
   }
@@ -68,7 +66,7 @@ export const getOrCreateLocalUser = (storage: Storage = window.localStorage): Lo
         };
       }
     } catch {
-      // Corrupted JSON is silently discarded — UX must not break on bad state.
+      // 破損 JSON は黙って捨てる — 悪い state で UX を壊さない。
     }
   }
   const userId = generateId();

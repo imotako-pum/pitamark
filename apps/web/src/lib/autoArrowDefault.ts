@@ -1,17 +1,17 @@
 import type { Point, RectangleAnnotation } from '@pitamark/shared';
 
-// Phase 7.8-2 Auto-next-B: 矩形確定時の既定矢印プレビューの長さ。右下 45° 方向に
-// この距離だけ尾(to)を伸ばす。dogfood で長すぎ/短すぎが出れば Phase 9 dogfood で再評価。
+// Auto-next-B で矩形確定時に出す既定矢印プレビューの長さ。右下 45° 方向にこの距離
+// だけ tail (to) を伸ばす。長すぎ/短すぎは dogfood で再評価する。
 export const AUTO_ARROW_DEFAULT_LENGTH_PX = 100;
 
 /**
- * Compute the default auto-arrow endpoints for a rectangle: arrowhead anchored
- * at the rectangle's right-edge midpoint, tail extending 100px down-right at 45°.
+ * 矩形に対する既定 auto-arrow の端点を計算する: arrowhead は矩形右辺の中点、
+ * tail はそこから右下 45° 方向に 100px 伸ばした位置。
  *
- * Returns `{ from, to }` where `from` is the arrowhead side (rectangle right-edge
- * midpoint, since Phase 7.8-1 set `pointerAtBeginning` on `<KonvaArrow>`) and
- * `to` is the tail side. The Auto-next-A chain then places the auto-text along
- * `to + offset` (= further away from the rectangle, in the user's reading flow).
+ * 返り値の `from` は arrowhead 側 (矩形右辺中点)、`to` は tail 側。`<KonvaArrow>` 側で
+ * `pointerAtBeginning` を立てているため、from に矢じり / to に尾という対応になる。
+ * 後続の Auto-next-A 連鎖は `to + offset` の位置に auto-text を配置する (= 矩形から
+ * 更に離れた、ユーザの読み進む向き)。
  */
 export const computeAutoArrowDefault = (
   rect: Pick<RectangleAnnotation, 'x' | 'y' | 'width' | 'height'>,

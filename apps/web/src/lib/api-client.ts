@@ -9,15 +9,13 @@ import {
 import { hc } from 'hono/client';
 import { logger } from './logger';
 
-// `import type` for `AppType` ensures the api workspace's runtime code
-// (Hono routes, R2 bindings, OpenAPI schemas) never bundles into the web
-// build. The Zod schemas, by contrast, are imported as values so they can
-// `safeParse` at runtime — Phase 8.x SSOT review #1 H1.
+// `AppType` は `import type` で取り込み、api workspace の runtime code (Hono routes,
+// R2 bindings, OpenAPI schemas) が web の bundle に混ざらないようにする。Zod schema
+// は逆に値として import し、runtime で `safeParse` できるようにしておく。
 //
-// Empty baseUrl is the default in `vite dev` (no `.env` set): all requests
-// become relative paths and Vite's `server.proxy` (`/rooms` + `/sync`) routes
-// them to the wrangler dev server. Set `VITE_API_URL` only when running
-// against a non-proxied origin (CI, prod, etc.).
+// baseUrl が空の場合 (`vite dev` で `.env` 未設定) は全 request が相対パスになり、
+// Vite の `server.proxy` (`/rooms` + `/sync`) が wrangler dev server に繋ぐ。
+// CI / 本番など proxy を経由しない origin で動かす場合のみ `VITE_API_URL` を設定する。
 export const resolveApiBaseUrl = (env: ImportMetaEnv = import.meta.env): string =>
   env.VITE_API_URL ?? '';
 
@@ -33,9 +31,9 @@ const normalizePassword = (password: string | undefined | null): string | undefi
   return password.length > 0 ? password : undefined;
 };
 
-// Phase 7: discriminated-union failure surface. The server can now reject
-// uploads for several reasons that warrant distinct UI text, so callers
-// switch on `reason` instead of treating every miss as "network error".
+// 失敗理由を discriminated union で表現する。server は upload を複数の理由で reject
+// するので、caller は「全部 network error」扱いにせず `reason` で UI テキストを
+// 出し分ける。
 export type CreateRoomFailure =
   | { reason: 'rate-limited' }
   | { reason: 'image-blocked' }
@@ -43,27 +41,25 @@ export type CreateRoomFailure =
   | { reason: 'invalid' }
   | { reason: 'network' };
 
-// Phase 7.6 既知-5 fix: protected room を作成した uploader は POST /rooms の
-// レスポンスに含まれる `token` をそのまま sessionStorage に保存することで、
-// `/r/:id` 遷移後の RoomGate を skip できる (本人は password を知っている)。
-// password なしルームでは `token` は undefined。
+// protected room を作成した uploader は POST /rooms のレスポンスに含まれる `token` を
+// そのまま sessionStorage に保存することで、`/r/:id` 遷移後の RoomGate を skip できる
+// (本人は password を知っているため再入力させる必要が無い)。password なしルームでは
+// `token` は undefined。
 export type CreateRoomResult =
   | { ok: true; room: RoomPublic; token?: string }
   | ({ ok: false } & CreateRoomFailure);
 
 /**
- * Uploads an image to `POST /rooms`.
- * Empty/whitespace `password` is normalized to undefined so the resulting
- * room stays unprotected. `turnstileToken` is sent verbatim — the API
- * decides whether to verify it or short-circuit via `BYPASS_TURNSTILE`.
+ * 画像を `POST /rooms` に upload する。
+ * 空白だけの `password` は undefined に正規化し、protected にしない。
+ * `turnstileToken` はそのまま送り、検証 / `BYPASS_TURNSTILE` short-circuit の
+ * 判断は API 側に委ねる。
  *
- * Phase 8.x Hono review #4 M2: this is the one fetch deliberately NOT
- * routed through `hc<AppType>`. The hc typed form client requires
- * pre-shaped `multipart/form-data` objects whose field-by-field types
- * match the server `uploadFormSchema`, but `image: z.instanceof(File)` is
- * not representable in hc's runtime form shape. Other endpoints
- * (`fetchRoom` / `authenticateRoom` / `requestWsTicket` / `fetchProtectedImage`)
- * use hc — only this one keeps raw fetch.
+ * このエンドポイントだけ意図的に `hc<AppType>` を経由しない。hc 型付き form client
+ * は server の `uploadFormSchema` の型と一致した `multipart/form-data` を要求するが、
+ * `image: z.instanceof(File)` を hc の runtime form shape では表現できない。他の
+ * endpoint (`fetchRoom` / `authenticateRoom` / `requestWsTicket` / `fetchProtectedImage`)
+ * は hc を使い、この 1 本だけ raw fetch にしている。
  */
 export const createRoom = async (
   file: File,
@@ -78,11 +74,9 @@ export const createRoom = async (
     form.set('cf-turnstile-response', turnstileToken);
     const res = await fetch(`${baseUrl}/rooms`, { method: 'POST', body: form });
     if (res.status === 201) {
-      // Phase 8.x SSOT review #1 H1: validate the response shape with the
-      // shared Zod schema rather than trusting a TS cast. A schema drift
-      // (server rolled back, intermediary corrupting JSON, refine
-      // `protected ↔ image` violation) downgrades to a network failure
-      // instead of silently flowing into UI state.
+      // TS cast に頼らず shared な Zod schema で response shape を validate する。
+      // schema drift (server roll-back / 中間者の JSON 破損 / `protected ↔ image`
+      // refine 違反) は network failure に降格し、UI state に黙って流れ込まないようにする。
       const raw: unknown = await res.json();
       const parsed = RoomCreatedSchema.safeParse(raw);
       if (!parsed.success) {
@@ -112,10 +106,9 @@ export const createRoom = async (
 
 export const fetchRoom = async (id: string): Promise<RoomPublic | null> => {
   try {
-    // Phase 8.x Hono review #4 M2: routed via the typed `hc<AppType>` client
-    // so a path/shape drift between api workspace and web is caught at
-    // typecheck time. Runtime shape is still validated via Zod safeParse —
-    // hc gives us *type* inference, not runtime guarantees.
+    // 型付き `hc<AppType>` 経由で叩くことで、api workspace と web の間の path / shape
+    // drift を typecheck 時に捕まえる。runtime shape は Zod safeParse で別途 validate
+    // する — hc は型推論を与えるだけで runtime 保証はしない。
     const res = await api.rooms[':id'].$get({ param: { id } });
     if (res.status !== 200) return null;
     const raw: unknown = await res.json();
@@ -135,30 +128,29 @@ export const fetchRoom = async (id: string): Promise<RoomPublic | null> => {
   }
 };
 
-// Phase 7: 'rate-limited' is added to the Phase 5 union so RoomGate can
-// distinguish bad password (401) from cooldown (429).
+// `rate-limited` は bad password (401) と cooldown (429) を RoomGate で出し分ける
+// ために導入。
 export type AuthFailure = 'wrong-password' | 'rate-limited' | 'network' | 'unexpected';
 
 export type AuthResult = { ok: true; token: string } | { ok: false; reason: AuthFailure };
 
 /**
- * POST /rooms/:id/auth — exchanges a password for a 24h JWT.
- * Returns a tagged result so callers can show different UI for
- * 401 (bad password), 429 (cooldown) vs network failures.
+ * POST /rooms/:id/auth — password を 24h JWT に交換する。
+ * 401 (bad password) / 429 (cooldown) / network failure を caller が UI 上で出し
+ * 分けられるよう、tagged result で返す。
  */
 export const authenticateRoom = async (id: string, password: string): Promise<AuthResult> => {
   try {
-    // Phase 8.x Hono review #4 M2: hc<AppType> でパス + json body 型推論。
-    // password 制約 (`min(1).max(256)`) は server schema 側にあり、ここは
-    // call site の型として string を受けるだけで済む。
+    // hc<AppType> で path + json body の型推論。password 制約 (`min(1).max(256)`)
+    // は server schema 側にあり、ここは call site の型として string を受けるだけで済む。
     const res = await api.rooms[':id'].auth.$post({
       param: { id },
       json: { password },
     });
     if (res.status === 200) {
-      // Phase 8.x SSOT review #1 M1: shared `AuthResponseSchema` replaces
-      // the prior `as { token: string }` cast. `min(1)` on token would
-      // catch a server-side regression that emits an empty string.
+      // shared `AuthResponseSchema` で safeParse する (旧来の `as { token: string }`
+      // cast を置換)。token への `min(1)` 制約で、server 側の regression による空
+      // 文字列 emit も検知できる。
       const raw: unknown = await res.json();
       const parsed = AuthResponseSchema.safeParse(raw);
       if (!parsed.success) {
@@ -185,29 +177,27 @@ export const authenticateRoom = async (id: string, password: string): Promise<Au
   }
 };
 
-// Phase 8.x security review #13 H1: web exchanges its long-lived JWT for a
-// 30s one-shot ticket here. The ticket — not the JWT — rides on the
-// WebSocket upgrade URL so platform access logs (wrangler tail, CDN logs)
-// never see the JWT. `network` covers both fetch errors and unexpected
-// shapes; `unauthorized` covers JWT expiry / sub mismatch.
+// 長寿命 JWT をここで 30 秒の one-shot ticket に交換する。WebSocket upgrade URL に
+// 載るのは ticket であって JWT ではないので、platform 側の access log (wrangler tail,
+// CDN logs) には JWT が残らない。`network` は fetch error と shape 異常の両方、
+// `unauthorized` は JWT 失効 / sub 不一致をカバーする。
 export type WsTicketFailure = 'unauthorized' | 'not-found' | 'rate-limited' | 'network';
 
 export type WsTicketResult = { ok: true; ticket: string } | { ok: false; reason: WsTicketFailure };
 
 export const requestWsTicket = async (roomId: string, token: string): Promise<WsTicketResult> => {
   try {
-    // Phase 8.x Hono review #4 M2: hc<AppType> 経由。`ws-ticket` は path
-    // セグメントに `-` が含まれるため bracket 記法。Authorization header は
-    // server schema で optional なので header object に渡しても型が通る。
+    // hc<AppType> 経由。`ws-ticket` は path セグメントに `-` を含むため bracket 記法
+    // で書く。Authorization header は server schema で optional 扱いなので、header
+    // object として渡しても型が通る。
     const res = await api.rooms[':id']['ws-ticket'].$post({
       param: { id: roomId },
       header: { authorization: `Bearer ${token}` },
     });
     if (res.status === 201) {
-      // Phase 8.x PR #15 self-review M1: shared `WsTicketResponseSchema`
-      // を使って safeParse。`fetchRoom` / `authenticateRoom` と同じ
-      // fail-soft pattern。32 hex regex は schema 側で enforce される
-      // ため、ここでの手書き check は不要になった。
+      // shared `WsTicketResponseSchema` で safeParse (`fetchRoom` / `authenticateRoom`
+      // と同じ fail-soft pattern)。32 hex regex は schema 側で enforce されるため、
+      // ここで手書き check する必要は無い。
       const raw: unknown = await res.json();
       const parsed = WsTicketResponseSchema.safeParse(raw);
       if (!parsed.success) {
@@ -238,20 +228,20 @@ export type ImageFetchResult =
   | { ok: false; reason: ImageFetchFailure };
 
 /**
- * Fetches a protected room's image with a Bearer token and exposes it as a
- * blob ObjectURL — Konva's <img> wrapper cannot send Authorization headers
- * directly, so we materialize the bytes and hand back a local URL.
+ * protected room の画像を Bearer token 付きで fetch し、blob ObjectURL として返す。
+ * Konva の <img> wrapper は Authorization header を直接送れないため、ここで bytes を
+ * 取得してローカル URL に materialize する。
  *
- * Caller MUST `URL.revokeObjectURL(objectUrl)` when the image is unmounted.
+ * caller は image を unmount する際に **必ず** `URL.revokeObjectURL(objectUrl)` を呼ぶこと。
  */
 export const fetchProtectedImage = async (
   roomId: string,
   token: string,
 ): Promise<ImageFetchResult> => {
   try {
-    // Phase 8.x Hono review #4 M2: hc<AppType> 経由。binary レスポンスは
-    // 200 デフォルト schema を持たない (createRoute で content 省略) が、
-    // hc client は `Response` を返すので `.blob()` で取れる。
+    // hc<AppType> 経由。binary レスポンスは createRoute 側で content を省略しており
+    // 200 default schema を持たないが、hc client は `Response` を返すので `.blob()`
+    // で取れる。
     const res = await api.rooms[':id'].image.$get({
       param: { id: roomId },
       header: { authorization: `Bearer ${token}` },
