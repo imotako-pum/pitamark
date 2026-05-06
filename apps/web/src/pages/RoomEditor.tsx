@@ -16,12 +16,12 @@ import { EditorShell } from './EditorShell';
 
 type Props = Readonly<{ roomId: string }>;
 
-// 4-state machine:
-//   loading      — fetchRoom is in flight
-//   gate         — protected room with no usable token; show RoomGate
-//   ready        — image is fetchable; `url` is either a public URL (unprotected)
-//                  or a blob: ObjectURL (protected, fetched with Bearer)
-//   not-found    — fetchRoom returned null (TTL expired / typo)
+// 4 状態の state machine:
+//   loading   — fetchRoom が in-flight
+//   gate      — 利用可能な token を持たない protected room。RoomGate を表示
+//   ready     — 画像取得可能。`url` は public URL (unprotected) か blob: ObjectURL
+//               (protected を Bearer で取得した結果)
+//   not-found — fetchRoom が null を返した (TTL 切れ / typo)
 type ImageState =
   | { kind: 'loading' }
   | { kind: 'gate' }
@@ -32,20 +32,20 @@ export const RoomEditor = ({ roomId }: Props) => {
   const t = useTranslation();
   const [imageState, setImageState] = useState<ImageState>({ kind: 'loading' });
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-  // `token` is hoisted into state so a successful RoomGate auth re-runs the
-  // image-fetch effect AND propagates the JWT into useYjsAnnotationsStore so
-  // the WebSocket reconnects with `?token=`.
+  // `token` は state に hoist。RoomGate での auth 成功時に image-fetch effect が再実行
+  // され、同時に JWT が useYjsAnnotationsStore に伝わって WebSocket が `?token=` 付きで
+  // 再接続される。
   const [token, setToken] = useState<string | null>(() => getRoomToken(roomId));
 
-  // Reset state when navigating between rooms.
+  // 別 room へ navigate したときに state をリセットする。
   useEffect(() => {
     setToken(getRoomToken(roomId));
     setImageState({ kind: 'loading' });
   }, [roomId]);
 
-  // Image-fetch effect. Handles unprotected (direct URL), protected w/ token
-  // (blob fetch), and protected w/o token (RoomGate). Cleans up ObjectURLs
-  // on unmount or when the resolved URL changes.
+  // image fetch effect。unprotected (直接 URL)、protected + token (blob fetch)、
+  // protected + token なし (RoomGate) の 3 経路を処理する。ObjectURL は unmount 時 /
+  // 解決後 URL が変わったときに revoke する。
   useEffect(() => {
     let cancelled = false;
     let createdObjectUrl: string | null = null;
@@ -76,7 +76,7 @@ export const RoomEditor = ({ roomId }: Props) => {
         return;
       }
       if (result.reason === 'unauthorized') {
-        // Stale token (e.g. server secret rotated) — clear and re-prompt.
+        // 期限切れ token (例: server secret rotation) — 削除して再 gate へ。
         clearRoomToken(roomId);
         setToken(null);
         setImageState({ kind: 'gate' });
@@ -86,7 +86,7 @@ export const RoomEditor = ({ roomId }: Props) => {
         setImageState({ kind: 'not-found' });
         return;
       }
-      // Network: fall back to gate so the user can retry.
+      // network 失敗時は gate に戻して、ユーザがリトライできる形にする。
       setImageState({ kind: 'gate' });
     })();
 
@@ -103,8 +103,8 @@ export const RoomEditor = ({ roomId }: Props) => {
   }, []);
 
   const store = useYjsAnnotationsStore(roomId, undefined, token);
-  // Lazy useState init: idempotent + matches the Storage-touching pattern
-  // better than `useMemo([])` (which is not guaranteed-once under StrictMode).
+  // useState の lazy init を使う。idempotent で、Storage に触る初期化として
+  // `useMemo([])` (StrictMode で 1 回保証されない) より安全。
   const [localUser] = useState(getOrCreateLocalUser);
   const presence = usePresence(store.awareness, localUser);
 

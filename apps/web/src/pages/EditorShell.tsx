@@ -30,10 +30,10 @@ import { nextColor, prevColor } from '../lib/colorCycle';
 import { clampFontSize, decrementFontSize, incrementFontSize } from '../lib/fontSize';
 import { generateId } from '../lib/id';
 
-// Phase 7.8-2 Auto-next-B: 矩形確定直後の既定矢印プレビューの pending 状態。
-// CanvasStage の Layer 描画と useKeyboardShortcuts (Enter binding) 両方が touch する
-// ため EditorShell に置く。ref + state の二重管理 — ref は同 React event 内で同期参照
-// (Enter 確定 callback が ref.current で最新を見る)、state は Konva 再レンダーをトリガする。
+// Auto-next-B (矩形確定直後の既定矢印プレビュー) の pending 状態。
+// CanvasStage の Layer 描画と useKeyboardShortcuts (Enter binding) 両方が触るため
+// EditorShell に置く。ref + state の二重管理: ref は同 React event 内の同期参照
+// (Enter 確定 callback が ref.current で最新を見る)、state は Konva 再描画をトリガする。
 type PendingAutoArrow = Readonly<{
   from: Point;
   to: Point;
@@ -49,35 +49,34 @@ type ImageDescriptor = Readonly<{ url: string }>;
 export type EditorShellProps = Readonly<{
   source: ImageDescriptor | null;
   imageError: string | null;
-  /** When undefined the DropZone is replaced by a loading hint (room mode). */
+  /** undefined のとき DropZone は loading hint (room モード用) に置き換わる。 */
   onLoadFile?: (file: File) => void;
   onClearImage: () => void;
   store: AnnotationsStore;
   onCursorMove?: (point: { x: number; y: number } | null) => void;
-  /** Builds the awareness Konva layer; called inside CanvasStage.
-   *  Receives an awarenessLayerRef so the parent can hide/show during PNG export. */
+  /** awareness Konva layer を構築する。CanvasStage 内から呼ばれる。
+   *  awarenessLayerRef を受け取るので親が PNG export 時に hide/show できる。 */
   awarenessLayer?: (
     annotations: ReadonlyArray<Annotation>,
     layerRef: Ref<Konva.Layer>,
   ) => ReactNode;
-  /** Mirror local selection into presence (Yjs awareness). */
+  /** ローカル選択を presence (Yjs awareness) に mirror する。 */
   onSelectedIdChange?: (id: string | null) => void;
-  /** Top-right toolbar slot (CopyUrlButton). */
+  /** toolbar 右上の slot (CopyUrlButton)。 */
   toolbarRight?: ReactNode;
-  /** Bottom-right floating slot (ConnectionBadge). */
+  /** 右下の floating slot (ConnectionBadge)。 */
   floatingExtras?: ReactNode;
-  /** Floating slot rendered immediately below the header at `top: headerHeight`.
-   *  Tracks the dynamic Toolbar height so wrapping toolbars (narrow viewport)
-   *  don't occlude the slot. Used by LocalEditor for the optional protect-password
-   *  panel — see Phase 7.6 既知-2 fix for the original z-index gotcha. */
+  /** header 直下 (`top: headerHeight`) の floating slot。Toolbar の動的高さに追従し、
+   *  narrow viewport で wrap した toolbar が slot を隠さないようにする。LocalEditor の
+   *  protect-password panel で使われていた経路で、現在は Hero との重なり回避のため
+   *  inline 配置に切り替えている (将来 editor-mode の floating chrome 用に空けて残す)。 */
   belowHeader?: ReactNode;
-  /** Phase 10.H: When `source === null`, the wrapper this returns replaces
-   *  the bare `<DropZone>` with a fuller landing experience (Hero / Features
-   *  / HowTo / FAQ). Receives the configured `<DropZone>` as a child slot so
-   *  the primary CTA stays in the same place. RoomEditor does not pass this
-   *  (room mode never shows an empty state). */
+  /** `source === null` のときに `<DropZone>` を landing UI (Hero / Features / HowTo /
+   *  Faq) で wrap するための callback。配置済みの `<DropZone>` を子 slot として受け
+   *  取るので、primary CTA の位置がブレない。RoomEditor は empty state を持たない
+   *  ため渡さない。 */
   landingSlot?: (dropzone: ReactNode) => ReactNode;
-  /** roomId for export filename; null in local mode. */
+  /** export filename 用の roomId。local モードでは null。 */
   roomId?: string | null;
 }>;
 
@@ -98,24 +97,21 @@ export const EditorShell = ({
 }: EditorShellProps) => {
   const t = useTranslation();
   const stageContainerRef = useRef<HTMLDivElement>(null);
-  // Phase 8.x perf review #10 M2: `useStageSize` no longer registers a
-  // `window.resize` listener — it observes `document.documentElement` via
-  // ResizeObserver. The duplicate resize listener that lived here for
-  // `stageRect` has been switched to ResizeObserver on the stage container
-  // (see effect below) so a viewport change re-renders exactly once.
+  // `useStageSize` は `window.resize` listener を持たず、`document.documentElement`
+  // を ResizeObserver で監視する。以前 `stageRect` 用に同居していた window.resize
+  // listener は stage container 側の ResizeObserver (下の effect) に移したので、
+  // viewport 変化で再レンダーは丁度 1 回。
   const stageSize = useStageSize();
   const headerRef = useRef<HTMLElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const awarenessLayerRef = useRef<Konva.Layer>(null);
-  // Phase 7.8-1 Auto-next-A: CanvasStage が onStartTextEditing(id, { autoNext: true })
-  // で起動した text 編集が、commit / cancel どちらでも tool='select' に復帰するための
-  // フラグ。state ではなく ref で持つ理由は Phase 7.7-3 panActiveRef と同じ — 連続
-  // dispatch との同期参照が必要になり得るため。通常の text ツール経路 (autoNext 省略)
-  // では立たないので、連続 text 作成モードを壊さない。
+  // CanvasStage が `onStartTextEditing(id, { autoNext: true })` で起動した text 編集が
+  // commit / cancel どちらでも tool='select' に復帰するためのフラグ。state ではなく
+  // ref で持つのは、連続 dispatch との同期参照が必要になり得るため (panActiveRef と同じ)。
+  // 通常の text ツール経路 (autoNext 省略) では立たないので、連続 text 作成モードは壊れない。
   const autoNextChainRef = useRef(false);
-  // Phase 7.8-2 Auto-next-B: pending 矢印の ref + state 二重管理 (詳細は型宣言の上の
-  // コメント参照)。setPendingAutoArrow を経由してのみ書き換えるため、ref と state
-  // が乖離しない。
+  // pending Auto-arrow の ref + state 二重管理 (詳細は型宣言の上のコメント参照)。
+  // `setPendingAutoArrow` 経由でのみ書き換えるので、ref と state が乖離しない。
   const pendingAutoArrowRef = useRef<PendingAutoArrow | null>(null);
   const [pendingAutoArrow, setPendingAutoArrowState] = useState<PendingAutoArrow | null>(null);
   const setPendingAutoArrow = useCallback((p: PendingAutoArrow | null) => {
@@ -131,8 +127,8 @@ export const EditorShell = ({
   } | null>(null);
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
 
-  // ResizeObserver replaces the previous TOOLBAR_HEIGHT constant so the stage
-  // tracks the real header height when it wraps to two rows on small screens.
+  // 旧 TOOLBAR_HEIGHT 定数を ResizeObserver に置き換える。narrow 画面で toolbar が
+  // 2 行に wrap したときも stage が実 header 高さに追従する。
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -140,8 +136,8 @@ export const EditorShell = ({
     update();
     let raf = 0;
     const observer = new ResizeObserver(() => {
-      // rAF defer keeps ResizeObserver from emitting "loop completed" warnings
-      // when the resize triggers an immediate React re-render.
+      // resize で即時 React re-render が走ると ResizeObserver の "loop completed"
+      // 警告が出るため、rAF で defer する。
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(update);
     });
@@ -152,11 +148,10 @@ export const EditorShell = ({
     };
   }, []);
 
-  // Phase 8.x perf review #10 M2: TextEditorOverlay positions against the
-  // exact stage container rect, so we observe the same element via
-  // ResizeObserver (matching `useStageSize`) instead of a second
-  // `window.resize` listener. `source` triggers re-observation when the
-  // image swap remounts the stage container.
+  // TextEditorOverlay は stage container の正確な rect に対して位置決めするため、
+  // 同じ要素を ResizeObserver で監視する (`useStageSize` と同方針、`window.resize`
+  // listener を二重に持たない)。`source` を deps に入れているのは、画像差し替えで
+  // stage container が remount されたときに再観測するため。
   useLayoutEffect(() => {
     const el = stageContainerRef.current;
     if (!el) return;
@@ -182,7 +177,7 @@ export const EditorShell = ({
 
   const handleSetTool = useCallback(
     (tool: Tool) => {
-      // Phase 7.8-2: pending Auto-arrow があれば、別ツールキー押下でキャンセル。
+      // pending Auto-arrow があれば、別ツールキー押下でキャンセル。
       if (pendingAutoArrowRef.current) {
         setPendingAutoArrow(null);
       }
@@ -199,8 +194,8 @@ export const EditorShell = ({
   }, []);
 
   const handleDelete = useCallback(() => {
-    // Phase 7.8-2: pending Auto-arrow があれば、BS は pending クリアを優先する。
-    // 通常の「選択中注釈削除」は pending クリア後に次の BS で復帰する。
+    // pending Auto-arrow があるときは Backspace を pending クリアに優先で振る。
+    // 通常の「選択中 annotation 削除」は pending クリア後の次の Backspace で復帰する。
     if (pendingAutoArrowRef.current) {
       setPendingAutoArrow(null);
       return;
@@ -214,7 +209,7 @@ export const EditorShell = ({
   }, [store, editingTextId, setPendingAutoArrow]);
 
   const handleEscape = useCallback(() => {
-    // Phase 7.8-2: pending Auto-arrow があれば、Esc は pending クリアを最優先。
+    // pending Auto-arrow があるときは Esc を最優先で pending クリアに振る。
     if (pendingAutoArrowRef.current) {
       setPendingAutoArrow(null);
       return;
@@ -228,22 +223,20 @@ export const EditorShell = ({
     }
   }, [editingTextId, store, setPendingAutoArrow]);
 
-  // Phase 7.8-2: マウス mousedown 任意座標で pending をクリアするための callback。
-  // CanvasStage の handleMouseDown 冒頭から呼ばれる。pending が null のときは no-op。
+  // マウス mousedown 任意座標で pending をクリアするための callback。CanvasStage の
+  // handleMouseDown 冒頭で呼ばれ、pending が null のときは no-op。
   const handleCancelAutoArrowIfAny = useCallback(() => {
     if (pendingAutoArrowRef.current) {
       setPendingAutoArrow(null);
     }
   }, [setPendingAutoArrow]);
 
-  // Phase 10.H: On `lg:` breakpoint (>= 1024px) the page shell reserves two
-  // 160px ad rails on the sides. The Konva stage receives the *inner* width
-  // (viewport - rails) so the canvas does not overflow into the rails. The
-  // CSS-side inset of the stage container uses `lg:left-40 lg:right-40` to
-  // match `RAIL_WIDTH_PX` exactly. Below `lg:` the rails are display:none so
-  // the stage uses the full viewport width — but a fixed 100px bottom
-  // AdSlot sits over the bottom of the viewport, so the stage container
-  // also reserves `BOTTOM_HEIGHT_PX` of bottom inset on narrow widths.
+  // `lg:` (>= 1024px) では page shell が 160px の ad rail を左右に確保する。Konva stage
+  // には viewport から rail を差し引いた *inner* width を渡し、canvas が rail に被ら
+  // ないようにする。stage container の CSS inset は `lg:left-40 lg:right-40` で
+  // `RAIL_WIDTH_PX` と整合させる。`lg:` 未満では rail が display:none で stage が
+  // viewport 全幅になるが、fixed 100px の bottom AdSlot が viewport 下端に被るので、
+  // narrow では stage container 側でも `BOTTOM_HEIGHT_PX` を bottom inset として確保する。
   const isLgViewport = stageSize.width >= 1024;
   const stageInnerWidth = isLgViewport
     ? Math.max(stageSize.width - RAIL_WIDTH_PX * 2, 0)
@@ -253,10 +246,9 @@ export const EditorShell = ({
     stageSize.height - headerHeight - stageBottomInset,
     MIN_STAGE_HEIGHT,
   );
-  // Destructure once so each handler / effect depends on a stable function
-  // reference rather than `transformApi.X` (a fresh property access per
-  // render). This mirrors the same fragility class as the `[viewport]`
-  // identity bug fixed inside useStageTransform.
+  // 1 回 destructure することで、各 handler / effect が `transformApi.X` (毎 render の
+  // property access) ではなく安定した関数 reference に依存するようにする。
+  // useStageTransform 内で対処した `[viewport]` identity バグと同じ脆弱性パターン。
   const {
     transform: stageTransform,
     setImageSize: setStageImageSize,
@@ -283,51 +275,43 @@ export const EditorShell = ({
   const canExport = source !== null;
   const handleExport = useCallback(() => {
     if (!canExport) return;
-    // Commit any in-flight text edit before rasterizing — DOM overlays are
-    // not part of the Konva canvas, so otherwise the typed text is lost.
+    // raster 化前に in-flight な text 編集を確定させる。DOM overlay は Konva canvas
+    // の一部ではないので、確定しないと打ちかけの text が失われる。
     setEditingTextId(null);
     void exportPng();
   }, [canExport, exportPng]);
 
-  // Expose the transform on window so E2E can poll it without coupling to the
-  // canvas DOM. Mirrors the existing __SNAP_SHARE_ANNOTATIONS__ pattern.
-  // Phase 8.x band-aids review #5 H1: gated on `import.meta.env.DEV` so
-  // production bundles strip the assignment via Vite tree-shaking — same
-  // pattern as `useYjsAnnotationsStore.ts:106`.
+  // transform を window に露出して、E2E が canvas DOM に結合せずに poll できるように
+  // する (`__SNAP_SHARE_ANNOTATIONS__` と同 pattern)。`import.meta.env.DEV` で gate
+  // しているので production bundle では Vite の tree-shaking で代入ごと除去される。
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_STAGE_TRANSFORM__ = stageTransform;
   }, [stageTransform]);
 
-  // Phase 7.8-1: Auto-next-A の検証で tool 状態を E2E から polling 確認するために
-  // 公開する。Toolbar の active 表示で代替できるが、E2E の安定度は window expose
-  // の方が高いため既存パターンに揃える。
-  // Phase 8.x band-aids review #5 H1: DEV-only.
+  // Auto-next-A の検証で tool 状態を E2E から polling 確認するために公開する。
+  // Toolbar の active 表示でも代替できるが、E2E の安定度は window expose の方が
+  // 高いので既存 pattern に揃える。DEV-only。
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_TOOL__ = store.state.tool;
   }, [store.state.tool]);
 
-  // Phase 7.8-2: pending Auto-arrow を E2E から poll するため公開。null = pending なし、
+  // pending Auto-arrow を E2E から poll するため公開。null = pending なし、
   // object = プレビュー中。Toolbar に出ない情報なので window expose のみが現実的。
-  // Phase 8.x band-aids review #5 H1: DEV-only.
+  // DEV-only。
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_PENDING_AUTO_ARROW__ =
       pendingAutoArrow;
   }, [pendingAutoArrow]);
 
-  // Expose transform actions for E2E. Playwright's keyboard.press cannot
-  // reliably trigger Meta+0 / Meta+1 (Chromium intercepts these as browser
-  // shortcuts before the page can preventDefault), so the E2E covers the
-  // transform pipeline by calling these directly. The keyboard binding
-  // itself is small and covered by the existing keyboard-shortcuts.spec.ts
-  // pattern (V / R / A / T / H + Cmd+S).
-  // Phase 8.x band-aids review #5 H1: DEV-only. Critically, this hatch
-  // exposes function references (fitToViewport / setHundredPercent /
-  // zoomBy / panBy) — without the gate, third-party scripts on a
-  // production page could call them. The gate strips the entire
-  // assignment in production via Vite tree-shaking.
+  // transform actions を E2E 用に露出する。Playwright の keyboard.press は Meta+0 /
+  // Meta+1 を確実に発火できない (Chromium が browser shortcut として page に届く前に
+  // 捕まえる) ため、E2E は transform pipeline をこれら関数経由で直接叩いて検証する。
+  // keyboard binding 自体は小さく、既存の keyboard-shortcuts.spec.ts (V/R/A/T/H +
+  // Cmd+S) で網羅済。DEV-only にしているのが重要 — function reference を露出する
+  // ため、production で第三者 script から呼ばれないよう Vite tree-shaking で除去する。
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>).__SNAP_SHARE_TRANSFORM_ACTIONS__ = {
@@ -347,8 +331,8 @@ export const EditorShell = ({
         store.dispatch({ type: 'annotation/set-text', id: editingTextId, text });
       }
       setEditingTextId(null);
-      // Phase 7.8-1: Auto-next-A 連鎖中なら tool を select に戻す。通常の text ツール
-      // 経路では ref が立たないので、連続 text 作成モードは保たれる。
+      // Auto-next-A 連鎖中なら tool を select に戻す。通常の text ツール経路では
+      // ref が立たないので、連続 text 作成モードは保たれる。
       if (autoNextChainRef.current) {
         autoNextChainRef.current = false;
         store.dispatch({ type: 'tool/set', tool: 'select' });
@@ -369,7 +353,7 @@ export const EditorShell = ({
   }, [editingTextId, editingAnnotation, store]);
 
   const handleClearImage = useCallback(() => {
-    // Phase 7.8-2: 画像クリア時に pending Auto-arrow も消す (孤立した pending 状態を残さない)。
+    // 画像クリア時は pending Auto-arrow も消す (孤立した pending 状態を残さない)。
     setPendingAutoArrow(null);
     setStageImageSize(null);
     setImageNaturalSize(null);
@@ -377,11 +361,9 @@ export const EditorShell = ({
     setEditingTextId(null);
   }, [onClearImage, setStageImageSize, setPendingAutoArrow]);
 
-  // Single click handler: always update active color (drives next draws),
-  // and if a selection exists, also apply the new color to it. Replaced the
-  // earlier "pick + 2 apply buttons" UX after dogfood feedback that the 2-step
-  // flow felt heavy and the sync/highlight lane separation produced an
-  // indicator discontinuity on tool switches.
+  // 1 クリックで「active color を更新 (= 次の描画に効く) + 選択中なら同色を適用」する
+  // 単一 handler。旧 UX (pick + 2 つの apply ボタン) は 2 段階で重く感じる + sync/highlight
+  // レーン分離で tool 切替時に swatch が飛ぶ問題があり dogfood で却下されたため。
   const handlePickColor = useCallback(
     (color: string) => {
       store.dispatch({ type: 'active-color/set', color });
@@ -440,10 +422,10 @@ export const EditorShell = ({
     setHelpOpen((prev) => !prev);
   }, []);
 
-  // Phase 7.8-2: 矩形 mouseup 時に呼ばれる callback。CanvasStage が rect 形状を渡す。
-  // 矩形 add は CanvasStage 側で既に dispatch 済 (handleMouseUp の committing dispatch)。
-  // ここでは pending を立てるだけ。stopUndoCapture で矩形 step を fix し、後続の
-  // arrow add (Enter 経路) を別 step として独立させる。
+  // 矩形 mouseup 時に呼ばれる callback。CanvasStage が rect 形状を渡す。矩形 add は
+  // CanvasStage 側で既に dispatch 済 (handleMouseUp の committing dispatch)。ここでは
+  // pending を立てるだけ。stopUndoCapture で矩形 step を確定させ、後続の arrow add
+  // (Enter 経路) を別 step として独立させる。
   const handleAutoNextRectangle = useCallback(
     (rect: { x: number; y: number; width: number; height: number }) => {
       store.stopUndoCapture();
@@ -458,9 +440,9 @@ export const EditorShell = ({
     [store, setPendingAutoArrow],
   );
 
-  // Phase 7.8-2: Enter で pending Auto-arrow を確定。矢印 add → step 区切り → text add
-  // → tool=text + autoNextChainRef を立てて Phase 7.8-1 と同じ「commit/cancel 後 select
-  // 復帰」フローに合流。pending が null のときは安全側で no-op。
+  // Enter で pending Auto-arrow を確定: 矢印 add → step 区切り → text add → tool=text
+  // + autoNextChainRef を立てて、Auto-next-A と同じ「commit/cancel 後に select 復帰」
+  // フローに合流させる。pending が null のときは安全側で no-op。
   const handleConfirmAutoArrow = useCallback(() => {
     const p = pendingAutoArrowRef.current;
     if (!p) return;
@@ -476,7 +458,7 @@ export const EditorShell = ({
     };
     store.dispatch({ type: 'annotation/add', annotation: arrowAnnotation });
     store.dispatch({ type: 'select/set', id: arrowId });
-    // arrow → text を独立 undo step に分ける (Phase 7.8-1 と同じ作法)。
+    // arrow → text を独立 undo step に分ける (Auto-next-A と同じ作法)。
     store.stopUndoCapture();
     const offset = computeAutoNextTextOffset(p.from, p.to, AUTO_NEXT_TEXT_OFFSET_PX);
     const textId = generateId();
@@ -494,9 +476,9 @@ export const EditorShell = ({
     store.dispatch({ type: 'tool/set', tool: 'text' });
     store.dispatch({ type: 'select/set', id: textId });
     setPendingAutoArrow(null);
-    // Phase 7.8-2 review M1 修正: autoNextChainRef 設定 + setEditingTextId のペアを
-    // handleStartTextEditing に集約。Phase 7.8-1 の CanvasStage 経路と同じ関数を経由する
-    // ことで、Auto-next chain 起動の規約が 1 箇所に閉じる。
+    // autoNextChainRef 設定 + setEditingTextId のペアを handleStartTextEditing に集約。
+    // CanvasStage 経路 (Auto-next-A) と同じ関数を経由することで、Auto-next chain 起動の
+    // 規約が 1 箇所に閉じる。
     handleStartTextEditing(textId, { autoNext: true });
   }, [store, setPendingAutoArrow, handleStartTextEditing]);
 
@@ -515,7 +497,7 @@ export const EditorShell = ({
     onCycleColorPrev: source ? handleCycleColorPrev : undefined,
     onIncrementFontSize: source ? handleIncrementFontSize : undefined,
     onDecrementFontSize: source ? handleDecrementFontSize : undefined,
-    // Phase 7.8-2: pending Auto-arrow があるときだけ Enter binding を provide。
+    // pending Auto-arrow があるときだけ Enter binding を provide する。
     // pending なし時は browser default の Enter (button focus 等) を温存。
     onConfirmAutoArrow: pendingAutoArrow ? handleConfirmAutoArrow : undefined,
   });
@@ -527,9 +509,9 @@ export const EditorShell = ({
 
   return (
     <main className="relative h-dvh w-dvw overflow-hidden bg-(--color-surface) text-(--color-text)">
-      {/* Phase 10.H: AdSense rail placeholders. Reserved fixed-px regions on
-          `lg:` viewports so the future <ins class="adsbygoogle"> drop-in does
-          not introduce CLS. Hidden below lg via the AdSlot's own className. */}
+      {/* `lg:` viewport で 160px の rail 領域を確保しておき、将来の
+          <ins class="adsbygoogle"> 配線で CLS が発生しないようにする。
+          lg 未満では AdSlot 自身の className で hidden になる。 */}
       <AdSlot variant="rail" side="left" />
       <AdSlot variant="rail" side="right" />
       <header
@@ -539,11 +521,10 @@ export const EditorShell = ({
         <h1 className="pointer-events-auto hidden select-none self-center text-sm font-semibold tracking-wide opacity-70 md:block">
           {t('common.appName')}
         </h1>
-        {/* Phase 10.H: hide the editor Toolbar on landing (source === null).
-            The disabled tool buttons add no value before an image is loaded
-            and crowded the landing surface — verified during dogfood review.
-            When `source` becomes non-null the Toolbar mounts immediately,
-            which is also the user's "now you can edit" signal. */}
+        {/* landing (source === null) では editor Toolbar を非表示にする。画像未ロード
+            状態の disabled tool ボタンは情報価値が無く、landing 面を圧迫していた
+            (dogfood で確認済)。`source` が非 null になると即 Toolbar が mount され、
+            それがユーザへの「ここから編集できる」signal を兼ねる。 */}
         {source !== null ? (
           <Toolbar
             tool={store.state.tool}
@@ -566,14 +547,13 @@ export const EditorShell = ({
             onShowHelp={handleShowHelp}
           />
         ) : (
-          // Spacer keeps `justify-between` flexbox stable so the right slot
-          // (LangToggle) does not collapse into the brand h1.
+          // spacer。`justify-between` flexbox を安定させ、右 slot (LangToggle) が
+          // brand h1 にくっつかないようにする。
           <div aria-hidden="true" />
         )}
-        {/* Phase 10.H: LangToggle is rendered alongside the right slot so the
-            language switcher stays accessible on landing (where the editor
-            toolbar is hidden). It used to sit inside Toolbar, which gated
-            language switching behind "image loaded". */}
+        {/* LangToggle を右 slot 横に置いて、editor toolbar 非表示の landing でも
+            language 切替が触れる位置に保つ。以前は Toolbar 内にあり「image loaded」
+            の裏に gate されていた。 */}
         <div className="pointer-events-auto flex min-w-0 items-center justify-end gap-2 self-center md:w-auto">
           <LangToggle />
           {toolbarRight ?? null}
@@ -589,11 +569,9 @@ export const EditorShell = ({
       )}
       <div
         ref={stageContainerRef}
-        // Phase 10.H: stage container's vertical extent is fully determined
-        // by `style={{ top, height }}` — `bottom` is intentionally NOT set
-        // so the inline height (`vh - headerHeight - stageBottomInset`)
-        // wins. `lg:left-40 lg:right-40` reserves 160px gutters for the
-        // side ad rails on lg+ widths.
+        // stage container の縦方向は `style={{ top, height }}` で完全に決まる。
+        // `bottom` は意図的に未設定で、inline 高さ (`vh - headerHeight - stageBottomInset`)
+        // が勝つ。`lg:left-40 lg:right-40` で lg+ 用の 160px 横 gutter を確保する。
         className="absolute inset-x-0 lg:left-40 lg:right-40"
         style={{ top: headerHeight, height: stageHeight }}
       >
@@ -618,10 +596,9 @@ export const EditorShell = ({
             onCancelAutoArrowIfAny={handleCancelAutoArrowIfAny}
           />
         ) : onLoadFile ? (
-          // Phase 10.H: When LocalEditor provides `landingSlot`, wrap the
-          // <DropZone> with the landing surface (Hero / Features / HowTo /
-          // Faq). Otherwise fall back to a bare DropZone — matches prior
-          // behaviour for any consumer that does not opt in.
+          // LocalEditor が `landingSlot` を渡したときは <DropZone> を landing UI
+          // (Hero / Features / HowTo / Faq) で wrap する。渡さない consumer (room
+          // モード等) は素の DropZone に fallback して従来挙動を保つ。
           landingSlot ? (
             landingSlot(<DropZone onFile={onLoadFile} error={imageError} />)
           ) : (
@@ -643,11 +620,10 @@ export const EditorShell = ({
         />
       )}
       {floatingExtras}
-      {/* Phase 10.H: bottom AdSlot is `position: fixed; bottom: 0` and
-          `lg:hidden`, so it stays pinned regardless of scroll position on
-          narrow viewports and disappears on lg+ where the side rails take
-          over. Stage height already subtracts BOTTOM_HEIGHT_PX on narrow
-          to keep the canvas from being covered. */}
+      {/* bottom AdSlot は `position: fixed; bottom: 0` + `lg:hidden`。narrow viewport
+          では scroll 位置に関わらず常時表示で、lg+ では rail が代替するため非表示。
+          narrow 側の stage 高さは BOTTOM_HEIGHT_PX を既に差し引いてあり、canvas が
+          隠れない設計。 */}
       <AdSlot variant="bottom" />
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </main>

@@ -1,14 +1,13 @@
 import { lazy, Suspense } from 'react';
 
-// Phase 8.x perf review #10 H1+M1: split LocalEditor and RoomEditor into
-// independent code-split boundaries so that:
-//   - The landing/local-mode visit only fetches `vendor-canvas` (Konva +
-//     react-konva + use-image) and the LocalEditor chunk.
-//   - The room-mode visit additionally fetches `vendor-yjs` (yjs + y-websocket
-//     + y-protocols) on demand. Local mode never pays for Yjs network code.
-// `vite.config.ts` couples this with manualChunks so vendor splits are
-// stable across builds. `Suspense` fallback uses `aria-busy` so SR users
-// hear the transition rather than seeing a blank canvas in silence.
+// LocalEditor と RoomEditor を独立した code-split 境界に分ける:
+//   - landing / local モード訪問では `vendor-canvas` (Konva + react-konva + use-image)
+//     と LocalEditor chunk のみを fetch。
+//   - room モード訪問では追加で `vendor-yjs` (yjs + y-websocket + y-protocols) を
+//     遅延 fetch。local モードは Yjs network code を一切 download しない。
+// `vite.config.ts` の manualChunks と組み合わせて build 間で vendor split が安定する。
+// `Suspense` fallback は `aria-busy` を持たせて、screen reader 利用者が遷移を
+// 無音で見ずに済むようにする。
 const LocalEditor = lazy(() => import('./LocalEditor').then((m) => ({ default: m.LocalEditor })));
 const RoomEditor = lazy(() => import('./RoomEditor').then((m) => ({ default: m.RoomEditor })));
 
@@ -18,9 +17,9 @@ type Props = Readonly<{
 }>;
 
 /**
- * Dispatches to either the local-only or the Yjs-backed room editor.
- * The hook-order rule is satisfied by mounting two distinct components, so
- * navigating between modes unmounts/remounts cleanly.
+ * local-only か Yjs-backed room editor かを切り替える dispatcher。
+ * 2 つの別 component として mount するので React の hook 順序ルールを満たし、
+ * モード切替時の unmount/remount も綺麗に走る。
  */
 export const EditorPage = ({ roomId, onRoomIdChange }: Props) => (
   <Suspense fallback={<div aria-busy="true" className="h-screen w-screen" />}>
