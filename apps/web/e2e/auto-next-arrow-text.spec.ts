@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
+import { buildSolidPng } from './fixtures/upload';
 
 // Auto-next-A 直対応の E2E。矢印 mouseup 直後に空 text + IME 即時起動が走り、
 // commit / cancel いずれの経路でも tool='select' に復帰すること、Cmd+Z で
@@ -18,14 +19,7 @@ const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
 const SAMPLE = buildSolidPng(800, 600);
 
 const setupRoomWithImage = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImageBuffer(page, SAMPLE, 'auto-next.png');
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page, { buffer: SAMPLE, fileName: 'auto-next.png' });
   await page.waitForFunction(
     (k) => typeof (window as unknown as Record<string, unknown>)[k] === 'string',
     TOOL_KEY,

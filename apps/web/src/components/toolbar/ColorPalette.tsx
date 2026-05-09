@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { useTouchDevice } from '../../hooks/useTouchDevice';
 import { interpolate, useTranslation } from '../../i18n';
-import { COLOR_PALETTE, OUTLINE_ACCENT } from '../canvas/colors';
+import { COLOR_PALETTE } from '../canvas/colors';
 
 type ColorPaletteProps = Readonly<{
   // Color shown as the current "ring" indicator. Reflects what the next draw
@@ -42,19 +42,20 @@ export const ColorPalette = ({ activeColor, disabled, onPickColor }: ColorPalett
                   disabled={disabled}
                   onClick={() => onPickColor(color)}
                   className={cn(
-                    'rounded-md border border-transparent p-0',
-                    pressed && 'border-(--color-accent)',
+                    'rounded-full border border-transparent p-0',
                     isTouch && 'min-w-11 min-h-11',
                   )}
                 >
                   <span
                     aria-hidden="true"
-                    className="block size-4 rounded-[3px]"
+                    className="block size-4 rounded-full"
                     style={{
                       background: color,
+                      // TM-B 二重 ring: 内側 1px chip border + 1.5px white gap + 3.5px Y1 赤。
+                      // pressed 以外は現状通り 1px の inset border のみ。
                       boxShadow: pressed
-                        ? `0 0 0 2px ${OUTLINE_ACCENT} inset`
-                        : '0 0 0 1px rgba(0,0,0,0.12) inset',
+                        ? 'inset 0 0 0 1px rgba(0,0,0,0.12), 0 0 0 1.5px oklch(98% 0 0), 0 0 0 3.5px oklch(60% 0.22 28)'
+                        : 'inset 0 0 0 1px rgba(0,0,0,0.12)',
                     }}
                   />
                 </Button>

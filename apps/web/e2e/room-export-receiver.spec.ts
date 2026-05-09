@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { dropImage, waitForRoomCreatedResponse } from './fixtures/upload';
 
 // cross-origin PNG export の regression 検知:
 //
@@ -28,8 +28,10 @@ test.describe('cross-origin PNG export from a receiver context', () => {
     try {
       // 送信側: 画像 D&D → /r/:id 遷移
       await senderPage.goto('/');
+      const responsePromise = waitForRoomCreatedResponse(senderPage);
       await dropImage(senderPage);
-      await expect(senderPage).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+      await responsePromise;
+      await expect(senderPage).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
       const sharedUrl = senderPage.url();
 
       // 受信側: 別 context で同じ URL を開く（cross-origin の <img> 経路を踏む）

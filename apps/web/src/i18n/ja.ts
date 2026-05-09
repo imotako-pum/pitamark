@@ -60,9 +60,9 @@ export const ja = {
   'canvas.textEditor.aria': '注釈テキストを編集',
 
   // DropZone (画像未読込時の placeholder UI)。
-  'dropzone.headline': '画像をドロップしてください',
-  'dropzone.instructionPrefix': 'クリックで選択、または',
-  'dropzone.instructionSuffix': 'で貼り付け',
+  'dropzone.headline': '画像をドロップ',
+  'dropzone.instructionPrefix': 'drop / paste / click',
+  'dropzone.instructionSuffix': '',
   'dropzone.formats': 'PNG / JPEG / WebP / SVG (10MB まで)',
   'dropzone.loading': '画像を読み込んでいます…',
 

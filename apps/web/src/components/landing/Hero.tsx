@@ -17,13 +17,16 @@ export const Hero = ({ dropzone }: HeroProps) => {
         {/* h2 にしてあるのは、既存の header h1 "pitamark" をページの primary heading の
             ままにするため。header h1 は `md:` breakpoint 未満で `hidden md:block` により
             非表示になるが、landing 面ではこの h2 が「このサイトは何か」を伝える役割を担う。 */}
+        {/* text-balance で行送りを均等配分し、最終行に 1〜2 文字だけ残る ugly break
+            (例: "URL で一瞬共\n有") を回避する。word-break: keep-all は CJK で
+            2 文字熟語 (共有・注釈) を行末で割らないための保険。 */}
         <h2
           id="landing-hero-heading"
-          className="max-w-3xl text-center text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl lg:text-5xl"
+          className="max-w-3xl text-balance text-center text-2xl font-bold tracking-tight [word-break:keep-all] sm:text-3xl md:text-4xl lg:text-5xl"
         >
           {t('landing.hero.headline')}
         </h2>
-        <p className="max-w-xl text-center text-sm opacity-75 sm:text-base md:text-lg">
+        <p className="max-w-xl text-balance text-center text-sm opacity-75 [word-break:keep-all] sm:text-base md:text-lg">
           {t('landing.hero.subhead')}
         </p>
       </div>

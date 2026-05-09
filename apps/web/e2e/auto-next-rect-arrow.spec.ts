@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
+import { buildSolidPng } from './fixtures/upload';
 
 // Auto-next-B 直対応の E2E。矩形 mouseup 直後に既定矢印プレビューが立ち、Enter で
 // 確定 → Auto-next-A に連鎖して text 編集が起動する。BS / Esc / 別ツールキー / マウス
@@ -19,14 +20,7 @@ const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
 const SAMPLE = buildSolidPng(800, 600);
 
 const setupRoomWithImage = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImageBuffer(page, SAMPLE, 'auto-next-rect.png');
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page, { buffer: SAMPLE, fileName: 'auto-next-rect.png' });
   await page.waitForFunction(
     (k) => typeof (window as unknown as Record<string, unknown>)[k] === 'string',
     TOOL_KEY,

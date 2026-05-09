@@ -1,22 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
 
 // キーボードショートカットの作動を CI で lock する E2E。主なリスク領域は
 // useKeyboardShortcuts (apps/web/src/hooks/useKeyboardShortcuts.ts) で window 全体の
 // keydown を捕捉する一方、isEditableTarget が input/textarea にフォーカスがあるとき
 // shortcut を無効化する点。本 spec は両経路を踏んで regression を防ぐ。
 
-const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
-
 const waitForRoom = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImage(page);
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page);
 };
 
 const isPressed = async (page: import('@playwright/test').Page, label: string): Promise<boolean> =>

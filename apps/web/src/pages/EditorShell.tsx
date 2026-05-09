@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { AdSlot, BOTTOM_HEIGHT_PX, RAIL_WIDTH_PX } from '../components/ad/AdSlot';
+import { Logo } from '../components/app-shell/Logo';
 import { CanvasStage } from '../components/canvas/CanvasStage';
 import { ContextMenu, type ContextMenuItemId } from '../components/canvas/ContextMenu';
 import { DEFAULT_STROKE_WIDTH } from '../components/canvas/colors';
@@ -663,11 +664,9 @@ export const EditorShell = ({
       <AdSlot variant="rail" side="right" />
       <header
         ref={headerRef}
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-2 lg:left-40 lg:right-40"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-8 lg:left-40 lg:right-40"
       >
-        <h1 className="pointer-events-auto hidden select-none self-center text-sm font-semibold tracking-wide opacity-70 md:block">
-          {t('common.appName')}
-        </h1>
+        <Logo />
         {/* landing (source === null) では editor Toolbar を非表示にする。画像未ロード
             状態の disabled tool ボタンは情報価値が無く、landing 面を圧迫していた
             (dogfood で確認済)。`source` が非 null になると即 Toolbar が mount され、

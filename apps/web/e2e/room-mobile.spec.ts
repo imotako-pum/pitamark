@@ -21,7 +21,7 @@ test.describe('mobile landing layout', () => {
     // landing (画像未ロード) では editor toolbar が hidden になる。DropZone heading
     // が安定した mount 完了 signal。
     await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeHidden();
-    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible();
 
     // 初回は `--update-snapshots` で生成し commit。
     // OS / レンダリングエンジンの揺れを 2% で吸収。

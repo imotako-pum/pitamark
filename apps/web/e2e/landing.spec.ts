@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('landing page renders heading on desktop widths', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
-  await expect(page.locator('h1')).toContainText('pitamark');
+  await expect(page.getByRole('heading', { name: 'pitamark' })).toBeVisible();
 });
 
 // landing (source === null) では Toolbar を非表示にする。disabled tool button は
@@ -19,7 +19,7 @@ test('editor toolbar is hidden on landing (no image loaded)', async ({ page }) =
 test('drop zone shows the empty-state hint when no image is loaded', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible();
 });
 
 test('brand h1 stays reachable at tablet width (768px) — toolbar still hidden', async ({

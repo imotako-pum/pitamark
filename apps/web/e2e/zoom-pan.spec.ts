@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
+import { buildSolidPng } from './fixtures/upload';
 
 // Stage transform (scale + position) のキーボード / wheel / Space-drag 経路を
 // 検証する E2E。
@@ -13,7 +14,6 @@ import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
 
 const TRANSFORM_KEY = '__SNAP_SHARE_STAGE_TRANSFORM__';
 const ACTIONS_KEY = '__SNAP_SHARE_TRANSFORM_ACTIONS__';
-const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
 type Transform = { scale: number; x: number; y: number };
 
@@ -41,14 +41,7 @@ const readTransform = async (page: import('@playwright/test').Page): Promise<Tra
 const SAMPLE_PNG = buildSolidPng(2000, 1500);
 
 const setupRoom = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImageBuffer(page, SAMPLE_PNG, 'zoom-pan-sample.png');
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page, { buffer: SAMPLE_PNG, fileName: 'zoom-pan-sample.png' });
   // 画像 onLoad → setImageSize → fit が走るのを待つ。IDENTITY (scale:1,x:0,y:0)
   // のままだと fit がまだ走っていないので、IDENTITY 以外の値を fit 完了の
   // signal にする。

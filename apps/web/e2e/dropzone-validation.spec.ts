@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { awaitUploadReady, dropImage, SAMPLE_IMAGE_PATH } from './fixtures/upload';
+import {
+  awaitUploadReady,
+  dropImage,
+  SAMPLE_IMAGE_PATH,
+  waitForRoomCreatedResponse,
+} from './fixtures/upload';
 
 // DropZone validation の regression 検知 E2E。
 //
@@ -31,9 +36,10 @@ test.describe('DropZone validation', () => {
   }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
+    const responsePromise = waitForRoomCreatedResponse(page);
     await dropImage(page, SAMPLE_IMAGE_PATH);
-
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await responsePromise;
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
     await expect(
       page.getByRole('alert').filter({ hasText: '画像ファイルをドロップしてください' }),
     ).toBeHidden();
@@ -97,7 +103,7 @@ test.describe('DropZone validation', () => {
   test('hotfix #1: 初回マウント直後に loading hint がちらつかない', async ({ page }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible({
       timeout: 1_000,
     });
     await expect(page.getByText('画像を読み込んでいます…')).toBeHidden();
@@ -109,7 +115,7 @@ test.describe('DropZone validation', () => {
   test('hotfix #2: DropZone クリックでファイルピッカーが起動する', async ({ page }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
-    const button = page.getByRole('button', { name: '画像をドロップしてください' });
+    const button = page.getByRole('button', { name: '画像をドロップ' });
     await expect(button).toBeVisible();
 
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 5_000 });
@@ -131,7 +137,9 @@ test.describe('DropZone validation', () => {
 
     // setInputFiles は <input type="file"> に直接 file を流し込むので、
     // ファイルピッカーを経由しなくても production の onChange が走る。
+    const responsePromise = waitForRoomCreatedResponse(page);
     await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_IMAGE_PATH);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await responsePromise;
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
   });
 });

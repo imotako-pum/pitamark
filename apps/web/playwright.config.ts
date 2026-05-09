@@ -18,6 +18,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Phase 11 (E2E flake fix): default workers (= cpus / 2) は 10 コア機で 5 並列になり、
+  // wrangler dev (single-process Workers runtime) の POST /rooms スループットが頭打ちで
+  // 30s timeout が散発する。3 並列に絞ることで wrangler dev の queueing を緩和し、
+  // 1m20s 程度の全体 runtime はそのまま (CPU 律速ではなく API I/O 律速のため)。
+  workers: process.env.CI ? 1 : 3,
   globalSetup: './e2e/global-setup.ts',
   reporter: [['html', { open: 'never' }], ['list']],
   use: {

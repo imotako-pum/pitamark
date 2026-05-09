@@ -157,3 +157,25 @@ export async function dropImageBuffer(
 export async function awaitUploadReady(page: Page): Promise<void> {
   await waitForTurnstileGate(page);
 }
+
+/**
+ * uploader 経路 (dropImage / setInputFiles / paste) が発火する `POST /rooms` の
+ * response を直接待つ helper。Phase 11 (E2E flake fix) で導入。
+ *
+ * 旧 pattern (`expect(page).toHaveURL(/\/r\/.../, { timeout: 20_000 })`) は POST レスポンス
+ * 受信 → useImageSource.handleLoad → history.pushState という 3 段の async chain を
+ * 「URL を polling」で観測しており、並列負荷で POST が 20s 超になると flake していた。
+ * 本 helper は contract を「POST が成功したか」に narrow し、URL 反映 timing への依存を
+ * 切り離す (URL 反映は response 受信後ほぼ同期なので caller 側は 5s 程度で確認できる)。
+ *
+ * 使い方:
+ *   const responsePromise = waitForRoomCreatedResponse(page);
+ *   await dropImage(page, IMAGE_PATH);
+ *   const response = await responsePromise;
+ *   expect(response.ok()).toBe(true);
+ *   await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
+ */
+export const waitForRoomCreatedResponse = (page: Page, options: { timeout?: number } = {}) =>
+  page.waitForResponse((r) => /\/rooms$/.test(r.url()) && r.request().method() === 'POST', {
+    timeout: options.timeout ?? 60_000,
+  });
