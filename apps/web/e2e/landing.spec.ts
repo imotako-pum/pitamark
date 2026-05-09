@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('landing page renders heading on desktop widths', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
-  await expect(page.locator('h1')).toContainText('pitamark');
+  await expect(page.getByRole('heading', { name: 'pitamark' })).toBeVisible();
 });
 
 // landing (source === null) では Toolbar を非表示にする。disabled tool button は
