@@ -162,6 +162,27 @@ describe('RectangleShape', () => {
     m.unmount();
   });
 
+  // Phase 10.J-1: ADR-0007 D1 paired event binding (onClick + onTap)。
+
+  it('binds both onClick (mouse) and onTap (touch) per ADR-0007 D1', () => {
+    const m = renderShape({ isSelected: false });
+    const props = capture.rectProps[0] ?? {};
+    expect(typeof props.onClick).toBe('function');
+    expect(typeof props.onTap).toBe('function');
+    m.unmount();
+  });
+
+  it('onTap dispatches the same selection callback as onClick and cancels bubble', () => {
+    const onClick = vi.fn();
+    const m = renderShape({ isSelected: false, onClick });
+    const onTap = capture.rectProps[0]?.onTap as (e: { cancelBubble: boolean }) => void;
+    const evt = { cancelBubble: false };
+    onTap(evt);
+    expect(evt.cancelBubble).toBe(true);
+    expect(onClick).toHaveBeenCalledWith('r1');
+    m.unmount();
+  });
+
   // Phase 10.I-2: Transformer anchorSize adaptive。
 
   it('uses ANCHOR_SIZE_DESKTOP on the Transformer when not on a touch device', () => {

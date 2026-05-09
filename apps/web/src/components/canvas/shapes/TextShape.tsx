@@ -42,6 +42,12 @@ export const TextShape = ({
         e.cancelBubble = true;
         onClick(annotation.id);
       }}
+      // ADR-0007 D1: touch では `tap` が別発火するため `onClick` と paired binding。
+      // body は onClick と同一で、選択 dispatch のみ。edit 進入は `onDblTap` 経由。
+      onTap={(e: KonvaEventObject<TouchEvent>) => {
+        e.cancelBubble = true;
+        onClick(annotation.id);
+      }}
       onDblClick={(e: KonvaEventObject<MouseEvent>) => {
         e.cancelBubble = true;
         onDoubleClick(annotation.id);

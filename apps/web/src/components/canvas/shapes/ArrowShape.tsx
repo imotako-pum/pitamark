@@ -70,6 +70,11 @@ export const ArrowShape = ({
           e.cancelBubble = true;
           onClick(annotation.id);
         }}
+        // ADR-0007 D1: touch では `tap` が別発火するため `onClick` と paired binding。
+        onTap={(e: KonvaEventObject<TouchEvent>) => {
+          e.cancelBubble = true;
+          onClick(annotation.id);
+        }}
         onDragEnd={(e) => {
           const dx = e.target.x();
           const dy = e.target.y();
@@ -89,7 +94,15 @@ export const ArrowShape = ({
             strokeWidth={HANDLE_STROKE_WIDTH}
             draggable
             onPointerDown={(e: KonvaEventObject<PointerEvent>) => {
+              // 単一 pointer (mouse / pen / single-touch) の cancelBubble。
               // 親 Arrow の draggable に drag を奪わせない。
+              e.cancelBubble = true;
+            }}
+            // ADR-0007 D1 + ADR-0006 Status Update: Stage 側に `onTouchMove` (10.I-2 の
+            // multi-touch pinch) が bind されているため、touch event 経路でも親への伝搬を
+            // 抑止する必要がある。`onPointerDown` だけでは Konva の touch event 経路には
+            // 届かないため、paired で `onTouchStart` を追加。
+            onTouchStart={(e: KonvaEventObject<TouchEvent>) => {
               e.cancelBubble = true;
             }}
             onDragEnd={(e) => {
@@ -106,6 +119,12 @@ export const ArrowShape = ({
             strokeWidth={HANDLE_STROKE_WIDTH}
             draggable
             onPointerDown={(e: KonvaEventObject<PointerEvent>) => {
+              // 単一 pointer (mouse / pen / single-touch) の cancelBubble。
+              e.cancelBubble = true;
+            }}
+            // ADR-0007 D1 + ADR-0006 Status Update: from-handle と同様に touch event 経路
+            // でも親への伝搬を抑止 (Stage の `onTouchMove` 経路対策)。
+            onTouchStart={(e: KonvaEventObject<TouchEvent>) => {
               e.cancelBubble = true;
             }}
             onDragEnd={(e) => {

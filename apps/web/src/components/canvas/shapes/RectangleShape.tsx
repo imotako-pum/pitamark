@@ -64,6 +64,12 @@ export const RectangleShape = ({
           e.cancelBubble = true;
           onClick(annotation.id);
         }}
+        // ADR-0007 D1: Konva の `click` は mouse 専用、touch では `tap` が別発火する。
+        // body は onClick と同一で、shape 選択を touch 経路でも成立させる。
+        onTap={(e: KonvaEventObject<TouchEvent>) => {
+          e.cancelBubble = true;
+          onClick(annotation.id);
+        }}
         onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
         onTransformEnd={() => {
           // Konva applies the resize as a scale on the node — convert it back

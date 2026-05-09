@@ -64,6 +64,11 @@ export const HighlightShape = ({
           e.cancelBubble = true;
           onClick(annotation.id);
         }}
+        // ADR-0007 D1: touch では `tap` が別発火するため `onClick` と paired binding。
+        onTap={(e: KonvaEventObject<TouchEvent>) => {
+          e.cancelBubble = true;
+          onClick(annotation.id);
+        }}
         onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
         onTransformEnd={() => {
           const node = shapeRef.current;
