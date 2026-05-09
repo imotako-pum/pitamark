@@ -59,6 +59,46 @@ export const zoomAtPointer = (
   };
 };
 
+// ---- multi-touch pinch helpers (Phase 10.I-2) ----
+// Konva 公式 multi-touch sandbox の getDistance / getCenter / pinch 計算を純粋関数化
+// したもの。CanvasStage の onTouchMove ハンドラからこれらを呼び出して transform を
+// 更新する。ADR-0006 Status Update (Phase 10.I-2) 参照。
+
+export const getDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }): number =>
+  Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
+export const getCenter = (
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+): { x: number; y: number } => ({
+  x: (p1.x + p2.x) / 2,
+  y: (p1.y + p2.y) / 2,
+});
+
+/**
+ * pinch 入力 (中点 + scale 比 + pan delta) を 1 つの transform に集約する。
+ * 既存 zoomAtPointer + panBy を別々に呼ぶと state flush タイミングで 2 回 setState
+ * されるため、pinch 時は 1 setState に集約して描画 jitter を回避する。
+ */
+export const applyPinch = (
+  transform: StageTransform,
+  center: { x: number; y: number },
+  distRatio: number,
+  panDx: number,
+  panDy: number,
+): StageTransform => {
+  const newScale = clampScale(transform.scale * distRatio);
+  const pointTo = {
+    x: (center.x - transform.x) / transform.scale,
+    y: (center.y - transform.y) / transform.scale,
+  };
+  return {
+    scale: newScale,
+    x: center.x - pointTo.x * newScale + panDx,
+    y: center.y - pointTo.y * newScale + panDy,
+  };
+};
+
 const virtualBounds = (image: Size) => ({
   minX: -image.width * PAN_MARGIN_RATIO,
   minY: -image.height * PAN_MARGIN_RATIO,
@@ -97,6 +137,12 @@ export type UseStageTransform = Readonly<{
   zoomBy: (pointer: { x: number; y: number }, factor: number) => void;
   /** Space+drag: 直接的な position 加算 (clampPan を内部で適用)。*/
   panBy: (dx: number, dy: number) => void;
+  /** multi-touch pinch (Phase 10.I-2): scale + position を atomic に適用する。
+   *  applyPinch で計算した transform を渡すと clampPan を被せて 1 回だけ setState する。
+   *  zoomBy + panBy を連続で呼ぶ場合の 2 段 setState による jitter を回避する用途。
+   *  `prev => next` updater 形式を取ることで、pinch handler から最新 state ベースで
+   *  applyPinch を計算できる (props 経由の transform は 1 render 古い)。 */
+  setTransformDirect: (input: StageTransform | ((prev: StageTransform) => StageTransform)) => void;
 }>;
 
 export const useStageTransform = (viewport: Size): UseStageTransform => {
@@ -142,6 +188,17 @@ export const useStageTransform = (viewport: Size): UseStageTransform => {
     });
   }, []);
 
+  const setTransformDirect = useCallback(
+    (input: StageTransform | ((prev: StageTransform) => StageTransform)) => {
+      setTransform((prev) => {
+        const img = imageSizeRef.current;
+        const next = typeof input === 'function' ? input(prev) : input;
+        return img ? clampPan(next, img, viewportRef.current) : next;
+      });
+    },
+    [],
+  );
+
   // viewport 変化時は再 fit (画像表示中のみ)。Excalidraw も同挙動。`viewport`
   // オブジェクトが毎 render 新規作成されても再 fit ループに入らないよう、
   // 中身の width/height をプリミティブとして deps に取る。
@@ -151,5 +208,13 @@ export const useStageTransform = (viewport: Size): UseStageTransform => {
     setTransform(computeFitTransform(img, { width: viewport.width, height: viewport.height }));
   }, [viewport.width, viewport.height]);
 
-  return { transform, setImageSize, fitToViewport, setHundredPercent, zoomBy, panBy };
+  return {
+    transform,
+    setImageSize,
+    fitToViewport,
+    setHundredPercent,
+    zoomBy,
+    panBy,
+    setTransformDirect,
+  };
 };

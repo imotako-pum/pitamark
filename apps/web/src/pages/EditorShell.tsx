@@ -22,7 +22,8 @@ import type { AnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
-import { useStageTransform } from '../hooks/useStageTransform';
+import { applyPinch, useStageTransform } from '../hooks/useStageTransform';
+import { useTouchDevice } from '../hooks/useTouchDevice';
 import { useTranslation } from '../i18n';
 import { computeAutoArrowDefault } from '../lib/autoArrowDefault';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../lib/autoNextOffset';
@@ -121,6 +122,12 @@ export const EditorShell = ({
   const [stageRect, setStageRect] = useState<DOMRect | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState<number>(FALLBACK_HEADER_HEIGHT);
+  // Phase 10.I-3: touch 環境で Toolbar を画面下部固定に配置するときの高さ。
+  // flex-wrap で 2-3 行になる可能性があるため ResizeObserver で動的追従し、
+  // stageBottomInset に加算して画像が Toolbar に被らないようにする。
+  const bottomToolbarRef = useRef<HTMLDivElement>(null);
+  const [bottomToolbarHeight, setBottomToolbarHeight] = useState<number>(0);
+  const isTouch = useTouchDevice();
   const [imageNaturalSize, setImageNaturalSize] = useState<{
     width: number;
     height: number;
@@ -147,6 +154,35 @@ export const EditorShell = ({
       observer.disconnect();
     };
   }, []);
+
+  // Phase 10.I-3: bottom 固定 Toolbar の高さを ResizeObserver で動的追従。
+  // touch + source 両方が true のときだけ ref が attach されるため、依存配列で
+  // mount/unmount を確実化する。Toolbar が flex-wrap で 2-3 行になっても画像が
+  // Toolbar に被らないよう stageBottomInset に加算される。
+  //
+  // 不変条件: `isTouch === false` のとき bottom 固定 container は unmount されるため
+  // `bottomToolbarRef.current === null` になり、本 effect で `setBottomToolbarHeight(0)`
+  // が呼ばれる。`stageBottomInset` 計算 (line 251) では `isTouch ? bottomToolbarHeight
+  // : 0` で参照されるため二重に 0 が保証される (effect 内 + 計算式)。
+  useEffect(() => {
+    const el = bottomToolbarRef.current;
+    if (!el) {
+      setBottomToolbarHeight(0);
+      return;
+    }
+    const update = () => setBottomToolbarHeight(el.getBoundingClientRect().height);
+    update();
+    let raf = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    });
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [isTouch, source]);
 
   // TextEditorOverlay は stage container の正確な rect に対して位置決めするため、
   // 同じ要素を ResizeObserver で監視する (`useStageSize` と同方針、`window.resize`
@@ -241,7 +277,11 @@ export const EditorShell = ({
   const stageInnerWidth = isLgViewport
     ? Math.max(stageSize.width - RAIL_WIDTH_PX * 2, 0)
     : stageSize.width;
-  const stageBottomInset = isLgViewport ? 0 : BOTTOM_HEIGHT_PX;
+  // Phase 10.I-3: touch + 非 lg のときは AdSlot bottom (100px) の上に Toolbar が
+  // fixed bottom-[100px] で乗るため、bottomToolbarHeight 分も Stage から差し引く。
+  const stageBottomInset = isLgViewport
+    ? 0
+    : BOTTOM_HEIGHT_PX + (isTouch ? bottomToolbarHeight : 0);
   const stageHeight = Math.max(
     stageSize.height - headerHeight - stageBottomInset,
     MIN_STAGE_HEIGHT,
@@ -256,7 +296,27 @@ export const EditorShell = ({
     setHundredPercent,
     zoomBy,
     panBy,
+    setTransformDirect,
   } = useStageTransform({ width: stageInnerWidth, height: stageHeight });
+
+  // Phase 10.I-2: 2-finger pinch / pan を atomic に適用するための callback。
+  // CanvasStage の onTouchMove ハンドラから center / distRatio / panDx / panDy を
+  // 受け、`applyPinch` で transform を計算して clampPan 込みで 1 setState に集約する。
+  // updater 形式 (`prev => next`) で stale state を防ぎ、毎 frame 最新の transform
+  // を基準に pinch 計算する。
+  const handlePinchPan = useCallback(
+    (input: {
+      center: { x: number; y: number };
+      distRatio: number;
+      panDx: number;
+      panDy: number;
+    }) => {
+      setTransformDirect((prev) =>
+        applyPinch(prev, input.center, input.distRatio, input.panDx, input.panDy),
+      );
+    },
+    [setTransformDirect],
+  );
 
   const handleImageLoaded = useCallback(
     (size: { width: number; height: number } | null) => {
@@ -507,6 +567,33 @@ export const EditorShell = ({
     onSelectedIdChange?.(selectedId);
   }, [onSelectedIdChange, selectedId]);
 
+  // Phase 10.I-3: Toolbar の props を一箇所にまとめ、配置 (header 内 / bottom 固定)
+  // による重複定義を避ける。touch 時は <header> から外して bottom 固定 container に
+  // 入れる。詳細は ADR-0006 / Phase 10.I PRD。
+  const toolbarElement =
+    source !== null ? (
+      <Toolbar
+        tool={store.state.tool}
+        canUndo={store.canUndo}
+        canRedo={store.canRedo}
+        hasSelection={store.state.selectedId !== null}
+        imageLoaded={source !== null}
+        canExport={canExport}
+        activeColor={store.state.activeColor}
+        activeFontSize={store.state.activeFontSize}
+        onSetTool={handleSetTool}
+        onUndo={store.undo}
+        onRedo={store.redo}
+        onDelete={handleDelete}
+        onClearImage={handleClearImage}
+        onExport={handleExport}
+        onPickColor={handlePickColor}
+        onIncrementFontSize={handleIncrementFontSize}
+        onDecrementFontSize={handleDecrementFontSize}
+        onShowHelp={handleShowHelp}
+      />
+    ) : null;
+
   return (
     <main className="relative h-dvh w-dvw overflow-hidden bg-(--color-surface) text-(--color-text)">
       {/* `lg:` viewport で 160px の rail 領域を確保しておき、将来の
@@ -524,31 +611,15 @@ export const EditorShell = ({
         {/* landing (source === null) では editor Toolbar を非表示にする。画像未ロード
             状態の disabled tool ボタンは情報価値が無く、landing 面を圧迫していた
             (dogfood で確認済)。`source` が非 null になると即 Toolbar が mount され、
-            それがユーザへの「ここから編集できる」signal を兼ねる。 */}
-        {source !== null ? (
-          <Toolbar
-            tool={store.state.tool}
-            canUndo={store.canUndo}
-            canRedo={store.canRedo}
-            hasSelection={store.state.selectedId !== null}
-            imageLoaded={source !== null}
-            canExport={canExport}
-            activeColor={store.state.activeColor}
-            activeFontSize={store.state.activeFontSize}
-            onSetTool={handleSetTool}
-            onUndo={store.undo}
-            onRedo={store.redo}
-            onDelete={handleDelete}
-            onClearImage={handleClearImage}
-            onExport={handleExport}
-            onPickColor={handlePickColor}
-            onIncrementFontSize={handleIncrementFontSize}
-            onDecrementFontSize={handleDecrementFontSize}
-            onShowHelp={handleShowHelp}
-          />
+            それがユーザへの「ここから編集できる」signal を兼ねる。
+            Phase 10.I-3: touch 環境では Toolbar を <header> から外し、画面下部に
+            固定する (bottomToolbarRef の container 参照)。 */}
+        {!isTouch && toolbarElement !== null ? (
+          toolbarElement
         ) : (
           // spacer。`justify-between` flexbox を安定させ、右 slot (LangToggle) が
-          // brand h1 にくっつかないようにする。
+          // brand h1 にくっつかないようにする。touch 時の bottom 固定経路でも
+          // header の右 slot 配置を保つために spacer を出す。
           <div aria-hidden="true" />
         )}
         {/* LangToggle を右 slot 横に置いて、editor toolbar 非表示の landing でも
@@ -559,6 +630,23 @@ export const EditorShell = ({
           {toolbarRight ?? null}
         </div>
       </header>
+      {/* Phase 10.I-3: touch + source で Toolbar を画面下部に固定。AdSlot bottom
+          (BOTTOM_HEIGHT_PX = 100) の真上に乗せ、`paddingBottom: env(safe-area-inset-bottom)`
+          で iPhone notch / home indicator を回避する。z-30 で AdSlot (z-20) より前面。
+          wrapper は pointer-events-none、Toolbar 自身が pointer-events-auto を持つので
+          stage の操作には干渉しない。 */}
+      {isTouch && toolbarElement !== null && (
+        <div
+          ref={bottomToolbarRef}
+          className="pointer-events-none fixed inset-x-0 z-30 flex justify-center px-3"
+          style={{
+            bottom: BOTTOM_HEIGHT_PX,
+            paddingBottom: 'env(safe-area-inset-bottom)',
+          }}
+        >
+          {toolbarElement}
+        </div>
+      )}
       {belowHeader && (
         <div
           className="pointer-events-none absolute inset-x-0 z-10 flex justify-center px-3 lg:left-40 lg:right-40"
@@ -590,6 +678,7 @@ export const EditorShell = ({
             transform={stageTransform}
             onZoom={zoomBy}
             onPan={panBy}
+            onPinchPan={handlePinchPan}
             onImageLoaded={handleImageLoaded}
             pendingAutoArrow={pendingAutoArrow}
             onAutoNextRectangle={handleAutoNextRectangle}

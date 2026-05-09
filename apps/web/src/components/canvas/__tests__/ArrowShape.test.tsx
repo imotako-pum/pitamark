@@ -5,11 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type CapturedProps = Record<string, unknown>;
 
-const { capture } = vi.hoisted(() => ({
+const { capture, useTouchDeviceMock } = vi.hoisted(() => ({
   capture: {
     arrowProps: [] as CapturedProps[],
     circleProps: [] as CapturedProps[],
   },
+  useTouchDeviceMock: vi.fn<() => boolean>().mockReturnValue(false),
 }));
 
 vi.mock('react-konva', () => ({
@@ -23,6 +24,11 @@ vi.mock('react-konva', () => ({
   },
 }));
 
+vi.mock('../../../hooks/useTouchDevice', () => ({
+  useTouchDevice: () => useTouchDeviceMock(),
+}));
+
+import { HANDLE_RADIUS, HANDLE_RADIUS_TOUCH, HIT_STROKE_WIDTH_TOUCH } from '../colors';
 import { ArrowShape } from '../shapes/ArrowShape';
 
 const annotation: ArrowAnnotation = {
@@ -75,6 +81,7 @@ describe('ArrowShape', () => {
   beforeEach(() => {
     capture.arrowProps.length = 0;
     capture.circleProps.length = 0;
+    useTouchDeviceMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -130,13 +137,45 @@ describe('ArrowShape', () => {
     m.unmount();
   });
 
-  it('endpoint handles set cancelBubble on mousedown to avoid Arrow drag conflict', () => {
+  it('endpoint handles set cancelBubble on pointerdown to avoid Arrow drag conflict', () => {
     const m = renderShape({ isSelected: true });
     const fromHandle = capture.circleProps[0] ?? {};
-    const onMouseDown = fromHandle.onMouseDown as (e: { cancelBubble: boolean }) => void;
+    const onPointerDown = fromHandle.onPointerDown as (e: { cancelBubble: boolean }) => void;
     const evt = { cancelBubble: false };
-    onMouseDown(evt);
+    onPointerDown(evt);
     expect(evt.cancelBubble).toBe(true);
+    m.unmount();
+  });
+
+  // Phase 10.I-2: adaptive sizing for touch devices.
+
+  it('uses HANDLE_RADIUS (desktop default) when not on a touch device', () => {
+    useTouchDeviceMock.mockReturnValue(false);
+    const m = renderShape({ isSelected: true });
+    expect(capture.circleProps[0]?.radius).toBe(HANDLE_RADIUS);
+    expect(capture.circleProps[1]?.radius).toBe(HANDLE_RADIUS);
+    m.unmount();
+  });
+
+  it('uses HANDLE_RADIUS_TOUCH when on a touch device', () => {
+    useTouchDeviceMock.mockReturnValue(true);
+    const m = renderShape({ isSelected: true });
+    expect(capture.circleProps[0]?.radius).toBe(HANDLE_RADIUS_TOUCH);
+    expect(capture.circleProps[1]?.radius).toBe(HANDLE_RADIUS_TOUCH);
+    m.unmount();
+  });
+
+  it('passes hitStrokeWidth equal to annotation.strokeWidth on desktop (no expansion)', () => {
+    useTouchDeviceMock.mockReturnValue(false);
+    const m = renderShape({ isSelected: false });
+    expect(capture.arrowProps[0]?.hitStrokeWidth).toBe(annotation.strokeWidth);
+    m.unmount();
+  });
+
+  it('passes HIT_STROKE_WIDTH_TOUCH on touch device', () => {
+    useTouchDeviceMock.mockReturnValue(true);
+    const m = renderShape({ isSelected: false });
+    expect(capture.arrowProps[0]?.hitStrokeWidth).toBe(HIT_STROKE_WIDTH_TOUCH);
     m.unmount();
   });
 });

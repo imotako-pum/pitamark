@@ -1,6 +1,8 @@
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { useTouchDevice } from '../../hooks/useTouchDevice';
 import { useTranslation } from '../../i18n';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../lib/fontSize';
 
@@ -20,6 +22,9 @@ export const FontSizeControl = ({
   onDecrementFontSize,
 }: FontSizeControlProps) => {
   const t = useTranslation();
+  // Phase 10.I-3: touch 時は +/- ボタンの visual (size="icon-sm" = 28px) を保ったまま
+  // hit zone を 44px に拡張。
+  const isTouch = useTouchDevice();
   const atMin = activeFontSize <= MIN_FONT_SIZE;
   const atMax = activeFontSize >= MAX_FONT_SIZE;
   return (
@@ -39,7 +44,7 @@ export const FontSizeControl = ({
               aria-label={t('toolbar.fontSize.decreaseAria')}
               disabled={disabled || atMin}
               onClick={onDecrementFontSize}
-              className="rounded-md"
+              className={cn('rounded-md', isTouch && 'min-w-11 min-h-11')}
             >
               <Minus aria-hidden="true" />
             </Button>
@@ -73,7 +78,7 @@ export const FontSizeControl = ({
               aria-label={t('toolbar.fontSize.increaseAria')}
               disabled={disabled || atMax}
               onClick={onIncrementFontSize}
-              className="rounded-md"
+              className={cn('rounded-md', isTouch && 'min-w-11 min-h-11')}
             >
               <Plus aria-hidden="true" />
             </Button>

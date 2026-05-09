@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useTouchDevice } from '../../hooks/useTouchDevice';
 import { interpolate, useTranslation } from '../../i18n';
 import { COLOR_PALETTE, OUTLINE_ACCENT } from '../canvas/colors';
 
@@ -17,6 +18,8 @@ type ColorPaletteProps = Readonly<{
 
 export const ColorPalette = ({ activeColor, disabled, onPickColor }: ColorPaletteProps) => {
   const t = useTranslation();
+  // Phase 10.I-3: touch 時は swatch の visual (16px) を保ったまま hit zone を 44px に拡張。
+  const isTouch = useTouchDevice();
   return (
     // biome-ignore lint/a11y/useSemanticElements: fieldset would inherit unwanted form semantics; role="group" + aria-label cleanly groups the palette swatches.
     <div
@@ -41,6 +44,7 @@ export const ColorPalette = ({ activeColor, disabled, onPickColor }: ColorPalett
                   className={cn(
                     'rounded-md border border-transparent p-0',
                     pressed && 'border-(--color-accent)',
+                    isTouch && 'min-w-11 min-h-11',
                   )}
                 >
                   <span

@@ -102,3 +102,12 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Phase 10.I-1: iOS Safari / Android Chrome の native gesture (pan / pinch /
+   double-tap zoom / 長押し selection) を抑止する。Pointer Events で multi-touch /
+   drag を完結させるため、ブラウザ側のジェスチャ介入で pointercancel が早期発火する
+   のを防ぐ。Konva は Stage container に `userSelect: 'none'` までは設定するが
+   touch-action は当てないため、ここで補う。詳細は ADR-0006。 */
+.konvajs-content {
+  touch-action: none;
+}

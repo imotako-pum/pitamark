@@ -6,7 +6,12 @@ import { Arrow as KonvaArrow, Layer, Stage } from 'react-konva';
 import type { Tool } from '../../hooks/annotationsReducer';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
-import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
+import {
+  getCenter,
+  getDistance,
+  type StageTransform,
+  ZOOM_STEP,
+} from '../../hooks/useStageTransform';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../../lib/autoNextOffset';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
@@ -38,16 +43,25 @@ type CanvasStageProps = Readonly<{
   onZoom: (pointer: { x: number; y: number }, factor: number) => void;
   /** Space+drag による pan。dx/dy は screen 座標の差分。*/
   onPan: (dx: number, dy: number) => void;
+  /** Phase 10.I-2: 2-finger pinch / pan (Konva 公式 multi-touch パターン)。
+   *  EditorShell が `applyPinch` で transform を更新する。center は Stage container
+   *  基準の screen 座標、distRatio は 2 点間距離の比 (newDist / lastDist)。 */
+  onPinchPan: (input: {
+    center: { x: number; y: number };
+    distRatio: number;
+    panDx: number;
+    panDy: number;
+  }) => void;
   /** ImageLayer から伝播される画像 natural サイズ。null は src 切替リセット。*/
   onImageLoaded?: (size: { width: number; height: number } | null) => void;
   /** Auto-next-B: pending 中の既定矢印プレビュー (半透明) を描画する。null のときは
    *  プレビュー無し。state は EditorShell に置き、ここでは受け取って描画するだけ。 */
   pendingAutoArrow: { from: Point; to: Point; color: string; strokeWidth: number } | null;
-  /** 矩形 mouseup 直後に呼ばれる。EditorShell が Auto-next-B の pending state を立てる。 */
+  /** 矩形 pointerup 直後に呼ばれる。EditorShell が Auto-next-B の pending state を立てる。 */
   onAutoNextRectangle: (rect: { x: number; y: number; width: number; height: number }) => void;
-  /** マウス mousedown 任意座標で pending をキャンセルする経路。pending が null のときは
+  /** ポインタダウン任意座標で pending をキャンセルする経路。pending が null のときは
    *  no-op、null でないときは EditorShell が pending を null にする。CanvasStage は
-   *  クリア後に通常の mousedown 処理を続行する。 */
+   *  クリア後に通常の pointerdown 処理を続行する。 */
   onCancelAutoArrowIfAny: () => void;
 }>;
 
@@ -102,7 +116,7 @@ const buildDraftArrow = (start: DragStart, x: number, y: number, color: string):
 });
 
 // drag-based tool だけを集める。`Exclude<Tool, 'select' | 'text'>` で「select は drag を
-// 持たず、text は mousedown その場確定 (drag 不要)」という設計を型に埋め込む。新規 drag
+// 持たず、text は pointerdown その場確定 (drag 不要)」という設計を型に埋め込む。新規 drag
 // tool を `Tool` union に追加すると、この Record に key を増やさない限りコンパイルエラー。
 type DraftBuilder = (start: DragStart, x: number, y: number, color: string) => Annotation;
 
@@ -128,6 +142,7 @@ export const CanvasStage = ({
   transform,
   onZoom,
   onPan,
+  onPinchPan,
   onImageLoaded,
   pendingAutoArrow,
   onAutoNextRectangle,
@@ -135,19 +150,25 @@ export const CanvasStage = ({
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations, activeColor, activeFontSize } = state;
-  // draft と dragStart は ref に置く。1 React render cycle 内で連続発火する mouse event
-  // (mousedown → mousemove → mouseup) が state flush を待たずに最新値を観測できる必要が
-  // ある。state 側にもミラーするのは drag preview を可視にするため。
+  // draft と dragStart は ref に置く。1 React render cycle 内で連続発火する pointer event
+  // (pointerdown → pointermove → pointerup) が state flush を待たずに最新値を観測できる
+  // 必要がある。state 側にもミラーするのは drag preview を可視にするため。
   const dragStartRef = useRef<DragStart | null>(null);
   const draftRef = useRef<Annotation | null>(null);
   const [draft, setDraft] = useState<Annotation | null>(null);
-  // pan モードの状態管理。Space は mousedown/move/up を active tool ではなく pan 扱いに
-  // する。spaceDownRef が次の mousedown を arm し、panActiveRef は in-flight 中の pan を
-  // 追跡してマウスを離すまで Space 解放にも耐える (Figma / Photoshop と同じ挙動)。
+  // pan モードの状態管理。Space は pointerdown/move/up を active tool ではなく pan 扱いに
+  // する。spaceDownRef が次の pointerdown を arm し、panActiveRef は in-flight 中の pan を
+  // 追跡してポインタを離すまで Space 解放にも耐える (Figma / Photoshop と同じ挙動)。
   const spaceDownRef = useRef(false);
   const panActiveRef = useRef(false);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
   const internalStageRef = useRef<Konva.Stage | null>(null);
+  // Phase 10.I-2: multi-touch pinch state。ADR-0006 Status Update 参照。
+  // Pointer Events 経路と並列に動く TouchEvent 経路で、2 本指の中点 + 距離を frame
+  // 間で trace する。1 frame 目は state 初期化のみ (jitter 防止)、2 frame 目以降で
+  // delta を計算して onPinchPan に流す。touchend で null/0 にリセット。
+  const lastCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const lastDistRef = useRef<number>(0);
 
   // Space-pan の cursor フィードバック。react-konva は Stage に className prop を露出
   // しないし、wrapping div は react-konva 内部所有なので、canvas container の CSS cursor
@@ -169,7 +190,7 @@ export const CanvasStage = ({
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return;
       spaceDownRef.current = false;
-      // pan が in-flight (mouse 押下継続中) なら mouseup で終わらせる。
+      // pan が in-flight (pointer 押下継続中) なら pointerup で終わらせる。
       if (!panActiveRef.current) {
         setCursor('');
       }
@@ -195,8 +216,8 @@ export const CanvasStage = ({
     [stageRef],
   );
 
-  const handleMouseDown = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerDown = useCallback(
+    (e: KonvaEventObject<PointerEvent>) => {
       const stage = e.target.getStage();
       if (!stage) return;
 
@@ -211,10 +232,10 @@ export const CanvasStage = ({
         return;
       }
 
-      // pending Auto-arrow があれば、マウスクリック (任意座標) でキャンセル。クリック
-      // 自体は通常の mousedown 処理を続行 (stage クリックで選択解除など) するので、ユーザは
-      // 「右下既定矢印が合わない」時に自前で矢印を描き始められる。pending が null の
-      // ときは EditorShell 側で no-op になる。
+      // pending Auto-arrow があれば、ポインタダウン (任意座標) でキャンセル。クリック
+      // 自体は通常の pointerdown 処理を続行 (stage クリックで選択解除など) するので、
+      // ユーザは「右下既定矢印が合わない」時に自前で矢印を描き始められる。pending が
+      // null のときは EditorShell 側で no-op になる。
       onCancelAutoArrowIfAny();
 
       const isStageClick = e.target === stage;
@@ -271,8 +292,8 @@ export const CanvasStage = ({
     ],
   );
 
-  const handleMouseMove = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerMove = useCallback(
+    (e: KonvaEventObject<PointerEvent>) => {
       const stage = e.target.getStage();
       if (!stage) return;
 
@@ -299,7 +320,7 @@ export const CanvasStage = ({
 
       // `DRAFT_BUILDERS` (型 `Record<Exclude<Tool, 'select' | 'text'>, ...>`) で lookup
       // し、`else if` チェーンを置き換えている。`select` は draft を持たず、`text` は
-      // mousedown 時点で確定するので、ここで両者を最初に除外する。
+      // pointerdown 時点で確定するので、ここで両者を最初に除外する。
       if (tool === 'select' || tool === 'text') return;
       const next = DRAFT_BUILDERS[tool](dragStart, pos.x, pos.y, activeColor);
       draftRef.current = next;
@@ -308,14 +329,14 @@ export const CanvasStage = ({
     [tool, onCursorMove, activeColor, onPan],
   );
 
-  const handleMouseLeave = useCallback(() => {
+  const handlePointerLeave = useCallback(() => {
     // 親の rAF throttle をバイパス。pointer が既に Stage を出ているのに、次の
     // animation frame まで peer 側の cursor が残るのを避けたい。
     if (onCursorMove) onCursorMove(null);
   }, [onCursorMove]);
 
-  const handleMouseUp = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerUp = useCallback(
+    (e: KonvaEventObject<PointerEvent>) => {
       if (panActiveRef.current) {
         panActiveRef.current = false;
         panLastRef.current = null;
@@ -382,7 +403,7 @@ export const CanvasStage = ({
       dragStartRef.current = null;
       setDraft(null);
     },
-    // store 全体を依存させると毎レンダーで identity が変わって handleMouseUp が
+    // store 全体を依存させると毎レンダーで identity が変わって handlePointerUp が
     // 再生成されるため、Auto-next-A で実際に使う stopUndoCapture のみを依存させる。
     [
       dispatch,
@@ -394,6 +415,76 @@ export const CanvasStage = ({
       onAutoNextRectangle,
     ],
   );
+
+  // iOS Safari の system gesture 介入 / browser tab 切替 / device sleep 等で発火する
+  // pointercancel を pointerup と等価に扱い、drag-in-progress 状態のリークを防ぐ。
+  // 詳細は ADR-0006。
+  const handlePointerCancel = handlePointerUp;
+
+  // Phase 10.I-2: multi-touch pinch + 2-finger pan (Konva 公式 sandbox 準拠)。
+  // 1 本指 (touch1 のみ) は Pointer 経路に任せて何もしない。2 本指検知瞬間に
+  // Pointer 経路の in-flight state (drag / draft / pan) を強制中断して責務分離する。
+  // ADR-0006 Status Update (Phase 10.I-2) 参照。
+  const handleTouchMove = useCallback(
+    (e: KonvaEventObject<TouchEvent>) => {
+      const touches = e.evt.touches;
+      const touch1 = touches[0];
+      const touch2 = touches[1];
+      if (!touch1 || !touch2) {
+        // 1 本指 → Pointer 経路に委譲。multi-touch state はリセットだけしておく。
+        lastCenterRef.current = null;
+        lastDistRef.current = 0;
+        return;
+      }
+
+      e.evt.preventDefault();
+
+      // 2 本指検知時の責務分離: Pointer 経路の in-flight 状態を全部 abort する。
+      if (dragStartRef.current || draftRef.current) {
+        dragStartRef.current = null;
+        draftRef.current = null;
+        setDraft(null);
+      }
+      if (panActiveRef.current) {
+        panActiveRef.current = false;
+        panLastRef.current = null;
+        setCursor(spaceDownRef.current ? 'grab' : '');
+      }
+
+      const stage = e.target.getStage();
+      if (!stage) return;
+      // Stage container の screen position が CSS で動く可能性 (Phase 10.I-3 で
+      // bottom toolbar 化される) に備えて毎回 getBoundingClientRect する。
+      const rect = stage.container().getBoundingClientRect();
+      const p1 = { x: touch1.clientX - rect.left, y: touch1.clientY - rect.top };
+      const p2 = { x: touch2.clientX - rect.left, y: touch2.clientY - rect.top };
+      const newCenter = getCenter(p1, p2);
+      const newDist = getDistance(p1, p2);
+
+      // 初回検知 frame: state 初期化のみで return (jitter 防止)。
+      if (!lastCenterRef.current || lastDistRef.current === 0) {
+        lastCenterRef.current = newCenter;
+        lastDistRef.current = newDist;
+        return;
+      }
+
+      onPinchPan({
+        center: newCenter,
+        distRatio: newDist / lastDistRef.current,
+        panDx: newCenter.x - lastCenterRef.current.x,
+        panDy: newCenter.y - lastCenterRef.current.y,
+      });
+
+      lastDistRef.current = newDist;
+      lastCenterRef.current = newCenter;
+    },
+    [onPinchPan, setCursor],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    lastCenterRef.current = null;
+    lastDistRef.current = 0;
+  }, []);
 
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
@@ -493,10 +584,13 @@ export const CanvasStage = ({
       scaleY={transform.scale}
       x={transform.x}
       y={transform.y}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerLeave}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
       <ImageLayer src={src} onImageLoaded={onImageLoaded} />

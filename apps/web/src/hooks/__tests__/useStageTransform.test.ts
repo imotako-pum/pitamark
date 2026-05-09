@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyPinch,
   clampPan,
   clampScale,
   computeFitTransform,
   computeHundredPercentTransform,
+  getCenter,
+  getDistance,
   MAX_SCALE,
   MIN_SCALE,
   PAN_MARGIN_RATIO,
@@ -152,5 +155,74 @@ describe('clampPan', () => {
     const t = { scale: 1, x: 0, y: -5000 };
     const clamped = clampPan(t, image, viewport);
     expect(image.height * (1 + PAN_MARGIN_RATIO) + clamped.y).toBeCloseTo(viewport.height);
+  });
+});
+
+// Phase 10.I-2: multi-touch pinch helpers。CanvasStage の onTouchMove ハンドラから
+// 呼ばれる純粋関数。
+
+describe('getDistance', () => {
+  it('returns euclidean distance between two points', () => {
+    expect(getDistance({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
+  });
+  it('returns 0 for identical points', () => {
+    expect(getDistance({ x: 5, y: 5 }, { x: 5, y: 5 })).toBe(0);
+  });
+});
+
+describe('getCenter', () => {
+  it('returns the midpoint of two points', () => {
+    expect(getCenter({ x: 0, y: 0 }, { x: 10, y: 10 })).toEqual({ x: 5, y: 5 });
+  });
+  it('handles negative coordinates', () => {
+    expect(getCenter({ x: -10, y: -20 }, { x: 10, y: 20 })).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('applyPinch', () => {
+  it('scales by distRatio with center fixed when panDx/panDy are zero', () => {
+    // identity transform、中点 (100, 100)、distRatio 2 → scale 2、中点固定 → x/y 調整
+    const start = { scale: 1, x: 0, y: 0 };
+    const result = applyPinch(start, { x: 100, y: 100 }, 2, 0, 0);
+    expect(result.scale).toBe(2);
+    // pointTo (logical) = (100 - 0) / 1 = 100。新 transform.x = 100 - 100 * 2 + 0 = -100
+    expect(result.x).toBeCloseTo(-100);
+    expect(result.y).toBeCloseTo(-100);
+  });
+
+  it('translates by panDx/panDy when distRatio is 1 (pure pan)', () => {
+    const start = { scale: 1, x: 0, y: 0 };
+    const result = applyPinch(start, { x: 50, y: 50 }, 1, 10, -5);
+    // distRatio = 1 → newScale = 1。pointTo = (50 - 0)/1 = 50。
+    // x = 50 - 50 * 1 + 10 = 10、y = 50 - 50 * 1 + (-5) = -5
+    expect(result.scale).toBe(1);
+    expect(result.x).toBeCloseTo(10);
+    expect(result.y).toBeCloseTo(-5);
+  });
+
+  it('clamps scale at MAX_SCALE for very large distRatio', () => {
+    const start = { scale: 4, x: 0, y: 0 };
+    const result = applyPinch(start, { x: 0, y: 0 }, 100, 0, 0);
+    expect(result.scale).toBe(MAX_SCALE);
+  });
+
+  it('clamps scale at MIN_SCALE for very small distRatio', () => {
+    const start = { scale: 0.5, x: 0, y: 0 };
+    const result = applyPinch(start, { x: 0, y: 0 }, 0.001, 0, 0);
+    expect(result.scale).toBe(MIN_SCALE);
+  });
+
+  it('keeps the center point fixed in screen coords when only zooming', () => {
+    // 中点が変わらないことを確認: scale 適用後の screen 座標で center が保持される。
+    const start = { scale: 1, x: 0, y: 0 };
+    const center = { x: 200, y: 150 };
+    const result = applyPinch(start, center, 2, 0, 0);
+    // pointTo (start logical) = (center - start.{x,y}) / start.scale = (200, 150)
+    // 新 screen 中点 = pointTo * newScale + new.{x,y} = (200*2, 150*2) + (-200, -150)
+    //               = (400-200, 300-150) = (200, 150) → center と一致
+    const newCenterScreenX = 200 * result.scale + result.x;
+    const newCenterScreenY = 150 * result.scale + result.y;
+    expect(newCenterScreenX).toBeCloseTo(center.x);
+    expect(newCenterScreenY).toBeCloseTo(center.y);
   });
 });

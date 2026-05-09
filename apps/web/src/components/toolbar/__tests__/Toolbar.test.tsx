@@ -5,6 +5,15 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { __resetI18nForTesting, setLang } from '../../../i18n';
 import { ja } from '../../../i18n/ja';
 import { COLOR_PALETTE } from '../../canvas/colors';
+
+const { useTouchDeviceMock } = vi.hoisted(() => ({
+  useTouchDeviceMock: vi.fn<() => boolean>().mockReturnValue(false),
+}));
+
+vi.mock('../../../hooks/useTouchDevice', () => ({
+  useTouchDevice: () => useTouchDeviceMock(),
+}));
+
 import { Toolbar } from '../Toolbar';
 
 type ToolbarProps = Parameters<typeof Toolbar>[0];
@@ -64,6 +73,7 @@ describe('Toolbar', () => {
     window.localStorage.setItem('pitamark-lang', 'ja');
     __resetI18nForTesting();
     setLang('ja');
+    useTouchDeviceMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -113,6 +123,52 @@ describe('Toolbar', () => {
       `button[aria-label="${ja['toolbar.fontSize.increaseAria']}"]`,
     );
     expect(btn).not.toBeNull();
+    m.unmount();
+  });
+
+  // Phase 10.I-3: 44px tap zone for touch devices (visual unchanged).
+
+  it('does not add 44px tap-zone class on desktop (pointer: fine)', () => {
+    useTouchDeviceMock.mockReturnValue(false);
+    const m = renderToolbar({});
+    const helpBtn = m.container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${ja['toolbar.action.help']}"]`,
+    );
+    expect(helpBtn?.className ?? '').not.toContain('min-w-11');
+    m.unmount();
+  });
+
+  it('adds min-w-11 / min-h-11 to ToolButton on touch device', () => {
+    useTouchDeviceMock.mockReturnValue(true);
+    const m = renderToolbar({});
+    const helpBtn = m.container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${ja['toolbar.action.help']}"]`,
+    );
+    expect(helpBtn?.className ?? '').toContain('min-w-11');
+    expect(helpBtn?.className ?? '').toContain('min-h-11');
+    m.unmount();
+  });
+
+  it('adds min-w-11 / min-h-11 to ColorPalette swatches on touch device', () => {
+    useTouchDeviceMock.mockReturnValue(true);
+    const m = renderToolbar({});
+    const palette = m.container.querySelector(
+      `[role="group"][aria-label="${ja['toolbar.colorPalette.groupLabel']}"]`,
+    );
+    const firstSwatch = palette?.querySelector<HTMLButtonElement>('button');
+    expect(firstSwatch?.className ?? '').toContain('min-w-11');
+    expect(firstSwatch?.className ?? '').toContain('min-h-11');
+    m.unmount();
+  });
+
+  it('adds min-w-11 / min-h-11 to FontSizeControl +/- buttons on touch device', () => {
+    useTouchDeviceMock.mockReturnValue(true);
+    const m = renderToolbar({});
+    const incBtn = m.container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${ja['toolbar.fontSize.increaseAria']}"]`,
+    );
+    expect(incBtn?.className ?? '').toContain('min-w-11');
+    expect(incBtn?.className ?? '').toContain('min-h-11');
     m.unmount();
   });
 });
