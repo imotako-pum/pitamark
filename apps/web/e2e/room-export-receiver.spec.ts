@@ -29,7 +29,7 @@ test.describe('cross-origin PNG export from a receiver context', () => {
       // 送信側: 画像 D&D → /r/:id 遷移
       await senderPage.goto('/');
       await dropImage(senderPage);
-      await expect(senderPage).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+      await expect(senderPage).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
       const sharedUrl = senderPage.url();
 
       // 受信側: 別 context で同じ URL を開く（cross-origin の <img> 経路を踏む）

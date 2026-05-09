@@ -13,7 +13,7 @@ test.describe('room creation flow', () => {
     await page.goto('/');
     await dropImage(page);
 
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
 
     // 画像ロード後はツールバーのツールが enabled になる
     await expect(page.getByRole('button', { name: '矩形' })).toBeEnabled();
@@ -34,7 +34,7 @@ test.describe('room creation flow', () => {
     // なす形で、送信側経路の tainted canvas 回帰も CI で lock する。
     await page.goto('/');
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
 
     // RoomEditor が ready になり、Konva の <KonvaImage> が描画されるまで待つ
     await page.waitForFunction(

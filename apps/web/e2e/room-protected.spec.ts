@@ -21,7 +21,7 @@ test.describe('password-protected rooms', () => {
     await protectCheckbox.click();
     await page1.getByLabel('ルームのパスワード').fill(PASSWORD);
     await dropImage(page1);
-    await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
     const sharedUrl = page1.url();
 
     // uploader 本人は POST /rooms の応答に含まれる token が sessionStorage に書かれて

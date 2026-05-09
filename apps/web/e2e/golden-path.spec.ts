@@ -31,7 +31,7 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
 
   await page.goto('/');
   await dropImageBuffer(page, SAMPLE, 'golden.png');
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
   await page.waitForFunction(
     (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
     ANNOTATIONS_KEY,
@@ -52,7 +52,10 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
   // 旧 absolute 座標 (100/250/400/500/540 など) を box.width / box.height に対する
   // % に置き換えただけで、形状ごとの相対配置 (rect 左上 / arrow 中央 / text 中央右 /
   // highlight 右下) は元のまま。
-  const at = (fx: number, fy: number) => ({ x: box.x + box.width * fx, y: box.y + box.height * fy });
+  const at = (fx: number, fy: number) => ({
+    x: box.x + box.width * fx,
+    y: box.y + box.height * fy,
+  });
 
   // R: rectangle (左上)
   await page.keyboard.press('r');

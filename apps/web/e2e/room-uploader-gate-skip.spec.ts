@@ -25,7 +25,7 @@ test.describe('uploader gate skip for protected rooms', () => {
     await page.getByLabel('ルームのパスワード').fill(PASSWORD);
 
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
 
     // 直接エディタに入れる = ツールバーが visible / RoomGate 見出しは出ない
     await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible({

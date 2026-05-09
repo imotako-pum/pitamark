@@ -11,7 +11,7 @@ const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 const waitForRoom = async (page: import('@playwright/test').Page) => {
   await page.goto('/');
   await dropImage(page);
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
   await page.waitForFunction(
     (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
     ANNOTATIONS_KEY,

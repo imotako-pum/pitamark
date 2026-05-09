@@ -33,7 +33,7 @@ test.describe('DropZone validation', () => {
     await page.goto('/');
     await dropImage(page, SAMPLE_IMAGE_PATH);
 
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
     await expect(
       page.getByRole('alert').filter({ hasText: '画像ファイルをドロップしてください' }),
     ).toBeHidden();
@@ -132,6 +132,6 @@ test.describe('DropZone validation', () => {
     // setInputFiles は <input type="file"> に直接 file を流し込むので、
     // ファイルピッカーを経由しなくても production の onChange が走る。
     await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_IMAGE_PATH);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
   });
 });

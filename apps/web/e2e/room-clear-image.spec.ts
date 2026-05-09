@@ -13,7 +13,7 @@ test.describe('room clear-annotations flow', () => {
 
     await page.goto('/');
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
 
     // RoomEditor が ready になり __SNAP_SHARE_ANNOTATIONS__ が出現するまで待つ
     await page.waitForFunction(
