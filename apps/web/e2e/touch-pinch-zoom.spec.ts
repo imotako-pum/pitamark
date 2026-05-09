@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ANNOTATIONS_KEY } from './fixtures/touch-helpers';
 import { dropImage } from './fixtures/upload';
 
 // Phase 10.I-2: 2-finger pinch / pan の smoke。mobile-chrome (Pixel 5 emulation) で
@@ -9,8 +10,12 @@ import { dropImage } from './fixtures/upload';
 // 直接送る。mobile-chrome (hasTouch: true) では Input.dispatchTouchEvent が
 // TouchEvent + PointerEvent の両方を発火するため、Konva 公式 multi-touch 経路
 // (CanvasStage の onTouchMove) が反応する。本格 12 ケース受入は Phase 10.I-4。
-
-const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
+//
+// `window.Konva.stages` 参照について: Konva の UMD bundle では Konva 自身が
+// `window.Konva` にグローバル登録するが、Vite の ESM bundle では module-scoped に
+// なるため、本来 `window.Konva` は production では利用できない。本 spec は dev server
+// 経由で実行する e2e なので vite dev の依存解決経路を踏み、`window.Konva` が
+// 露出している実機ブラウザ環境を前提にしている。production bundle の挙動とは別経路。
 
 test.describe('Phase 10.I-2: pinch zoom smoke', () => {
   test('mobile-chrome で 2-finger pinch を行うと Stage の scale が増加する', async ({

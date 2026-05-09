@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ANNOTATIONS_KEY } from './fixtures/touch-helpers';
 import { dropImage } from './fixtures/upload';
 
 // Phase 10.I-1: Pointer Events 一本化 + 描画系復旧の smoke。本 spec は mobile-chrome
@@ -11,8 +12,6 @@ import { dropImage } from './fixtures/upload';
 // 操作しても Konva 側の onPointerDown は発火する (Pointer Events 一本化の検証としては
 // この経路で十分)。touch-only 固有のジェスチャ (multi-touch / palm rejection) は
 // 10.I-2 / 10.I-4 で個別検証。
-
-const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
 const readAnnotationCount = (page: import('@playwright/test').Page): Promise<number> =>
   page.evaluate(

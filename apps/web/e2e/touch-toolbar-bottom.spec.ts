@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { ANNOTATIONS_KEY } from './fixtures/touch-helpers';
 import { dropImage } from './fixtures/upload';
 
 // Phase 10.I-3: Toolbar bottom 固定の smoke。mobile-chrome (Pixel 5 emulation) で
 // Toolbar が viewport 下半分に存在し、その状態で「矩形」ツールを tap → canvas drag で
 // annotation が 1 件追加できることを確認する。本格的な「4 形状 × 3 操作 = 12 ケース」の
 // 受入は Phase 10.I-4 で別途追加。
-
-const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
 test.describe('Phase 10.I-3: toolbar bottom-fixed smoke', () => {
   test('mobile-chrome で Toolbar が画面下半分に位置し、ボタン tap → 矩形が描ける', async ({

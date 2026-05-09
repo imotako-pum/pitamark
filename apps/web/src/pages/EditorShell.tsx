@@ -159,6 +159,11 @@ export const EditorShell = ({
   // touch + source 両方が true のときだけ ref が attach されるため、依存配列で
   // mount/unmount を確実化する。Toolbar が flex-wrap で 2-3 行になっても画像が
   // Toolbar に被らないよう stageBottomInset に加算される。
+  //
+  // 不変条件: `isTouch === false` のとき bottom 固定 container は unmount されるため
+  // `bottomToolbarRef.current === null` になり、本 effect で `setBottomToolbarHeight(0)`
+  // が呼ばれる。`stageBottomInset` 計算 (line 251) では `isTouch ? bottomToolbarHeight
+  // : 0` で参照されるため二重に 0 が保証される (effect 内 + 計算式)。
   useEffect(() => {
     const el = bottomToolbarRef.current;
     if (!el) {

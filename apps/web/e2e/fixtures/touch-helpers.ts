@@ -76,8 +76,11 @@ export const readFirstAnnotation = async (page: Page) => {
   return arr[0] ?? null;
 };
 
-/** ツール選択 (i18n aria-label 経由)。Toolbar が touch 環境で bottom 固定でも
- *  desktop で header 内でも、aria-label さえ一致すれば同じ呼び出しで触れる。 */
+/** ツール選択 (i18n aria-label 経由)。**mobile-chrome project 専用** — `tap()` は
+ *  hasTouch:true の context でのみ動作する。desktop project から呼ぶと AssertionError
+ *  になるので、本 helper を使う test は冒頭に `skipNonMobileChrome` 等の guard を
+ *  必ず置くこと。Toolbar が touch 環境で bottom 固定でも desktop で header 内でも、
+ *  aria-label さえ一致すれば同じ呼び出しで触れる (配置に依存しない設計)。 */
 export const selectTool = async (page: Page, label: string) => {
   await page.getByRole('button', { name: label }).tap();
 };
