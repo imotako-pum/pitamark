@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { dropImage, waitForRoomCreatedResponse } from './fixtures/upload';
 
 test.describe('room sync across contexts', () => {
   test('2 ブラウザコンテキスト間で矩形作成が同期される', async ({ browser }, testInfo) => {
@@ -15,8 +15,10 @@ test.describe('room sync across contexts', () => {
 
     try {
       await page1.goto('/');
+      const responsePromise = waitForRoomCreatedResponse(page1);
       await dropImage(page1);
-      await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
+      await responsePromise;
+      await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
       const sharedUrl = page1.url();
 
       await page2.goto(sharedUrl);

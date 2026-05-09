@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
 
 // 矩形 / ハイライトの Konva.Transformer 8 ハンドルリサイズと、矢印の from / to 端点
 // Circle ハンドルによる伸縮を lock する E2E。reducer / Yjs mutation 経路は既存なので、
@@ -60,14 +60,7 @@ const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
   );
 
 const setupRoom = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImage(page);
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page);
 };
 
 test.describe('annotation resize — Transformer (rect / highlight) と Arrow endpoint', () => {

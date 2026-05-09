@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { dropImage, waitForRoomCreatedResponse } from './fixtures/upload';
 
 const PASSWORD = 'e2e-uploader-skip-XYZ';
 
@@ -24,8 +24,10 @@ test.describe('uploader gate skip for protected rooms', () => {
     await protectCheckbox.click();
     await page.getByLabel('ルームのパスワード').fill(PASSWORD);
 
+    const responsePromise = waitForRoomCreatedResponse(page);
     await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
+    await responsePromise;
+    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
 
     // 直接エディタに入れる = ツールバーが visible / RoomGate 見出しは出ない
     await expect(page.getByRole('toolbar', { name: '編集ツール' })).toBeVisible({

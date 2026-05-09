@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
 
 // 色まわりの仕様確認 E2E:
 // - swatch クリック 1 回 = active color 更新 + 選択中があれば適用
@@ -52,14 +52,7 @@ const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
   );
 
 const setupRoom = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImage(page);
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page);
 };
 
 test.describe('annotation color — single active color (1-click pick)', () => {

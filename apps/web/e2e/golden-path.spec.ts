@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
+import { buildSolidPng, dropImageBuffer, waitForRoomCreatedResponse } from './fixtures/upload';
 
 // 「マウス無し golden path」success metric 直対応の E2E。
 //
@@ -30,8 +30,10 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
   skipNonChromium(testInfo);
 
   await page.goto('/');
+  const responsePromise = waitForRoomCreatedResponse(page);
   await dropImageBuffer(page, SAMPLE, 'golden.png');
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
+  await responsePromise;
+  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
   await page.waitForFunction(
     (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
     ANNOTATIONS_KEY,

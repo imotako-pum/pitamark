@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
 
 // 4 種注釈ツール (rectangle / arrow / text / highlight) と Delete / Undo / Redo の
 // critical path を CI で lock する E2E。room-create / room-share では各ツールが独立に
@@ -37,21 +37,16 @@ const skipNonChromium = (testInfo: import('@playwright/test').TestInfo) =>
     'Konva ハンドリングは chromium 1 プロジェクトで検証する',
   );
 
+const setupRoom = async (page: import('@playwright/test').Page) => {
+  await setupEditorViaApi(page);
+};
+
 test.describe('annotation tools — drawing / delete / undo / redo', () => {
   test('矩形 / 矢印 / ハイライトの 3 ドラッグ系ツールがそれぞれ 1 件追加できる', async ({
     page,
   }, testInfo) => {
     skipNonChromium(testInfo);
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
-      timeout: 10_000,
-    });
-    await page.waitForFunction(
-      (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-      ANNOTATIONS_KEY,
-      { timeout: 10_000 },
-    );
+    await setupRoom(page);
 
     // 矩形
     await page.getByRole('button', { name: '矩形' }).click();
@@ -76,16 +71,7 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     page,
   }, testInfo) => {
     skipNonChromium(testInfo);
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
-      timeout: 10_000,
-    });
-    await page.waitForFunction(
-      (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-      ANNOTATIONS_KEY,
-      { timeout: 10_000 },
-    );
+    await setupRoom(page);
 
     await page.getByRole('button', { name: 'テキスト' }).click();
     const stage = page.locator('.konvajs-content canvas').first();
@@ -106,16 +92,7 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
 
   test('Delete ボタンで選択中の注釈が消える', async ({ page }, testInfo) => {
     skipNonChromium(testInfo);
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
-      timeout: 10_000,
-    });
-    await page.waitForFunction(
-      (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-      ANNOTATIONS_KEY,
-      { timeout: 10_000 },
-    );
+    await setupRoom(page);
 
     // 矩形 1 個追加 → 自動で選択状態になる (annotationsReducer の create が select も発火)
     await page.getByRole('button', { name: '矩形' }).click();
@@ -141,16 +118,7 @@ test.describe('annotation tools — drawing / delete / undo / redo', () => {
     // 1 グループに merge されるため、Undo の単位を明確にするには
     // 各操作の間に > 500ms の wait を入れる。
     // (yjs-annotations-context.ts:52)
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, {
-      timeout: 10_000,
-    });
-    await page.waitForFunction(
-      (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-      ANNOTATIONS_KEY,
-      { timeout: 10_000 },
-    );
+    await setupRoom(page);
 
     // 1 個目: 矩形
     await page.getByRole('button', { name: '矩形' }).click();

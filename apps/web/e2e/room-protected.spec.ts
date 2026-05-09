@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { dropImage, waitForRoomCreatedResponse } from './fixtures/upload';
 
 const PASSWORD = 'e2e-test-password-XYZ';
 
@@ -20,8 +20,10 @@ test.describe('password-protected rooms', () => {
     const protectCheckbox = page1.getByRole('checkbox', { name: /パスワードで保護する/ });
     await protectCheckbox.click();
     await page1.getByLabel('ルームのパスワード').fill(PASSWORD);
+    const responsePromise = waitForRoomCreatedResponse(page1);
     await dropImage(page1);
-    await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
+    await responsePromise;
+    await expect(page1).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 5_000 });
     const sharedUrl = page1.url();
 
     // uploader 本人は POST /rooms の応答に含まれる token が sessionStorage に書かれて

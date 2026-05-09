@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { dropImage } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
 
 // Toolbar の「画像をクリア」は実装上は注釈削除だけで、画像は API 側で保持され続ける。
 // ラベルを実挙動に合わせて「注釈をすべて削除」に揃え、ダイアログタイトルも
@@ -11,20 +11,7 @@ test.describe('room clear-annotations flow', () => {
       '注釈削除フローは chromium 1 プロジェクトで検証する',
     );
 
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
-
-    // RoomEditor が ready になり __SNAP_SHARE_ANNOTATIONS__ が出現するまで待つ
-    await page.waitForFunction(
-      () =>
-        Array.isArray(
-          (window as unknown as { __SNAP_SHARE_ANNOTATIONS__?: unknown[] })
-            .__SNAP_SHARE_ANNOTATIONS__,
-        ),
-      null,
-      { timeout: 10_000 },
-    );
+    await setupEditorViaApi(page);
 
     // 矩形を 1 つ追加
     await page.getByRole('button', { name: '矩形' }).click();

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { buildSolidPng, dropImageBuffer } from './fixtures/upload';
+import { setupEditorViaApi } from './fixtures/editor-fixture';
+import { buildSolidPng } from './fixtures/upload';
 
 // フォントサイズ変更 UI の E2E。`activeFontSize` を SSOT にし、Toolbar の A-/A+ と
 // `[`/`]` shortcut の双方が「常に active 更新 + 選択中 text なら適用」で動作する
@@ -29,14 +30,7 @@ const readAnnotations = async (page: import('@playwright/test').Page) =>
   );
 
 const setupRoomWithImage = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImageBuffer(page, SAMPLE, 'font-size.png');
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
-  await page.waitForFunction(
-    (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
-    ANNOTATIONS_KEY,
-    { timeout: 10_000 },
-  );
+  await setupEditorViaApi(page, { buffer: SAMPLE, fileName: 'font-size.png' });
   const stage = page.locator('.konvajs-content canvas').first();
   const box = await stage.boundingBox();
   if (!box) throw new Error('canvas bounding box が取得できなかった');
