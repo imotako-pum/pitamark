@@ -130,12 +130,12 @@ describe('ArrowShape', () => {
     m.unmount();
   });
 
-  it('endpoint handles set cancelBubble on mousedown to avoid Arrow drag conflict', () => {
+  it('endpoint handles set cancelBubble on pointerdown to avoid Arrow drag conflict', () => {
     const m = renderShape({ isSelected: true });
     const fromHandle = capture.circleProps[0] ?? {};
-    const onMouseDown = fromHandle.onMouseDown as (e: { cancelBubble: boolean }) => void;
+    const onPointerDown = fromHandle.onPointerDown as (e: { cancelBubble: boolean }) => void;
     const evt = { cancelBubble: false };
-    onMouseDown(evt);
+    onPointerDown(evt);
     expect(evt.cancelBubble).toBe(true);
     m.unmount();
   });

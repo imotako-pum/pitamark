@@ -43,11 +43,11 @@ type CanvasStageProps = Readonly<{
   /** Auto-next-B: pending 中の既定矢印プレビュー (半透明) を描画する。null のときは
    *  プレビュー無し。state は EditorShell に置き、ここでは受け取って描画するだけ。 */
   pendingAutoArrow: { from: Point; to: Point; color: string; strokeWidth: number } | null;
-  /** 矩形 mouseup 直後に呼ばれる。EditorShell が Auto-next-B の pending state を立てる。 */
+  /** 矩形 pointerup 直後に呼ばれる。EditorShell が Auto-next-B の pending state を立てる。 */
   onAutoNextRectangle: (rect: { x: number; y: number; width: number; height: number }) => void;
-  /** マウス mousedown 任意座標で pending をキャンセルする経路。pending が null のときは
+  /** ポインタダウン任意座標で pending をキャンセルする経路。pending が null のときは
    *  no-op、null でないときは EditorShell が pending を null にする。CanvasStage は
-   *  クリア後に通常の mousedown 処理を続行する。 */
+   *  クリア後に通常の pointerdown 処理を続行する。 */
   onCancelAutoArrowIfAny: () => void;
 }>;
 
@@ -102,7 +102,7 @@ const buildDraftArrow = (start: DragStart, x: number, y: number, color: string):
 });
 
 // drag-based tool だけを集める。`Exclude<Tool, 'select' | 'text'>` で「select は drag を
-// 持たず、text は mousedown その場確定 (drag 不要)」という設計を型に埋め込む。新規 drag
+// 持たず、text は pointerdown その場確定 (drag 不要)」という設計を型に埋め込む。新規 drag
 // tool を `Tool` union に追加すると、この Record に key を増やさない限りコンパイルエラー。
 type DraftBuilder = (start: DragStart, x: number, y: number, color: string) => Annotation;
 
@@ -135,15 +135,15 @@ export const CanvasStage = ({
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations, activeColor, activeFontSize } = state;
-  // draft と dragStart は ref に置く。1 React render cycle 内で連続発火する mouse event
-  // (mousedown → mousemove → mouseup) が state flush を待たずに最新値を観測できる必要が
-  // ある。state 側にもミラーするのは drag preview を可視にするため。
+  // draft と dragStart は ref に置く。1 React render cycle 内で連続発火する pointer event
+  // (pointerdown → pointermove → pointerup) が state flush を待たずに最新値を観測できる
+  // 必要がある。state 側にもミラーするのは drag preview を可視にするため。
   const dragStartRef = useRef<DragStart | null>(null);
   const draftRef = useRef<Annotation | null>(null);
   const [draft, setDraft] = useState<Annotation | null>(null);
-  // pan モードの状態管理。Space は mousedown/move/up を active tool ではなく pan 扱いに
-  // する。spaceDownRef が次の mousedown を arm し、panActiveRef は in-flight 中の pan を
-  // 追跡してマウスを離すまで Space 解放にも耐える (Figma / Photoshop と同じ挙動)。
+  // pan モードの状態管理。Space は pointerdown/move/up を active tool ではなく pan 扱いに
+  // する。spaceDownRef が次の pointerdown を arm し、panActiveRef は in-flight 中の pan を
+  // 追跡してポインタを離すまで Space 解放にも耐える (Figma / Photoshop と同じ挙動)。
   const spaceDownRef = useRef(false);
   const panActiveRef = useRef(false);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
@@ -169,7 +169,7 @@ export const CanvasStage = ({
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return;
       spaceDownRef.current = false;
-      // pan が in-flight (mouse 押下継続中) なら mouseup で終わらせる。
+      // pan が in-flight (pointer 押下継続中) なら pointerup で終わらせる。
       if (!panActiveRef.current) {
         setCursor('');
       }
@@ -195,8 +195,8 @@ export const CanvasStage = ({
     [stageRef],
   );
 
-  const handleMouseDown = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerDown = useCallback(
+    (e: KonvaEventObject<PointerEvent>) => {
       const stage = e.target.getStage();
       if (!stage) return;
 
@@ -211,10 +211,10 @@ export const CanvasStage = ({
         return;
       }
 
-      // pending Auto-arrow があれば、マウスクリック (任意座標) でキャンセル。クリック
-      // 自体は通常の mousedown 処理を続行 (stage クリックで選択解除など) するので、ユーザは
-      // 「右下既定矢印が合わない」時に自前で矢印を描き始められる。pending が null の
-      // ときは EditorShell 側で no-op になる。
+      // pending Auto-arrow があれば、ポインタダウン (任意座標) でキャンセル。クリック
+      // 自体は通常の pointerdown 処理を続行 (stage クリックで選択解除など) するので、
+      // ユーザは「右下既定矢印が合わない」時に自前で矢印を描き始められる。pending が
+      // null のときは EditorShell 側で no-op になる。
       onCancelAutoArrowIfAny();
 
       const isStageClick = e.target === stage;
@@ -271,8 +271,8 @@ export const CanvasStage = ({
     ],
   );
 
-  const handleMouseMove = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerMove = useCallback(
+    (e: KonvaEventObject<PointerEvent>) => {
       const stage = e.target.getStage();
       if (!stage) return;
 
@@ -299,7 +299,7 @@ export const CanvasStage = ({
 
       // `DRAFT_BUILDERS` (型 `Record<Exclude<Tool, 'select' | 'text'>, ...>`) で lookup
       // し、`else if` チェーンを置き換えている。`select` は draft を持たず、`text` は
-      // mousedown 時点で確定するので、ここで両者を最初に除外する。
+      // pointerdown 時点で確定するので、ここで両者を最初に除外する。
       if (tool === 'select' || tool === 'text') return;
       const next = DRAFT_BUILDERS[tool](dragStart, pos.x, pos.y, activeColor);
       draftRef.current = next;
@@ -308,14 +308,14 @@ export const CanvasStage = ({
     [tool, onCursorMove, activeColor, onPan],
   );
 
-  const handleMouseLeave = useCallback(() => {
+  const handlePointerLeave = useCallback(() => {
     // 親の rAF throttle をバイパス。pointer が既に Stage を出ているのに、次の
     // animation frame まで peer 側の cursor が残るのを避けたい。
     if (onCursorMove) onCursorMove(null);
   }, [onCursorMove]);
 
-  const handleMouseUp = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
+  const handlePointerUp = useCallback(
+    (e: KonvaEventObject<PointerEvent>) => {
       if (panActiveRef.current) {
         panActiveRef.current = false;
         panLastRef.current = null;
@@ -382,7 +382,7 @@ export const CanvasStage = ({
       dragStartRef.current = null;
       setDraft(null);
     },
-    // store 全体を依存させると毎レンダーで identity が変わって handleMouseUp が
+    // store 全体を依存させると毎レンダーで identity が変わって handlePointerUp が
     // 再生成されるため、Auto-next-A で実際に使う stopUndoCapture のみを依存させる。
     [
       dispatch,
@@ -394,6 +394,11 @@ export const CanvasStage = ({
       onAutoNextRectangle,
     ],
   );
+
+  // iOS Safari の system gesture 介入 / browser tab 切替 / device sleep 等で発火する
+  // pointercancel を pointerup と等価に扱い、drag-in-progress 状態のリークを防ぐ。
+  // 詳細は ADR-0006。
+  const handlePointerCancel = handlePointerUp;
 
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
@@ -493,10 +498,11 @@ export const CanvasStage = ({
       scaleY={transform.scale}
       x={transform.x}
       y={transform.y}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerLeave}
       onWheel={handleWheel}
     >
       <ImageLayer src={src} onImageLoaded={onImageLoaded} />

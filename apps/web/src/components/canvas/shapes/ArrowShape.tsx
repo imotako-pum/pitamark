@@ -43,11 +43,12 @@ export const ArrowShape = ({
     <>
       <KonvaArrow
         points={points}
-        // ユーザは「鏃の方から」矢印を引く感覚で操作するため、mousedown 位置
-        // (= from = dragStart) に矢じり、mouseup 位置 (= to) を尾にする。Konva の default
-        // は pointerAtEnding=true (to 側に矢じり) なので、反転して pointerAtBeginning=true
-        // / pointerAtEnding=false に切り替えている。これで Auto-next-A の text 位置
-        // (to + offset、to - from 方向の延長) が自動的に「尾側 = 鏃じゃない側」に来る。
+        // ユーザは「鏃の方から」矢印を引く感覚で操作するため、pointerdown 位置
+        // (= from = dragStart) に矢じり、pointerup 位置 (= to) を尾にする。Konva の
+        // default は pointerAtEnding=true (to 側に矢じり) なので、反転して
+        // pointerAtBeginning=true / pointerAtEnding=false に切り替えている。これで
+        // Auto-next-A の text 位置 (to + offset、to - from 方向の延長) が自動的に
+        // 「尾側 = 鏃じゃない側」に来る。
         pointerAtBeginning
         pointerAtEnding={false}
         pointerLength={ARROW_POINTER_LENGTH}
@@ -78,7 +79,7 @@ export const ArrowShape = ({
             stroke={OUTLINE_ACCENT}
             strokeWidth={HANDLE_STROKE_WIDTH}
             draggable
-            onMouseDown={(e: KonvaEventObject<MouseEvent>) => {
+            onPointerDown={(e: KonvaEventObject<PointerEvent>) => {
               // 親 Arrow の draggable に drag を奪わせない。
               e.cancelBubble = true;
             }}
@@ -95,7 +96,7 @@ export const ArrowShape = ({
             stroke={OUTLINE_ACCENT}
             strokeWidth={HANDLE_STROKE_WIDTH}
             draggable
-            onMouseDown={(e: KonvaEventObject<MouseEvent>) => {
+            onPointerDown={(e: KonvaEventObject<PointerEvent>) => {
               e.cancelBubble = true;
             }}
             onDragEnd={(e) => {

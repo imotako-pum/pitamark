@@ -195,7 +195,7 @@ VisualViewport / awareness layer 修正 / wheel pan 等価は **Should** で MVP
 
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
-| 10.I-1 | Pointer Events 一本化 + 描画系復旧 | `CanvasStage` を `onPointerDown/Move/Up/Cancel` 化、`touch-action: none`、4 形状の touch drag 復旧、ArrowShape handle pointer 化、ADR-0006 起票 (※ unit test は jsdom 制限のため fireEvent.mouseDown 維持に Plan で方針修正) | in-progress | - | - | [plan](../plans/phase-10-i-1-pointer-events-migration.plan.md) |
+| 10.I-1 | Pointer Events 一本化 + 描画系復旧 | `CanvasStage` を `onPointerDown/Move/Up/Cancel` 化、`touch-action: none`、4 形状の touch drag 復旧、ArrowShape handle pointer 化、ADR-0006 起票 (※ unit test は jsdom 制限のため fireEvent.mouseDown 維持) | complete (typecheck/lint/test/build/E2E mobile-chrome smoke + chromium 78 件回帰すべて緑、ADR-0006 Accepted) | - | - | [plan](../plans/completed/phase-10-i-1-pointer-events-migration.plan.md) / [report](../reports/phase-10-i-1-pointer-events-migration-report.md) |
 | 10.I-2 | 2-finger pinch / pan + ヒットエリア拡大 | `useStageTransform` に touch gesture、`hitStrokeWidth` 適用、`@media (pointer: coarse)` で adaptive selection handle | pending | with 10.I-3 | 10.I-1 | - |
 | 10.I-3 | Toolbar bottom 固定 + safe-area | `Toolbar.tsx` の responsive layout、`pb-[env(safe-area-inset-bottom)]`、ボタン 44 px hit area | pending | with 10.I-2 | 10.I-1 | - |
 | 10.I-4 | E2E + 実機検証 + 受入 | Playwright `mobile-chrome` 4 形状 × 3 操作 spec、iPhone + Pixel 手動チェックリスト、誤操作率測定 | pending | - | 10.I-2, 10.I-3 | - |
