@@ -11,9 +11,11 @@
 
 ---
 
-## 1. 基本機能パリティ — 4 形状 × 3 操作 = 12 ケース
+## 1. 基本機能パリティ — 4 形状 × 3 操作 = 12 ケース + 再編集 7 ケース = 19 ケース
 
-> 自動 (`apps/web/e2e/touch-acceptance.spec.ts`) で mobile-chrome (Pixel 5 emulation) 通過済。実機での再消費は emulation と挙動差がないか確認するための保険。
+> 自動: `touch-acceptance.spec.ts` (12) + `touch-acceptance-edit.spec.ts` (7) で mobile-chrome (Pixel 5 emulation) 通過済 (累積 22 件 mobile-chrome E2E)。実機での再消費は emulation と挙動差がないか確認するための保険。
+>
+> Phase 10.I post-review fix で **Touch Tap (`onDblTap`) と Resize / Endpoint の自動 lock** を追加 (review で見落としていた)。
 
 ### iPhone Safari
 
@@ -31,6 +33,13 @@
 | 10 | 矢印を選択 → 削除ボタン tap で削除 | ☐ | Auto-next-A の text も別途削除する |
 | 11 | ハイライトを選択 → 削除ボタン tap で削除 | ☐ | |
 | 12 | テキストを選択 → 削除ボタン tap で削除 | ☐ | |
+| 13 | 矩形を選択 → 右下ハンドルを drag → 拡大 | ☐ | Transformer anchor (24px touch / 10px desktop) |
+| 14 | ハイライトを選択 → 右下ハンドルを drag → 拡大 | ☐ | 同上 |
+| 15 | 矢印の from-handle (始点 Circle) を drag → 始点移動 | ☐ | radius 12 (touch) / 6 (desktop) |
+| 16 | 矢印の to-handle (終点 Circle) を drag → 終点移動 | ☐ | 同上 |
+| 17 | テキストをダブルタップ → 編集モード | ☐ | `onDblTap` 必須 (10.I post-review fix) |
+| 18 | 編集モードで文字入力 → Enter で確定 → annotation.text 更新 | ☐ | textarea focus + IME |
+| 19 | 編集モードで Esc → annotation 残存 | ☐ | 空文字でも残る |
 
 ### Android Chrome (Pixel)
 

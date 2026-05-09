@@ -13,7 +13,7 @@
 
 | Metric | Target | Achieved | 根拠 |
 |---|---|:--:|---|
-| **基本機能パリティ** | iPhone (Safari) + Pixel (Chrome) で 4 形状 × 3 操作 = 12 ケースが 100% 通過 | ✅ (CI 自動) / ⚠ (実機手動 docs/qa 待ち) | `apps/web/e2e/touch-acceptance.spec.ts` 12 件 mobile-chrome project で全緑 (10.0s)。実機検証は `docs/qa/phase-10-i-touch-manual-qa.md` で著者消費待ち |
+| **基本機能パリティ** | iPhone (Safari) + Pixel (Chrome) で 4 形状 × 3 操作 = 12 ケース + 再編集 7 ケース = 19 ケース 100% 通過 | ✅ (CI 自動) / ⚠ (実機手動 docs/qa 待ち) | `touch-acceptance.spec.ts` 12 件 + `touch-acceptance-edit.spec.ts` 7 件 (resize 2 / endpoint 2 / dblTap 1 / edit 1 / cancel 1) で mobile-chrome 全緑 (累積 22 件 = 3 smoke + 12 受入 + 7 post-review)。実機検証は `docs/qa/phase-10-i-touch-manual-qa.md` で著者消費待ち。**post-review fix**: `TextShape` に `onDblTap` 配線 (Konva 公式 mouse + touch ペアパターン) を追加して touch でのテキストダブルタップ編集を動作確証 |
 | **誤操作率** | 5 試行平均 < 1/5 | ⚠ (手動) | `docs/qa §2` で消費する手順 + 結果欄テンプレート完備、著者 + 知人ドッグフードで埋める |
 | **selection handle ヒット率** | 40 試行で 36/40 以上 (90%) | ⚠ (手動) | `docs/qa §3` で 5 試行 × 4 形状 × 2 デバイス = 40 セルテーブル完備 |
 | **CWV (mobile)** | LCP < 2500ms / INP < 200ms / CLS < 0.1 | ⚠ (手動 + Phase 10.G) | `docs/qa §5` で Lighthouse mobile profile spot check 手順。実 RUM データは Phase 10.G の Cloudflare Web Analytics 1 ヶ月観察で収集する PRD 設計と整合 |
