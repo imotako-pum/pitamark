@@ -99,4 +99,17 @@ describe('ColorPalette', () => {
     }
     m.unmount();
   });
+
+  it('renders chips as circles (rounded-full)', () => {
+    const m = renderPalette({});
+    // chip は button > span (aria-hidden) の構造。
+    const chips = m.container.querySelectorAll<HTMLSpanElement>(
+      'button[aria-label^="色:"] > span[aria-hidden="true"]',
+    );
+    expect(chips.length).toBe(COLOR_PALETTE.length);
+    for (const chip of chips) {
+      expect(chip.className).toContain('rounded-full');
+    }
+    m.unmount();
+  });
 });
