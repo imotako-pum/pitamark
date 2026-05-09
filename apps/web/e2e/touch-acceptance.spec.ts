@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test';
 import {
   type AcceptanceAnnotation,
+  commitTextAnnotation,
   dragOnStage,
   readAnnotations,
   readFirstAnnotation,
   selectTool,
+  setupEditor,
   tapShapeAndDelete,
   tapStage,
-  waitForAnnotationsReady,
 } from './fixtures/touch-helpers';
-import { dropImage } from './fixtures/upload';
 
 // Phase 10.I-4: 4 形状 (rectangle / arrow / highlight / text) × 3 操作 (add / move / delete)
 // = 12 ケースを mobile-chrome (Pixel 5 emulation) で網羅する受入 spec。Phase 10.I の
@@ -26,15 +26,6 @@ const skipNonMobileChrome = (testInfo: import('@playwright/test').TestInfo) =>
     testInfo.project.name !== 'mobile-chrome',
     'touch acceptance は mobile-chrome project のみ実行する',
   );
-
-const setupEditor = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImage(page);
-  // 12 ケース並列実行で webServer の API negotiation が遅延すると default 10s では
-  // flaky になるため 20s に拡張。ローカル単発実行では 1-2s で通る。
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
-  await waitForAnnotationsReady(page);
-};
 
 /** Stage の logical 座標 (annotation.x/y) を screen 座標に変換する。1×1 sample.png の
  *  fit-to-viewport で画像が viewport 中央に配置されるため、annotation.x/y はしばしば
@@ -194,8 +185,9 @@ test.describe('Phase 10.I-4: touch acceptance — 4 shapes × 3 ops (12 cases)',
     await setupEditor(page);
     await selectTool(page, 'テキスト');
     await tapStage(page, { x: 100, y: 100 });
-    // IME で編集中なので Escape で確定 → select に切替えても座標がずれない状態にする
-    await page.keyboard.press('Escape');
+    // Phase 10.J-4: 本物 touch event で textarea が正しく focus されるため、空文字 Esc では
+    // handleTextCancel が annotation を remove する。後続 move のため non-empty content で commit。
+    await commitTextAnnotation(page, 'move');
     const before = await readFirstAnnotation(page);
     if (!before || before.type !== 'text') throw new Error('text add 失敗');
     await selectTool(page, '選択');
@@ -255,7 +247,8 @@ test.describe('Phase 10.I-4: touch acceptance — 4 shapes × 3 ops (12 cases)',
     await setupEditor(page);
     await selectTool(page, 'テキスト');
     await tapStage(page, { x: 100, y: 100 });
-    await page.keyboard.press('Escape');
+    // Phase 10.J-4: non-empty content で commit して text annotation を確定。
+    await commitTextAnnotation(page, 'delete');
     const before = await readFirstAnnotation(page);
     if (!before || before.type !== 'text') throw new Error('text add 失敗');
     await tapShapeAndDelete(page, await shapeScreenCenter(page, before));
