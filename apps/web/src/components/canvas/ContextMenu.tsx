@@ -5,8 +5,10 @@ import { useTranslation } from '../../i18n';
 
 // Phase 10.J-2 ADR-0007 D4: 長押し成立時に shape 上の anchor 座標へ pop する menu。
 // position: fixed で stage の transform から独立、画面端では flip して viewport 内に
-// 収める。各 button は min-w-11 / min-h-11 (= 44px、iOS HIG / Material) で誤タップ回避、
-// destructive (削除) は色分けで視認性向上 + 項目順 last で位置による誤タップ抑止。
+// 収める。各 button は min-w-11 / min-h-11 (= MIN_TAP_TARGET_PX = 44px、iOS HIG / Material 3) で
+// 誤タップ回避、destructive (削除) は色分けで視認性向上 + 項目順 last で位置による誤タップ抑止。
+// Tailwind の `min-w-11 min-h-11` は class 名が静的解析対象のため、定数値を直接埋め込まず
+// コメントで MIN_TAP_TARGET_PX を参照するに留める (Phase 10.J-3 ADR-0007 D2 付帯条件)。
 
 export type ContextMenuItemId = 'duplicate' | 'bring-front' | 'send-back' | 'delete';
 
