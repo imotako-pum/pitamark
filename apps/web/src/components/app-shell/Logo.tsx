@@ -21,7 +21,6 @@ export const Logo = () => {
         style={{ transform: 'rotate(-5deg)', transformOrigin: '30% 50%' }}
       >
         <span
-          aria-hidden="true"
           className="relative z-[2] select-none whitespace-nowrap font-bold tracking-[-0.015em]"
           style={{ color: 'oklch(18% 0 0)', fontSize: '16px' }}
         >
