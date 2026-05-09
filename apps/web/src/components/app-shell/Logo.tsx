@@ -5,18 +5,19 @@ import { useTranslation } from '../../i18n';
 // 設計メモ:
 // - SVG の `overflow: visible` により path が viewBox (0 0 8 20) を縦に超えて描画される。
 //   path "M4 49 L4 -22" で shaft が text 上下にそれぞれ ~22 単位 (font-size の ~1.4 倍)
-//   突き抜ける。font-size 20px (text-xl) なら ~28px ぶん上下にはみ出す。
+//   突き抜ける。font-size 30px (text-3xl) なら ~44px ぶん上にはみ出す。
 // - ヘッダの py 設定 (EditorShell.tsx) で矢印の縦突き抜けぶんの padding を確保すること。
+//   現状 py-8 (32px) で text-3xl の矢印突き抜けに余裕を持たせる。
 // - Konva の color 同期は無関係 (canvas 外の DOM)。Y1 赤は DEFAULT_SYNC_COLOR (#e74c3c)
 //   と同じ oklch(60% 0.22 28) を使う。
-// - フォントサイズは Tailwind の text-xl (20px) を採用し、PC 表示でブランド要素として
+// - フォントサイズは Tailwind の text-3xl (30px) を採用し、PC 表示でブランド要素として
 //   十分な存在感を持たせる。md 未満は h1 自体が hidden。
 export const Logo = () => {
   const t = useTranslation();
   return (
     <h1
       aria-label={t('common.appName')}
-      className="pointer-events-auto hidden self-center text-xl md:block"
+      className="pointer-events-auto hidden self-center text-3xl md:block"
     >
       <span
         className="relative inline-block px-2 py-0.5"
