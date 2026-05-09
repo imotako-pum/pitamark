@@ -16,12 +16,14 @@ type ToolButtonProps = Readonly<{
   onClick: () => void;
 }>;
 
-// `danger` tone は shadcn の `--destructive` bridge 変数を経由する。inline OKLCH
-// literal を直接書くと toolbar palette が `tokens.css` と乖離するため、変数 1 本に
-// 揃えて将来の destructive 色変更を 1 箇所で済ませる。
+// Active tool は Y1 logo の赤と整合させる: 薄赤 bg + 中赤 border + 濃赤 icon。
+// 値は oklch (token を新設するほどでもないので Tailwind 任意値構文で直書き)。
 const TONE_CLASS: Record<NonNullable<ToolButtonProps['tone']>, string> = {
-  default:
-    'aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:border-(--color-accent)',
+  default: [
+    'aria-pressed:bg-[oklch(95%_0.06_28)]',
+    'aria-pressed:text-[oklch(40%_0.2_28)]',
+    'aria-pressed:border-[oklch(70%_0.18_28)]',
+  ].join(' '),
   danger: 'text-destructive hover:bg-destructive/10',
 };
 
