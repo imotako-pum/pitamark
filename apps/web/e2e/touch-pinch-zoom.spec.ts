@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { createRoomViaApi } from './fixtures/room-fixture';
 import { ANNOTATIONS_KEY } from './fixtures/touch-helpers';
-import { dropImage } from './fixtures/upload';
 
 // Phase 10.I-2: 2-finger pinch / pan の smoke。mobile-chrome (Pixel 5 emulation) で
 // 2 本指を distance 拡大方向に動かすと Stage の transform.scale が増えることを確認する。
@@ -27,9 +27,10 @@ test.describe('Phase 10.I-2: pinch zoom smoke', () => {
       'pinch smoke は mobile-chrome project のみ実行する',
     );
 
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    // Phase 11: API 直叩きで room を作成 → /r/{id} 直 navigate (landing → upload →
+    // redirect 経路の並列負荷 flake 回避)。
+    const { id } = await createRoomViaApi(page.request);
+    await page.goto(`/r/${id}`);
     await page.waitForFunction(
       (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
       ANNOTATIONS_KEY,

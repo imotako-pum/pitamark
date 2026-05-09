@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { createRoomViaApi } from './fixtures/room-fixture';
 import { ANNOTATIONS_KEY } from './fixtures/touch-helpers';
-import { dropImage } from './fixtures/upload';
 
 // Phase 10.I-3: Toolbar bottom 固定の smoke。mobile-chrome (Pixel 5 emulation) で
 // Toolbar が viewport 下半分に存在し、その状態で「矩形」ツールを tap → canvas drag で
@@ -16,9 +16,10 @@ test.describe('Phase 10.I-3: toolbar bottom-fixed smoke', () => {
       'toolbar bottom smoke は mobile-chrome project のみ実行する',
     );
 
-    await page.goto('/');
-    await dropImage(page);
-    await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 10_000 });
+    // Phase 11: API 直叩きで room を作成 → /r/{id} 直 navigate (landing → upload →
+    // redirect 経路の並列負荷 flake 回避)。
+    const { id } = await createRoomViaApi(page.request);
+    await page.goto(`/r/${id}`);
     await page.waitForFunction(
       (k) => Array.isArray((window as unknown as Record<string, unknown>)[k]),
       ANNOTATIONS_KEY,

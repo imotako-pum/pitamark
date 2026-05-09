@@ -5,8 +5,8 @@
 //
 // dropImage と並列に置く想定で、test 側からは `import { dragOnStage, ... } from './fixtures/touch-helpers';`。
 
-import { expect, type Page } from '@playwright/test';
-import { dropImage } from './upload';
+import type { Page } from '@playwright/test';
+import { createRoomViaApi } from './room-fixture';
 
 export const ANNOTATIONS_KEY = '__SNAP_SHARE_ANNOTATIONS__';
 
@@ -275,14 +275,14 @@ export const waitForAnnotationsReady = async (page: Page) => {
   );
 };
 
-/** 共通の editor setup: home → dropImage → /r/<id> redirect 待ち → annotations ready 待ち。
- *  Phase 10.J-4: `touch-acceptance.spec.ts` / `touch-acceptance-edit.spec.ts` で重複していた
- *  ローカル定義を helper に集約。 */
+/** 共通の editor setup: API 直叩きで room を作成 → /r/<id> に直 navigate → annotations
+ *  ready 待ち。Phase 10.J-4 で `touch-acceptance.spec.ts` / `touch-acceptance-edit.spec.ts`
+ *  の重複定義を helper に集約し、Phase 11 で UI 経路 (landing → dropImage → redirect) を
+ *  bypass する形に書き換えた。並列 12+ ケースで POST /rooms が滞留して 20s timeout する
+ *  flake の根本対処 (それでも 1 room あたりは API 1 本なので並列 KV 書き込みは残るが、
+ *  landing render / Turnstile gate / redirect 待ちが消える分だけ contention が大幅に減る)。 */
 export const setupEditor = async (page: Page) => {
-  await page.goto('/');
-  await dropImage(page);
-  // 12+ ケース並列実行で webServer の API negotiation が遅延すると default 10s では
-  // flaky になるため 20s に拡張。ローカル単発実行では 1-2s で通る。
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
+  const { id } = await createRoomViaApi(page.request);
+  await page.goto(`/r/${id}`);
   await waitForAnnotationsReady(page);
 };
