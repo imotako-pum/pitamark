@@ -30,6 +30,13 @@ export const ja = {
   'toolbar.action.clearAll': '注釈をすべて削除',
   'toolbar.action.help': 'ショートカット一覧',
 
+  // Context menu — Phase 10.J-2 長押しコンテキストメニュー。
+  // 項目順は Material 寄り (削除を最後) で誤タップ回避。
+  'contextMenu.duplicate': '複製',
+  'contextMenu.bringFront': '前面へ移動',
+  'contextMenu.sendBack': '背面へ移動',
+  'contextMenu.delete': '削除',
+
   // Toolbar — URL コピーボタン。
   'toolbar.copyUrl.aria': 'ルームURLをコピー',
   'toolbar.copyUrl.idle': 'URL コピー',
