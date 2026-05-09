@@ -664,7 +664,7 @@ export const EditorShell = ({
       <AdSlot variant="rail" side="right" />
       <header
         ref={headerRef}
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-3 lg:left-40 lg:right-40"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 px-3 py-4 lg:left-40 lg:right-40"
       >
         <Logo />
         {/* landing (source === null) では editor Toolbar を非表示にする。画像未ロード
