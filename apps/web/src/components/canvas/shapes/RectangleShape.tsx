@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useEffect, useRef } from 'react';
 import { Rect as KonvaRect, Transformer } from 'react-konva';
+import { useLongPress } from '../../../hooks/useLongPress';
 import { useTouchDevice } from '../../../hooks/useTouchDevice';
 import {
   ANCHOR_SIZE_DESKTOP,
@@ -25,6 +26,8 @@ type RectangleShapeProps = Readonly<{
   onClick: (id: string) => void;
   onDragEnd: (id: string, x: number, y: number) => void;
   onResize: (id: string, patch: RectangleResizePatch) => void;
+  /** Phase 10.J-2: 長押しで context menu を出す callback。省略時は no-op (= menu 無効) */
+  onLongPress?: (id: string, anchor: { x: number; y: number }) => void;
 }>;
 
 export const RectangleShape = ({
@@ -33,10 +36,15 @@ export const RectangleShape = ({
   onClick,
   onDragEnd,
   onResize,
+  onLongPress,
 }: RectangleShapeProps) => {
   const shapeRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const isTouch = useTouchDevice();
+  const longPress = useLongPress({
+    onLongPress: (anchor) => onLongPress?.(annotation.id, anchor),
+    enabled: !!onLongPress,
+  });
 
   useEffect(() => {
     if (isSelected && shapeRef.current && trRef.current) {
@@ -70,6 +78,12 @@ export const RectangleShape = ({
           e.cancelBubble = true;
           onClick(annotation.id);
         }}
+        onPointerDown={longPress.onPointerDown}
+        onPointerMove={longPress.onPointerMove}
+        onPointerUp={longPress.onPointerUp}
+        onPointerCancel={longPress.onPointerCancel}
+        onTouchStart={longPress.onTouchStart}
+        onTouchEnd={longPress.onTouchEnd}
         onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
         onTransformEnd={() => {
           // Konva applies the resize as a scale on the node — convert it back

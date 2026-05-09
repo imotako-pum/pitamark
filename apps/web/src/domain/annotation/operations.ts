@@ -93,6 +93,85 @@ export const setFontSize = (
   return annotations.map((a) => (a === target ? { ...a, fontSize } : a));
 };
 
+// Phase 10.J-2: 既存 annotation を offset 付きで複製する。新 id + 新 createdAt を採番、
+// 表示順 (= createdAt 昇順、yjs-codec.ts:130 の sort) が「複製は元の手前」になるように
+// 元の createdAt より大きい値を割り当てる。座標は (16, 16) px ずらして元と完全重ならない
+// ようにする。drag や resize と独立した純粋関数で、副作用なし。
+const DUPLICATE_OFFSET_PX = 16;
+
+export const cloneAnnotationWithOffset = (
+  source: Annotation,
+  newId: string,
+  newCreatedAt: number,
+): Annotation => {
+  switch (source.type) {
+    case 'rectangle':
+      return {
+        ...source,
+        id: newId,
+        createdAt: newCreatedAt,
+        x: source.x + DUPLICATE_OFFSET_PX,
+        y: source.y + DUPLICATE_OFFSET_PX,
+      };
+    case 'highlight':
+      return {
+        ...source,
+        id: newId,
+        createdAt: newCreatedAt,
+        x: source.x + DUPLICATE_OFFSET_PX,
+        y: source.y + DUPLICATE_OFFSET_PX,
+      };
+    case 'text':
+      return {
+        ...source,
+        id: newId,
+        createdAt: newCreatedAt,
+        x: source.x + DUPLICATE_OFFSET_PX,
+        y: source.y + DUPLICATE_OFFSET_PX,
+      };
+    case 'arrow':
+      return {
+        ...source,
+        id: newId,
+        createdAt: newCreatedAt,
+        from: { x: source.from.x + DUPLICATE_OFFSET_PX, y: source.from.y + DUPLICATE_OFFSET_PX },
+        to: { x: source.to.x + DUPLICATE_OFFSET_PX, y: source.to.y + DUPLICATE_OFFSET_PX },
+      };
+    default: {
+      const _exhaustive: never = source;
+      return _exhaustive;
+    }
+  }
+};
+
+// Phase 10.J-2: 表示順 (= createdAt 昇順) を更新して z-order を変更する。前面 = 既存
+// 最大 createdAt + 1、背面 = 既存最小 createdAt - 1。schema を変えずに済むのは
+// yjs-codec.ts:130 の sort が既に createdAt を render order key として使っているため。
+// 対象 id が見つからないか、すでに端 (front は max、back は min) に居て変更不要なら
+// 同一参照を返し、reducer が reference equality で空 undo step を抑止できる契約を維持。
+export const reorderAnnotation = (
+  annotations: ReadonlyArray<Annotation>,
+  id: string,
+  direction: 'front' | 'back',
+): ReadonlyArray<Annotation> => {
+  const target = annotations.find((a) => a.id === id);
+  if (!target) return annotations;
+  if (annotations.length <= 1) return annotations;
+  if (direction === 'front') {
+    const maxCreatedAt = annotations.reduce(
+      (m, a) => (a.createdAt > m ? a.createdAt : m),
+      -Infinity,
+    );
+    if (target.createdAt >= maxCreatedAt) return annotations;
+    const next = maxCreatedAt + 1;
+    return annotations.map((a) => (a === target ? { ...a, createdAt: next } : a));
+  }
+  const minCreatedAt = annotations.reduce((m, a) => (a.createdAt < m ? a.createdAt : m), Infinity);
+  if (target.createdAt <= minCreatedAt) return annotations;
+  const next = minCreatedAt - 1;
+  return annotations.map((a) => (a === target ? { ...a, createdAt: next } : a));
+};
+
 // 4 種類の annotation が同じ `color` field を共有する。型別に setter を分ける必要が
 // あったのは、rectangle/arrow が `stroke` を、text/highlight が `fill` を使っていた頃
 // だけ。今は 1 setter / 1 Yjs mutation / 1 reducer action に集約。

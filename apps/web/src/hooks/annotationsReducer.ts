@@ -4,6 +4,7 @@ import {
   addAnnotation,
   moveAnnotation,
   removeAnnotation,
+  reorderAnnotation,
   resizeHighlight,
   resizeRectangle,
   setArrowEndpoints,
@@ -56,7 +57,10 @@ export type AnnotationsAction =
   | { type: 'annotation/set-arrow-endpoints'; id: string; from: Point; to: Point }
   | { type: 'annotation/set-text'; id: string; text: string }
   | { type: 'annotation/set-color'; id: string; color: string }
-  | { type: 'annotation/set-font-size'; id: string; fontSize: number };
+  | { type: 'annotation/set-font-size'; id: string; fontSize: number }
+  // Phase 10.J-2: 長押し menu の「前面へ」「背面へ」項目で発火。createdAt を更新して
+  // yjs-codec の sort 経由で render 順を変える (案 B、Open Question Q1)。
+  | { type: 'annotation/reorder'; id: string; direction: 'front' | 'back' };
 
 export const initialAnnotationsState: AnnotationsState = {
   annotations: [],
@@ -138,6 +142,13 @@ export const annotationsReducer = (
       if (nextAnnotations === state.annotations) return state;
       return { ...state, annotations: nextAnnotations };
     }
+    case 'annotation/reorder': {
+      // `reorderAnnotation` は既に最端 / 未知 id / 1 件以下で同一参照を返すため、
+      // setFontSize と同じ no-op 抑止 pattern で undo に空 step を積まない。
+      const nextAnnotations = reorderAnnotation(state.annotations, action.id, action.direction);
+      if (nextAnnotations === state.annotations) return state;
+      return { ...state, annotations: nextAnnotations };
+    }
     default: {
       const _exhaustive: never = action;
       return _exhaustive;
@@ -164,6 +175,7 @@ export const isCommittingAction = (action: AnnotationsAction): boolean => {
     case 'annotation/set-text':
     case 'annotation/set-color':
     case 'annotation/set-font-size':
+    case 'annotation/reorder':
       return true;
     default: {
       const _exhaustive: never = action;

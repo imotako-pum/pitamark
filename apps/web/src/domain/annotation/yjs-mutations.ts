@@ -150,3 +150,39 @@ export const clearAllY = (doc: Y.Doc, ya: YAnnotations): void => {
     ya.clear();
   });
 };
+
+// Phase 10.J-2: 長押し menu の「前面へ」「背面へ」から発火される z-order 変更。
+// 案 B (Open Question Q1): 既存 `createdAt` を render order key として再利用 (yjs-codec
+// の sort が既に createdAt 昇順)。schema 拡張なし、Yjs 互換維持、Y.Array refactor 回避。
+// front = max + 1、back = min - 1 で他 annotation を動かさない最小操作。1 件以下では no-op。
+export const reorderAnnotationY = (
+  doc: Y.Doc,
+  ya: YAnnotations,
+  id: string,
+  direction: 'front' | 'back',
+): void => {
+  const target = ya.get(id);
+  if (!target) return;
+  const all = Array.from(ya.values());
+  if (all.length <= 1) return;
+  const targetCreatedAt = target.get('createdAt') as number;
+  if (direction === 'front') {
+    const maxCreatedAt = all.reduce((m, n) => {
+      const v = n.get('createdAt') as number;
+      return v > m ? v : m;
+    }, Number.NEGATIVE_INFINITY);
+    if (targetCreatedAt >= maxCreatedAt) return;
+    tx(doc, () => {
+      target.set('createdAt', maxCreatedAt + 1);
+    });
+    return;
+  }
+  const minCreatedAt = all.reduce((m, n) => {
+    const v = n.get('createdAt') as number;
+    return v < m ? v : m;
+  }, Number.POSITIVE_INFINITY);
+  if (targetCreatedAt <= minCreatedAt) return;
+  tx(doc, () => {
+    target.set('createdAt', minCreatedAt - 1);
+  });
+};

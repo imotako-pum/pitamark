@@ -1,6 +1,7 @@
 import type { TextAnnotation } from '@pitamark/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Group, Rect as KonvaRect, Text as KonvaText } from 'react-konva';
+import { useLongPress } from '../../../hooks/useLongPress';
 import { OUTLINE_ACCENT } from '../colors';
 
 type TextShapeProps = Readonly<{
@@ -10,6 +11,8 @@ type TextShapeProps = Readonly<{
   onClick: (id: string) => void;
   onDragEnd: (id: string, x: number, y: number) => void;
   onDoubleClick: (id: string) => void;
+  /** Phase 10.J-2: 長押しで context menu を出す callback。`isEditing` 中は disable */
+  onLongPress?: (id: string, anchor: { x: number; y: number }) => void;
 }>;
 
 const SELECTION_PADDING = 4;
@@ -26,8 +29,15 @@ export const TextShape = ({
   onClick,
   onDragEnd,
   onDoubleClick,
+  onLongPress,
 }: TextShapeProps) => {
   const showSelection = isSelected && !isEditing;
+  const longPress = useLongPress({
+    onLongPress: (anchor) => onLongPress?.(annotation.id, anchor),
+    // ADR-0007 D4 + Q3: text 編集中 (textarea 表示中) は context menu を出さない。
+    // text input フォーカスを優先し、誤発火による menu 表示で IME が中断するのを防ぐ。
+    enabled: !!onLongPress && !isEditing,
+  });
   const visibleChars = Math.max(annotation.text.length, 1);
   const frameWidth =
     visibleChars * annotation.fontSize * APPROX_GLYPH_WIDTH_RATIO + SELECTION_PADDING * 2;
@@ -60,6 +70,12 @@ export const TextShape = ({
         e.cancelBubble = true;
         onDoubleClick(annotation.id);
       }}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerCancel}
+      onTouchStart={longPress.onTouchStart}
+      onTouchEnd={longPress.onTouchEnd}
       onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
     >
       {showSelection && (

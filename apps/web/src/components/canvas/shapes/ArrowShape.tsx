@@ -1,6 +1,7 @@
 import type { ArrowAnnotation, Point } from '@pitamark/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Circle, Arrow as KonvaArrow } from 'react-konva';
+import { useLongPress } from '../../../hooks/useLongPress';
 import { useTouchDevice } from '../../../hooks/useTouchDevice';
 import {
   ARROW_POINTER_LENGTH,
@@ -22,6 +23,8 @@ type ArrowShapeProps = Readonly<{
   onClick: (id: string) => void;
   onDragEnd: (id: string, dx: number, dy: number) => void;
   onArrowEndpoints: (id: string, endpoints: ArrowEndpointsPatch) => void;
+  /** Phase 10.J-2: 長押しで context menu を出す callback */
+  onLongPress?: (id: string, anchor: { x: number; y: number }) => void;
 }>;
 
 export const ArrowShape = ({
@@ -30,8 +33,13 @@ export const ArrowShape = ({
   onClick,
   onDragEnd,
   onArrowEndpoints,
+  onLongPress,
 }: ArrowShapeProps) => {
   const isTouch = useTouchDevice();
+  const longPress = useLongPress({
+    onLongPress: (anchor) => onLongPress?.(annotation.id, anchor),
+    enabled: !!onLongPress,
+  });
   const handleRadius = isTouch ? HANDLE_RADIUS_TOUCH : HANDLE_RADIUS;
   // touch 時のみ細線への hit zone を拡張。desktop では密接した矢印で誤タップが
   // 増えないよう annotation.strokeWidth 維持 (= 視覚と同じ幅で hit する)。
@@ -75,6 +83,12 @@ export const ArrowShape = ({
           e.cancelBubble = true;
           onClick(annotation.id);
         }}
+        onPointerDown={longPress.onPointerDown}
+        onPointerMove={longPress.onPointerMove}
+        onPointerUp={longPress.onPointerUp}
+        onPointerCancel={longPress.onPointerCancel}
+        onTouchStart={longPress.onTouchStart}
+        onTouchEnd={longPress.onTouchEnd}
         onDragEnd={(e) => {
           const dx = e.target.x();
           const dy = e.target.y();

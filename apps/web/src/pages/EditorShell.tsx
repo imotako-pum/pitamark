@@ -11,12 +11,14 @@ import {
 } from 'react';
 import { AdSlot, BOTTOM_HEIGHT_PX, RAIL_WIDTH_PX } from '../components/ad/AdSlot';
 import { CanvasStage } from '../components/canvas/CanvasStage';
+import { ContextMenu, type ContextMenuItemId } from '../components/canvas/ContextMenu';
 import { DEFAULT_STROKE_WIDTH } from '../components/canvas/colors';
 import { TextEditorOverlay } from '../components/canvas/TextEditorOverlay';
 import { HelpModal } from '../components/dialogs/HelpModal';
 import { DropZone } from '../components/empty-state/DropZone';
 import { LangToggle } from '../components/lang-toggle/LangToggle';
 import { Toolbar } from '../components/toolbar/Toolbar';
+import { cloneAnnotationWithOffset } from '../domain/annotation/operations';
 import type { Tool } from '../hooks/annotationsReducer';
 import type { AnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useExportPng } from '../hooks/useExportPng';
@@ -133,6 +135,64 @@ export const EditorShell = ({
     height: number;
   } | null>(null);
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
+
+  // Phase 10.J-2: 長押し context menu の state。menu open 中は (anchor, targetId) を保持。
+  // close は menu 内 select / menu 外 click / target shape の remote remove で発火。
+  const [menuState, setMenuState] = useState<{
+    anchor: { x: number; y: number };
+    targetId: string;
+  } | null>(null);
+
+  const handleShapeLongPress = useCallback((id: string, anchor: { x: number; y: number }) => {
+    setMenuState({ anchor, targetId: id });
+  }, []);
+
+  const handleMenuClose = useCallback(() => {
+    setMenuState(null);
+  }, []);
+
+  // target shape が remote remove / 自身の delete dispatch で消えたら menu auto close。
+  useEffect(() => {
+    if (!menuState) return;
+    const exists = store.state.annotations.some((a) => a.id === menuState.targetId);
+    if (!exists) setMenuState(null);
+  }, [menuState, store.state.annotations]);
+
+  // 長押し menu 各項目 → store.dispatch。Open Question Q5 の暫定:
+  // - delete: targetId の selectedId を解除し remove (existing path)
+  // - duplicate: cloneAnnotationWithOffset で新 id + 新 createdAt + (16,16) offset、add
+  //              新 annotation を選択状態に
+  // - bring-front / send-back: annotation/reorder で createdAt を更新 (selection 維持)
+  const handleMenuSelect = useCallback(
+    (itemId: ContextMenuItemId) => {
+      const target = menuState ? menuState.targetId : null;
+      if (!target) return;
+      const source = store.state.annotations.find((a) => a.id === target);
+      switch (itemId) {
+        case 'delete':
+          store.dispatch({ type: 'annotation/remove', id: target });
+          return;
+        case 'duplicate': {
+          if (!source) return;
+          const cloned = cloneAnnotationWithOffset(source, generateId(), Date.now());
+          store.dispatch({ type: 'annotation/add', annotation: cloned });
+          store.dispatch({ type: 'select/set', id: cloned.id });
+          return;
+        }
+        case 'bring-front':
+          store.dispatch({ type: 'annotation/reorder', id: target, direction: 'front' });
+          return;
+        case 'send-back':
+          store.dispatch({ type: 'annotation/reorder', id: target, direction: 'back' });
+          return;
+        default: {
+          const _exhaustive: never = itemId;
+          void _exhaustive;
+        }
+      }
+    },
+    [menuState, store],
+  );
 
   // 旧 TOOLBAR_HEIGHT 定数を ResizeObserver に置き換える。narrow 画面で toolbar が
   // 2 行に wrap したときも stage が実 header 高さに追従する。
@@ -683,6 +743,7 @@ export const EditorShell = ({
             pendingAutoArrow={pendingAutoArrow}
             onAutoNextRectangle={handleAutoNextRectangle}
             onCancelAutoArrowIfAny={handleCancelAutoArrowIfAny}
+            onShapeLongPress={handleShapeLongPress}
           />
         ) : onLoadFile ? (
           // LocalEditor が `landingSlot` を渡したときは <DropZone> を landing UI
@@ -715,6 +776,12 @@ export const EditorShell = ({
           隠れない設計。 */}
       <AdSlot variant="bottom" />
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
+      <ContextMenu
+        open={!!menuState}
+        anchor={menuState?.anchor ?? null}
+        onSelect={handleMenuSelect}
+        onClose={handleMenuClose}
+      />
     </main>
   );
 };

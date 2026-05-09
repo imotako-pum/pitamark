@@ -15,6 +15,8 @@ type AnnotationLayerProps = Readonly<{
   onResizeRectangle: (id: string, patch: RectangleResizePatch) => void;
   onResizeHighlight: (id: string, patch: HighlightResizePatch) => void;
   onArrowEndpoints: (id: string, endpoints: ArrowEndpointsPatch) => void;
+  /** Phase 10.J-2: shape 長押しで context menu を出す callback。screen 座標 (clientX/clientY) を anchor に渡す */
+  onShapeLongPress?: (id: string, anchor: { x: number; y: number }) => void;
 }>;
 
 export const AnnotationLayer = ({
@@ -27,6 +29,7 @@ export const AnnotationLayer = ({
   onResizeRectangle,
   onResizeHighlight,
   onArrowEndpoints,
+  onShapeLongPress,
 }: AnnotationLayerProps) => (
   <Layer>
     {annotations.map((a) => {
@@ -41,6 +44,7 @@ export const AnnotationLayer = ({
               onClick={onShapeClick}
               onDragEnd={(id, x, y) => onShapeMove(id, x - a.x, y - a.y)}
               onResize={onResizeRectangle}
+              onLongPress={onShapeLongPress}
             />
           );
         case 'arrow':
@@ -52,6 +56,7 @@ export const AnnotationLayer = ({
               onClick={onShapeClick}
               onDragEnd={onShapeMove}
               onArrowEndpoints={onArrowEndpoints}
+              onLongPress={onShapeLongPress}
             />
           );
         case 'text':
@@ -64,6 +69,7 @@ export const AnnotationLayer = ({
               onClick={onShapeClick}
               onDragEnd={(id, x, y) => onShapeMove(id, x - a.x, y - a.y)}
               onDoubleClick={onTextDoubleClick}
+              onLongPress={onShapeLongPress}
             />
           );
         case 'highlight':
@@ -75,6 +81,7 @@ export const AnnotationLayer = ({
               onClick={onShapeClick}
               onDragEnd={(id, x, y) => onShapeMove(id, x - a.x, y - a.y)}
               onResize={onResizeHighlight}
+              onLongPress={onShapeLongPress}
             />
           );
         default: {
