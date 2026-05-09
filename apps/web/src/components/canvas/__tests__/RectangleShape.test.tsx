@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type CapturedProps = Record<string, unknown>;
 
-const { capture } = vi.hoisted(() => ({
+const { capture, useTouchDeviceMock } = vi.hoisted(() => ({
   capture: {
     rectProps: [] as CapturedProps[],
     transformerProps: [] as CapturedProps[],
@@ -18,6 +18,7 @@ const { capture } = vi.hoisted(() => ({
       height: () => 80,
     },
   },
+  useTouchDeviceMock: vi.fn<() => boolean>().mockReturnValue(false),
 }));
 
 vi.mock('react-konva', async () => {
@@ -49,6 +50,11 @@ vi.mock('react-konva', async () => {
   };
 });
 
+vi.mock('../../../hooks/useTouchDevice', () => ({
+  useTouchDevice: () => useTouchDeviceMock(),
+}));
+
+import { ANCHOR_SIZE_DESKTOP, ANCHOR_SIZE_TOUCH } from '../colors';
 import { RectangleShape } from '../shapes/RectangleShape';
 
 const annotation: RectangleAnnotation = {
@@ -100,6 +106,7 @@ describe('RectangleShape', () => {
   beforeEach(() => {
     capture.rectProps.length = 0;
     capture.transformerProps.length = 0;
+    useTouchDeviceMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -152,6 +159,22 @@ describe('RectangleShape', () => {
     });
     // node stub: width 100 * scaleX 2 = 200, height 80 * scaleY 1.5 = 120
     expect(onResize).toHaveBeenCalledWith('r1', { x: 130, y: 50, width: 200, height: 120 });
+    m.unmount();
+  });
+
+  // Phase 10.I-2: Transformer anchorSize adaptive。
+
+  it('uses ANCHOR_SIZE_DESKTOP on the Transformer when not on a touch device', () => {
+    useTouchDeviceMock.mockReturnValue(false);
+    const m = renderShape({ isSelected: true });
+    expect(capture.transformerProps[0]?.anchorSize).toBe(ANCHOR_SIZE_DESKTOP);
+    m.unmount();
+  });
+
+  it('uses ANCHOR_SIZE_TOUCH on the Transformer when on a touch device', () => {
+    useTouchDeviceMock.mockReturnValue(true);
+    const m = renderShape({ isSelected: true });
+    expect(capture.transformerProps[0]?.anchorSize).toBe(ANCHOR_SIZE_TOUCH);
     m.unmount();
   });
 });

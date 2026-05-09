@@ -6,7 +6,12 @@ import { Arrow as KonvaArrow, Layer, Stage } from 'react-konva';
 import type { Tool } from '../../hooks/annotationsReducer';
 import type { AnnotationsStore } from '../../hooks/useAnnotationsStore';
 import { isEditableTarget } from '../../hooks/useKeyboardShortcuts';
-import { type StageTransform, ZOOM_STEP } from '../../hooks/useStageTransform';
+import {
+  getCenter,
+  getDistance,
+  type StageTransform,
+  ZOOM_STEP,
+} from '../../hooks/useStageTransform';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../../lib/autoNextOffset';
 import { generateId } from '../../lib/id';
 import { AnnotationLayer } from './AnnotationLayer';
@@ -38,6 +43,15 @@ type CanvasStageProps = Readonly<{
   onZoom: (pointer: { x: number; y: number }, factor: number) => void;
   /** Space+drag による pan。dx/dy は screen 座標の差分。*/
   onPan: (dx: number, dy: number) => void;
+  /** Phase 10.I-2: 2-finger pinch / pan (Konva 公式 multi-touch パターン)。
+   *  EditorShell が `applyPinch` で transform を更新する。center は Stage container
+   *  基準の screen 座標、distRatio は 2 点間距離の比 (newDist / lastDist)。 */
+  onPinchPan: (input: {
+    center: { x: number; y: number };
+    distRatio: number;
+    panDx: number;
+    panDy: number;
+  }) => void;
   /** ImageLayer から伝播される画像 natural サイズ。null は src 切替リセット。*/
   onImageLoaded?: (size: { width: number; height: number } | null) => void;
   /** Auto-next-B: pending 中の既定矢印プレビュー (半透明) を描画する。null のときは
@@ -128,6 +142,7 @@ export const CanvasStage = ({
   transform,
   onZoom,
   onPan,
+  onPinchPan,
   onImageLoaded,
   pendingAutoArrow,
   onAutoNextRectangle,
@@ -148,6 +163,12 @@ export const CanvasStage = ({
   const panActiveRef = useRef(false);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
   const internalStageRef = useRef<Konva.Stage | null>(null);
+  // Phase 10.I-2: multi-touch pinch state。ADR-0006 Status Update 参照。
+  // Pointer Events 経路と並列に動く TouchEvent 経路で、2 本指の中点 + 距離を frame
+  // 間で trace する。1 frame 目は state 初期化のみ (jitter 防止)、2 frame 目以降で
+  // delta を計算して onPinchPan に流す。touchend で null/0 にリセット。
+  const lastCenterRef = useRef<{ x: number; y: number } | null>(null);
+  const lastDistRef = useRef<number>(0);
 
   // Space-pan の cursor フィードバック。react-konva は Stage に className prop を露出
   // しないし、wrapping div は react-konva 内部所有なので、canvas container の CSS cursor
@@ -400,6 +421,71 @@ export const CanvasStage = ({
   // 詳細は ADR-0006。
   const handlePointerCancel = handlePointerUp;
 
+  // Phase 10.I-2: multi-touch pinch + 2-finger pan (Konva 公式 sandbox 準拠)。
+  // 1 本指 (touch1 のみ) は Pointer 経路に任せて何もしない。2 本指検知瞬間に
+  // Pointer 経路の in-flight state (drag / draft / pan) を強制中断して責務分離する。
+  // ADR-0006 Status Update (Phase 10.I-2) 参照。
+  const handleTouchMove = useCallback(
+    (e: KonvaEventObject<TouchEvent>) => {
+      const touches = e.evt.touches;
+      const touch1 = touches[0];
+      const touch2 = touches[1];
+      if (!touch1 || !touch2) {
+        // 1 本指 → Pointer 経路に委譲。multi-touch state はリセットだけしておく。
+        lastCenterRef.current = null;
+        lastDistRef.current = 0;
+        return;
+      }
+
+      e.evt.preventDefault();
+
+      // 2 本指検知時の責務分離: Pointer 経路の in-flight 状態を全部 abort する。
+      if (dragStartRef.current || draftRef.current) {
+        dragStartRef.current = null;
+        draftRef.current = null;
+        setDraft(null);
+      }
+      if (panActiveRef.current) {
+        panActiveRef.current = false;
+        panLastRef.current = null;
+        setCursor(spaceDownRef.current ? 'grab' : '');
+      }
+
+      const stage = e.target.getStage();
+      if (!stage) return;
+      // Stage container の screen position が CSS で動く可能性 (Phase 10.I-3 で
+      // bottom toolbar 化される) に備えて毎回 getBoundingClientRect する。
+      const rect = stage.container().getBoundingClientRect();
+      const p1 = { x: touch1.clientX - rect.left, y: touch1.clientY - rect.top };
+      const p2 = { x: touch2.clientX - rect.left, y: touch2.clientY - rect.top };
+      const newCenter = getCenter(p1, p2);
+      const newDist = getDistance(p1, p2);
+
+      // 初回検知 frame: state 初期化のみで return (jitter 防止)。
+      if (!lastCenterRef.current || lastDistRef.current === 0) {
+        lastCenterRef.current = newCenter;
+        lastDistRef.current = newDist;
+        return;
+      }
+
+      onPinchPan({
+        center: newCenter,
+        distRatio: newDist / lastDistRef.current,
+        panDx: newCenter.x - lastCenterRef.current.x,
+        panDy: newCenter.y - lastCenterRef.current.y,
+      });
+
+      lastDistRef.current = newDist;
+      lastCenterRef.current = newCenter;
+    },
+    [onPinchPan, setCursor],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    lastCenterRef.current = null;
+    lastDistRef.current = 0;
+  }, []);
+
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
       // modifier 別の挙動:
@@ -503,6 +589,8 @@ export const CanvasStage = ({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerLeave}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
     >
       <ImageLayer src={src} onImageLoaded={onImageLoaded} />

@@ -1,12 +1,15 @@
 import type { ArrowAnnotation, Point } from '@pitamark/shared';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { Circle, Arrow as KonvaArrow } from 'react-konva';
+import { useTouchDevice } from '../../../hooks/useTouchDevice';
 import {
   ARROW_POINTER_LENGTH,
   ARROW_POINTER_WIDTH,
   HANDLE_FILL,
   HANDLE_RADIUS,
+  HANDLE_RADIUS_TOUCH,
   HANDLE_STROKE_WIDTH,
+  HIT_STROKE_WIDTH_TOUCH,
   OUTLINE_ACCENT,
   SELECTED_STROKE_BOOST,
 } from '../colors';
@@ -28,6 +31,11 @@ export const ArrowShape = ({
   onDragEnd,
   onArrowEndpoints,
 }: ArrowShapeProps) => {
+  const isTouch = useTouchDevice();
+  const handleRadius = isTouch ? HANDLE_RADIUS_TOUCH : HANDLE_RADIUS;
+  // touch 時のみ細線への hit zone を拡張。desktop では密接した矢印で誤タップが
+  // 増えないよう annotation.strokeWidth 維持 (= 視覚と同じ幅で hit する)。
+  const arrowHitStrokeWidth = isTouch ? HIT_STROKE_WIDTH_TOUCH : annotation.strokeWidth;
   const points: [number, number, number, number] = [
     annotation.from.x,
     annotation.from.y,
@@ -56,6 +64,7 @@ export const ArrowShape = ({
         stroke={stroke}
         fill={stroke}
         strokeWidth={strokeWidth}
+        hitStrokeWidth={arrowHitStrokeWidth}
         draggable
         onClick={(e: KonvaEventObject<MouseEvent>) => {
           e.cancelBubble = true;
@@ -74,7 +83,7 @@ export const ArrowShape = ({
           <Circle
             x={annotation.from.x}
             y={annotation.from.y}
-            radius={HANDLE_RADIUS}
+            radius={handleRadius}
             fill={HANDLE_FILL}
             stroke={OUTLINE_ACCENT}
             strokeWidth={HANDLE_STROKE_WIDTH}
@@ -91,7 +100,7 @@ export const ArrowShape = ({
           <Circle
             x={annotation.to.x}
             y={annotation.to.y}
-            radius={HANDLE_RADIUS}
+            radius={handleRadius}
             fill={HANDLE_FILL}
             stroke={OUTLINE_ACCENT}
             strokeWidth={HANDLE_STROKE_WIDTH}

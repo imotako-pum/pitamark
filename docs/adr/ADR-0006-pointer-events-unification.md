@@ -78,9 +78,55 @@ snap-share の Konva 描画レイヤー (`apps/web/src/components/canvas/CanvasS
 
 ### 後続 Phase との関係
 
-- **10.I-2 (multi-touch + hit area)**: 本 ADR の `capturePointerEventsEnabled = true` を前提に、`stage.getPointersPositions()` による 2-finger pinch を実装。hit area は `@media (pointer: coarse)` で adaptive 化
+- **10.I-2 (multi-touch + hit area)**: 本 ADR の `capturePointerEventsEnabled = true` を前提に 2-finger pinch を実装。hit area は `window.matchMedia('(pointer: coarse)')` の React state で adaptive 化 (Konva canvas は CSS variable を resolve しないため CSS media query は使えない)
 - **10.I-3 (Toolbar bottom)**: 本 ADR と直接関係なし、別ファイル群
 - **10.I-4 (E2E + 実機検証)**: 本 ADR の「pointer 固有挙動は Playwright」方針に基づき、12 ケース (4 形状 × 3 操作) を mobile-chrome project で実装
+
+---
+
+## Status Update (Phase 10.I-2): multi-touch pinch のみ TouchEvent 併用
+
+**Date**: 2026-05-09
+**Status**: 本 ADR の Decision (Pointer Events 一本化) は維持。**scope clarification として** multi-touch pinch + 2-finger pan のみ Konva 公式 multi-touch sandbox の TouchEvent 経路 (`<Stage onTouchMove>` + `e.evt.touches[0/1]`) を併用する。
+
+### 経緯
+
+Phase 10.I-2 (2-finger pinch / pan + ヒットエリア拡大) の Plan 起票時、Konva 公式 docs を context7 経由で再確認した結果、以下が判明:
+
+1. **Konva 公式の multi-touch pinch sample は TouchEvent ベース** ([Multi-touch_Scale_Stage.mdx](https://github.com/konvajs/site/blob/new/content/docs/sandbox/Multi-touch_Scale_Stage.mdx))。`stage.on('touchmove', fn)` 内で `e.evt.touches[0]` / `[1]` を読み、`getDistance` / `getCenter` 純粋関数で pinch 計算する成熟パターン
+2. **`Konva.hitOnDragEnabled = true`** が pinch-while-drag に必須 (Konva default は false で drag 中の touchmove が抑止される最適化が効く)
+3. Pointer Events で multi-touch を実装するには `stage.getPointersPositions()` + 自前 `Map<pointerId, pos>` 管理が必要だが、Konva 公式が当該 API での multi-touch sample を提供していない
+
+### 並列共存設計
+
+| 入力種別 | 経路 | 担当 |
+|---|---|---|
+| **single pointer** (1 本指 drag / mouse drag / pen drag) | Pointer Events (`onPointerDown/Move/Up/Cancel/Leave`) | 本 ADR 本来の Decision、変更なし |
+| **multi-touch** (2 本指 pinch + pan) | TouchEvent (`onTouchMove` / `onTouchEnd`) | Phase 10.I-2 で追加、Konva 公式パターン準拠 |
+
+衝突回避は責務分離で達成:
+- Pointer 経路: 1 本指のみ処理 (multi-pointer 検知時は何もしない)
+- TouchEvent 経路: `e.evt.touches.length === 2` のみ処理 (1 本指は早期 return)
+- 2 本指検知瞬間に Pointer 側の in-flight state (`dragStartRef` / `draftRef` / `panActiveRef`) を強制中断
+
+### この更新が Decision を覆さない理由
+
+- Pointer Events 一本化の **意図** (= mouse / pen / touch を単一型 `KonvaEventObject<PointerEvent>` で扱い、`pointerType` 分岐で将来 pen 対応可能にする) は single-pointer 入力で完全に維持される
+- multi-touch は **そもそも Pointer Events 仕様で「1 イベント = 1 ポインタ」モデル** であり、PointerEvent 単体では 2 ポインタ同時取得ができない (実装上 Map 自前管理が必須)。Konva はこれを補う `stage.getPointersPositions()` を持つが、公式 sample がない以上サポート外実装になる
+- TouchEvent 併用は「公式 sample に乗る」最も保守可能な選択。長期的には Konva 自身が Pointer Events ベースの multi-touch sample を提供すれば撤去できる
+
+### 影響範囲 (Phase 10.I-2 で追加されるファイル)
+
+- `apps/web/src/main.tsx`: `Konva.hitOnDragEnabled = true`
+- `apps/web/src/components/canvas/CanvasStage.tsx`: `<Stage onTouchMove onTouchEnd>` ハンドラ + multi-touch state ref 3 個
+- `apps/web/src/hooks/useStageTransform.ts`: `getDistance` / `getCenter` / `applyPinch` 純粋関数 + `setTransformDirect` callback
+
+### 将来の撤去条件 (Phase 11+ 候補)
+
+以下のいずれかが満たされた時点で TouchEvent 経路を撤去し、純粋 Pointer Events 一本化に戻す:
+
+- Konva が `stage.getPointersPositions()` ベースの公式 multi-touch sample を提供
+- `tldraw` / `Excalidraw` が Pointer Events Map 管理に統一し、本実装でも安全に踏襲できる成熟度に達する
 
 ---
 

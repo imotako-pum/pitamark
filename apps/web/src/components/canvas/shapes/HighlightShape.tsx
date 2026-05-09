@@ -3,7 +3,14 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useEffect, useRef } from 'react';
 import { Rect as KonvaRect, Transformer } from 'react-konva';
-import { HIGHLIGHT_OPACITY, MIN_RESIZE_SIZE, OUTLINE_ACCENT } from '../colors';
+import { useTouchDevice } from '../../../hooks/useTouchDevice';
+import {
+  ANCHOR_SIZE_DESKTOP,
+  ANCHOR_SIZE_TOUCH,
+  HIGHLIGHT_OPACITY,
+  MIN_RESIZE_SIZE,
+  OUTLINE_ACCENT,
+} from '../colors';
 
 export type HighlightResizePatch = Readonly<{
   x: number;
@@ -29,6 +36,7 @@ export const HighlightShape = ({
 }: HighlightShapeProps) => {
   const shapeRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const isTouch = useTouchDevice();
 
   useEffect(() => {
     if (isSelected && shapeRef.current && trRef.current) {
@@ -75,6 +83,7 @@ export const HighlightShape = ({
       {isSelected && (
         <Transformer
           ref={trRef}
+          anchorSize={isTouch ? ANCHOR_SIZE_TOUCH : ANCHOR_SIZE_DESKTOP}
           rotateEnabled={false}
           flipEnabled={false}
           ignoreStroke

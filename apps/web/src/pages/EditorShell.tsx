@@ -22,7 +22,7 @@ import type { AnnotationsStore } from '../hooks/useAnnotationsStore';
 import { useExportPng } from '../hooks/useExportPng';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useStageSize } from '../hooks/useStageSize';
-import { useStageTransform } from '../hooks/useStageTransform';
+import { applyPinch, useStageTransform } from '../hooks/useStageTransform';
 import { useTranslation } from '../i18n';
 import { computeAutoArrowDefault } from '../lib/autoArrowDefault';
 import { AUTO_NEXT_TEXT_OFFSET_PX, computeAutoNextTextOffset } from '../lib/autoNextOffset';
@@ -256,7 +256,27 @@ export const EditorShell = ({
     setHundredPercent,
     zoomBy,
     panBy,
+    setTransformDirect,
   } = useStageTransform({ width: stageInnerWidth, height: stageHeight });
+
+  // Phase 10.I-2: 2-finger pinch / pan を atomic に適用するための callback。
+  // CanvasStage の onTouchMove ハンドラから center / distRatio / panDx / panDy を
+  // 受け、`applyPinch` で transform を計算して clampPan 込みで 1 setState に集約する。
+  // updater 形式 (`prev => next`) で stale state を防ぎ、毎 frame 最新の transform
+  // を基準に pinch 計算する。
+  const handlePinchPan = useCallback(
+    (input: {
+      center: { x: number; y: number };
+      distRatio: number;
+      panDx: number;
+      panDy: number;
+    }) => {
+      setTransformDirect((prev) =>
+        applyPinch(prev, input.center, input.distRatio, input.panDx, input.panDy),
+      );
+    },
+    [setTransformDirect],
+  );
 
   const handleImageLoaded = useCallback(
     (size: { width: number; height: number } | null) => {
@@ -590,6 +610,7 @@ export const EditorShell = ({
             transform={stageTransform}
             onZoom={zoomBy}
             onPan={panBy}
+            onPinchPan={handlePinchPan}
             onImageLoaded={handleImageLoaded}
             pendingAutoArrow={pendingAutoArrow}
             onAutoNextRectangle={handleAutoNextRectangle}

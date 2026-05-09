@@ -34,6 +34,20 @@ export const HANDLE_STROKE_WIDTH = 2;
 // rectangles/highlights still visible and re-grabbable after a drag.
 export const MIN_RESIZE_SIZE = 5;
 
+// Phase 10.I-2: tap-target adaptive sizing for `pointer: coarse` (touch) devices.
+// 数値根拠: iOS HIG 44pt / Material 48dp。本実装は visual を控えめに保ちつつ、Konva の
+// 内部 hit padding と組み合わせて 44px 級の tap target を実現する方針。詳細は
+// docs/adr/ADR-0006 / Phase 10.I PRD。
+export const HANDLE_RADIUS_TOUCH = 12;
+
+// Konva Transformer anchor の adaptive サイズ。Konva default は 10。
+export const ANCHOR_SIZE_DESKTOP = 10;
+export const ANCHOR_SIZE_TOUCH = 24;
+
+// Arrow / Highlight の細い stroke 用 hit zone 拡張幅 (Konva 公式 Issue #524 推奨)。
+// touch 環境のみ適用、desktop では `annotation.strokeWidth` 維持で誤タップを抑える。
+export const HIT_STROKE_WIDTH_TOUCH = 20;
+
 export const DEFAULT_STROKE_WIDTH = 2;
 export const DEFAULT_FONT_SIZE = 18;
 export const ARROW_POINTER_LENGTH = 12;
