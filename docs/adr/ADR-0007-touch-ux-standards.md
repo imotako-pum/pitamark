@@ -1,7 +1,7 @@
 # ADR-0007: Touch UX Standards Compliance — タイミング定数 / event ペアリング規約 / E2E 戦略
 
 **Date**: 2026-05-09
-**Status**: Proposed
+**Status**: Accepted (Phase 10.J 全 sub-phase 実装完了 2026-05-09、Draft PR #22、実機 QA pending)
 **Deciders**: imotako (PM/Dev)
 **Related**:
 - PRD: [`phase-10-j-touch-ux-standards.prd.md`](../../.claude/PRPs/prds/phase-10-j-touch-ux-standards.prd.md)
