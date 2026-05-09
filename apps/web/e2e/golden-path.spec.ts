@@ -47,40 +47,54 @@ test('キーボードのみで 4 種注釈配置 → 色変更 → PNG 出力ま
   const box = await stage.boundingBox();
   if (!box) throw new Error('canvas bounding box が取得できなかった');
 
-  // R: rectangle
+  // header の py / Logo / Toolbar 高さが visual 系の変更でしばしば動くため、座標は
+  // 絶対 px ではなく box の比率で持つ。viewport 720 - header ~100 で組まれていた
+  // 旧 absolute 座標 (100/250/400/500/540 など) を box.width / box.height に対する
+  // % に置き換えただけで、形状ごとの相対配置 (rect 左上 / arrow 中央 / text 中央右 /
+  // highlight 右下) は元のまま。
+  const at = (fx: number, fy: number) => ({ x: box.x + box.width * fx, y: box.y + box.height * fy });
+
+  // R: rectangle (左上)
   await page.keyboard.press('r');
-  await page.mouse.move(box.x + 100, box.y + 100);
+  const rectFrom = at(0.1, 0.16);
+  const rectTo = at(0.21, 0.3);
+  await page.mouse.move(rectFrom.x, rectFrom.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 200, box.y + 180, { steps: 5 });
+  await page.mouse.move(rectTo.x, rectTo.y, { steps: 5 });
   await page.mouse.up();
 
   // C で色を 1 つ進める (active 更新 + 選択中の rectangle にも適用される)。
   await page.keyboard.press('c');
 
-  // A: arrow
+  // A: arrow (中央)
   await page.keyboard.press('a');
-  await page.mouse.move(box.x + 250, box.y + 250);
+  const arrowFrom = at(0.26, 0.4);
+  const arrowTo = at(0.36, 0.5);
+  await page.mouse.move(arrowFrom.x, arrowFrom.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 350, box.y + 300, { steps: 5 });
+  await page.mouse.move(arrowTo.x, arrowTo.y, { steps: 5 });
   await page.mouse.up();
   // 矢印確定で Auto-next-A の空 text + IME 起動が走るため、Esc で text を破棄して
   // 矢印のみ残す。本 spec の主旨は 4 種注釈が独立に作れること + ⌘S 出力で、
   // Auto-next 連鎖は別 spec (auto-next-arrow-text.spec.ts) でカバー済。
   await page.keyboard.press('Escape');
 
-  // T: text (1 文字打って Enter で commit)
+  // T: text (中央右、1 文字打って Enter で commit)
   await page.keyboard.press('t');
-  await page.mouse.click(box.x + 400, box.y + 400);
+  const textPoint = at(0.42, 0.62);
+  await page.mouse.click(textPoint.x, textPoint.y);
   const textarea = page.getByRole('textbox', { name: '注釈テキストを編集' });
   await expect(textarea).toBeVisible({ timeout: 5_000 });
   await textarea.type('OK');
   await textarea.press('Enter');
 
-  // H: highlight
+  // H: highlight (右下、box の 80% 以内に収めて header 高さ変動でも viewport 内に残す)
   await page.keyboard.press('h');
-  await page.mouse.move(box.x + 500, box.y + 500);
+  const hlFrom = at(0.52, 0.7);
+  const hlTo = at(0.62, 0.82);
+  await page.mouse.move(hlFrom.x, hlFrom.y);
   await page.mouse.down();
-  await page.mouse.move(box.x + 580, box.y + 540, { steps: 5 });
+  await page.mouse.move(hlTo.x, hlTo.y, { steps: 5 });
   await page.mouse.up();
 
   // 注釈が 4 つ追加されたことを確認 (rect + arrow + text + highlight)。
