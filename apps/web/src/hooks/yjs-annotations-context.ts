@@ -6,6 +6,7 @@ import {
   clearAllY,
   moveAnnotationY,
   removeAnnotationY,
+  reorderAnnotationY,
   resizeHighlightY,
   resizeRectangleY,
   setAnnotationColorY,
@@ -117,6 +118,9 @@ export const createYjsAnnotationsContext = (
         return;
       case 'annotation/set-font-size':
         setTextFontSizeY(doc, yAnnotations, action.id, action.fontSize);
+        return;
+      case 'annotation/reorder':
+        reorderAnnotationY(doc, yAnnotations, action.id, action.direction);
         return;
       default: {
         // 網羅性チェック — `never` で compile-time、throw で runtime にも露出させる。

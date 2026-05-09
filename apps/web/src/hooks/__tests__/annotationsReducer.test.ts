@@ -288,6 +288,56 @@ describe('annotationsReducer.annotation/set-font-size', () => {
   });
 });
 
+describe('annotationsReducer.annotation/reorder', () => {
+  // Phase 10.J-2: 長押し menu の前面/背面項目で発火。createdAt を更新して
+  // yjs-codec の sort 順 (= render z-order) を変える。
+  const r1: RectangleAnnotation = { ...rect, id: 'r1', createdAt: 1 };
+  const r2: RectangleAnnotation = { ...rect, id: 'r2', createdAt: 2 };
+  const r3: RectangleAnnotation = { ...rect, id: 'r3', createdAt: 3 };
+
+  it('front: 中央 r2 を最前面 (createdAt = max + 1 = 4)', () => {
+    const state = seedWith([r1, r2, r3]);
+    const next = annotationsReducer(state, {
+      type: 'annotation/reorder',
+      id: 'r2',
+      direction: 'front',
+    });
+    const target = next.annotations.find((a) => a.id === 'r2');
+    expect(target?.createdAt).toBe(4);
+  });
+
+  it('back: 中央 r2 を最背面 (createdAt = min - 1 = 0)', () => {
+    const state = seedWith([r1, r2, r3]);
+    const next = annotationsReducer(state, {
+      type: 'annotation/reorder',
+      id: 'r2',
+      direction: 'back',
+    });
+    const target = next.annotations.find((a) => a.id === 'r2');
+    expect(target?.createdAt).toBe(0);
+  });
+
+  it('既に最前面の r3 で front は state 同一参照 (空 undo step 抑止)', () => {
+    const state = seedWith([r1, r2, r3]);
+    const next = annotationsReducer(state, {
+      type: 'annotation/reorder',
+      id: 'r3',
+      direction: 'front',
+    });
+    expect(next).toBe(state);
+  });
+
+  it('未知 id では state 同一参照', () => {
+    const state = seedWith([r1, r2, r3]);
+    const next = annotationsReducer(state, {
+      type: 'annotation/reorder',
+      id: 'zzz',
+      direction: 'back',
+    });
+    expect(next).toBe(state);
+  });
+});
+
 describe('isCommittingAction', () => {
   it('treats annotation/set-color as a committing action (Undo target)', () => {
     expect(isCommittingAction({ type: 'annotation/set-color', id: 'r1', color: '#abcdef' })).toBe(
@@ -307,5 +357,11 @@ describe('isCommittingAction', () => {
 
   it('treats active-font-size/set as UI-only (not committed)', () => {
     expect(isCommittingAction({ type: 'active-font-size/set', fontSize: 24 })).toBe(false);
+  });
+
+  it('treats annotation/reorder as a committing action (Undo target)', () => {
+    expect(isCommittingAction({ type: 'annotation/reorder', id: 'r1', direction: 'front' })).toBe(
+      true,
+    );
   });
 });

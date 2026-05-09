@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useEffect, useRef } from 'react';
 import { Rect as KonvaRect, Transformer } from 'react-konva';
+import { useLongPress } from '../../../hooks/useLongPress';
 import { useTouchDevice } from '../../../hooks/useTouchDevice';
 import {
   ANCHOR_SIZE_DESKTOP,
@@ -25,6 +26,8 @@ type HighlightShapeProps = Readonly<{
   onClick: (id: string) => void;
   onDragEnd: (id: string, x: number, y: number) => void;
   onResize: (id: string, patch: HighlightResizePatch) => void;
+  /** Phase 10.J-2: 長押しで context menu を出す callback */
+  onLongPress?: (id: string, anchor: { x: number; y: number }) => void;
 }>;
 
 export const HighlightShape = ({
@@ -33,10 +36,15 @@ export const HighlightShape = ({
   onClick,
   onDragEnd,
   onResize,
+  onLongPress,
 }: HighlightShapeProps) => {
   const shapeRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const isTouch = useTouchDevice();
+  const longPress = useLongPress({
+    onLongPress: (anchor) => onLongPress?.(annotation.id, anchor),
+    enabled: !!onLongPress,
+  });
 
   useEffect(() => {
     if (isSelected && shapeRef.current && trRef.current) {
@@ -64,6 +72,17 @@ export const HighlightShape = ({
           e.cancelBubble = true;
           onClick(annotation.id);
         }}
+        // ADR-0007 D1: touch では `tap` が別発火するため `onClick` と paired binding。
+        onTap={(e: KonvaEventObject<TouchEvent>) => {
+          e.cancelBubble = true;
+          onClick(annotation.id);
+        }}
+        onPointerDown={longPress.onPointerDown}
+        onPointerMove={longPress.onPointerMove}
+        onPointerUp={longPress.onPointerUp}
+        onPointerCancel={longPress.onPointerCancel}
+        onTouchStart={longPress.onTouchStart}
+        onTouchEnd={longPress.onTouchEnd}
         onDragEnd={(e) => onDragEnd(annotation.id, e.target.x(), e.target.y())}
         onTransformEnd={() => {
           const node = shapeRef.current;

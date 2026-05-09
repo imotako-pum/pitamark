@@ -63,6 +63,9 @@ type CanvasStageProps = Readonly<{
    *  no-op、null でないときは EditorShell が pending を null にする。CanvasStage は
    *  クリア後に通常の pointerdown 処理を続行する。 */
   onCancelAutoArrowIfAny: () => void;
+  /** Phase 10.J-2: shape 長押しで context menu を出す callback。anchor は screen 座標
+   *  (clientX/clientY)。EditorShell で menu state を hold + ContextMenu を render する。 */
+  onShapeLongPress?: (id: string, anchor: { x: number; y: number }) => void;
 }>;
 
 const MIN_DRAG_PIXELS = 4;
@@ -147,6 +150,7 @@ export const CanvasStage = ({
   pendingAutoArrow,
   onAutoNextRectangle,
   onCancelAutoArrowIfAny,
+  onShapeLongPress,
 }: CanvasStageProps) => {
   const { state, dispatch } = store;
   const { tool, selectedId, annotations, activeColor, activeFontSize } = state;
@@ -604,6 +608,7 @@ export const CanvasStage = ({
         onResizeRectangle={handleResizeRectangle}
         onResizeHighlight={handleResizeHighlight}
         onArrowEndpoints={handleArrowEndpoints}
+        onShapeLongPress={onShapeLongPress}
       />
       {pendingAutoArrow && (
         <Layer listening={false}>

@@ -8,8 +8,10 @@ import type {
 import { describe, expect, it } from 'vitest';
 import {
   addAnnotation,
+  cloneAnnotationWithOffset,
   moveAnnotation,
   removeAnnotation,
+  reorderAnnotation,
   resizeHighlight,
   resizeRectangle,
   setArrowEndpoints,
@@ -275,5 +277,87 @@ describe('setColor', () => {
     const next = setColor([rect, arrow], 'zzz', '#abcdef');
     expect(next[0]).toBe(rect);
     expect(next[1]).toBe(arrow);
+  });
+});
+
+// Phase 10.J-2: cloneAnnotationWithOffset (複製) + reorderAnnotation (前面 / 背面)。
+
+describe('cloneAnnotationWithOffset', () => {
+  it('rectangle: 新 id + 新 createdAt + (16,16) offset で複製', () => {
+    const cloned = cloneAnnotationWithOffset(rect, 'r1-clone', 999);
+    expect(cloned.id).toBe('r1-clone');
+    expect(cloned.createdAt).toBe(999);
+    expect(cloned.type).toBe('rectangle');
+    if (cloned.type === 'rectangle') {
+      expect(cloned.x).toBe(rect.x + 16);
+      expect(cloned.y).toBe(rect.y + 16);
+      expect(cloned.width).toBe(rect.width);
+      expect(cloned.height).toBe(rect.height);
+      expect(cloned.color).toBe(rect.color);
+    }
+  });
+
+  it('arrow: from / to の両端を offset で複製', () => {
+    const cloned = cloneAnnotationWithOffset(arrow, 'a1-clone', 999);
+    expect(cloned.id).toBe('a1-clone');
+    expect(cloned.type).toBe('arrow');
+    if (cloned.type === 'arrow') {
+      expect(cloned.from).toEqual({ x: arrow.from.x + 16, y: arrow.from.y + 16 });
+      expect(cloned.to).toEqual({ x: arrow.to.x + 16, y: arrow.to.y + 16 });
+    }
+  });
+
+  it('text: x/y を offset で複製、text/fontSize/color は維持', () => {
+    const cloned = cloneAnnotationWithOffset(text, 't1-clone', 999);
+    expect(cloned.id).toBe('t1-clone');
+    expect(cloned.type).toBe('text');
+    if (cloned.type === 'text') {
+      expect(cloned.x).toBe(text.x + 16);
+      expect(cloned.y).toBe(text.y + 16);
+      expect(cloned.text).toBe(text.text);
+      expect(cloned.fontSize).toBe(text.fontSize);
+      expect(cloned.color).toBe(text.color);
+    }
+  });
+});
+
+describe('reorderAnnotation', () => {
+  // 3 件の annotation を createdAt 1 / 2 / 3 で並べ、front/back の動作を検証。
+  const r1: RectangleAnnotation = { ...rect, id: 'r1', createdAt: 1 };
+  const r2: RectangleAnnotation = { ...rect, id: 'r2', createdAt: 2 };
+  const r3: RectangleAnnotation = { ...rect, id: 'r3', createdAt: 3 };
+  const list = [r1, r2, r3];
+
+  it('front: 中央の r2 を front に → createdAt = max + 1 = 4', () => {
+    const next = reorderAnnotation(list, 'r2', 'front');
+    const target = next.find((a) => a.id === 'r2');
+    expect(target?.createdAt).toBe(4);
+  });
+
+  it('back: 中央の r2 を back に → createdAt = min - 1 = 0', () => {
+    const next = reorderAnnotation(list, 'r2', 'back');
+    const target = next.find((a) => a.id === 'r2');
+    expect(target?.createdAt).toBe(0);
+  });
+
+  it('front: 既に最前面 (r3) は同一参照を返す (空 undo step 抑止)', () => {
+    const next = reorderAnnotation(list, 'r3', 'front');
+    expect(next).toBe(list);
+  });
+
+  it('back: 既に最背面 (r1) は同一参照を返す', () => {
+    const next = reorderAnnotation(list, 'r1', 'back');
+    expect(next).toBe(list);
+  });
+
+  it('未知 id では同一参照を返す', () => {
+    const next = reorderAnnotation(list, 'zzz', 'front');
+    expect(next).toBe(list);
+  });
+
+  it('annotations が 1 件以下では同一参照を返す (reorder 無意味)', () => {
+    const single = [r1];
+    expect(reorderAnnotation(single, 'r1', 'front')).toBe(single);
+    expect(reorderAnnotation([], 'r1', 'front')).toEqual([]);
   });
 });

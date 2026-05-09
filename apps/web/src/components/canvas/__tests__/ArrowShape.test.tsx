@@ -147,6 +147,53 @@ describe('ArrowShape', () => {
     m.unmount();
   });
 
+  // Phase 10.J-1: ADR-0007 D1 paired event binding。
+
+  it('binds both onClick (mouse) and onTap (touch) on the Arrow body per ADR-0007 D1', () => {
+    const m = renderShape({ isSelected: false });
+    const props = capture.arrowProps[0] ?? {};
+    expect(typeof props.onClick).toBe('function');
+    expect(typeof props.onTap).toBe('function');
+    m.unmount();
+  });
+
+  it('Arrow body onTap dispatches the same selection callback as onClick', () => {
+    const onClick = vi.fn();
+    const m = renderShape({ isSelected: false, onClick });
+    const onTap = capture.arrowProps[0]?.onTap as (e: { cancelBubble: boolean }) => void;
+    const evt = { cancelBubble: false };
+    onTap(evt);
+    expect(evt.cancelBubble).toBe(true);
+    expect(onClick).toHaveBeenCalledWith('a1');
+    m.unmount();
+  });
+
+  it('endpoint handles bind both onPointerDown and onTouchStart per ADR-0007 D1 + ADR-0006 Status Update', () => {
+    const m = renderShape({ isSelected: true });
+    const fromHandle = capture.circleProps[0] ?? {};
+    const toHandle = capture.circleProps[1] ?? {};
+    expect(typeof fromHandle.onPointerDown).toBe('function');
+    expect(typeof fromHandle.onTouchStart).toBe('function');
+    expect(typeof toHandle.onPointerDown).toBe('function');
+    expect(typeof toHandle.onTouchStart).toBe('function');
+    m.unmount();
+  });
+
+  it('endpoint handles cancelBubble on touchstart (multi-touch path) to avoid Arrow drag conflict', () => {
+    const m = renderShape({ isSelected: true });
+    const fromHandle = capture.circleProps[0] ?? {};
+    const toHandle = capture.circleProps[1] ?? {};
+    const fromOnTouchStart = fromHandle.onTouchStart as (e: { cancelBubble: boolean }) => void;
+    const toOnTouchStart = toHandle.onTouchStart as (e: { cancelBubble: boolean }) => void;
+    const evt1 = { cancelBubble: false };
+    const evt2 = { cancelBubble: false };
+    fromOnTouchStart(evt1);
+    toOnTouchStart(evt2);
+    expect(evt1.cancelBubble).toBe(true);
+    expect(evt2.cancelBubble).toBe(true);
+    m.unmount();
+  });
+
   // Phase 10.I-2: adaptive sizing for touch devices.
 
   it('uses HANDLE_RADIUS (desktop default) when not on a touch device', () => {

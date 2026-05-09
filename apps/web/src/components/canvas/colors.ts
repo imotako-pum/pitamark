@@ -41,8 +41,11 @@ export const MIN_RESIZE_SIZE = 5;
 export const HANDLE_RADIUS_TOUCH = 12;
 
 // Konva Transformer anchor の adaptive サイズ。Konva default は 10。
+// Touch 値は tldraw v3 `coarseHandleRadius = 20` 業界標準値に揃える (ADR-0007 D3)。
+// Phase 10.I-2 の暫定値 24px は隣接 shape を覆い誤タップを増やすため 20 に再調整。
+// 視覚 20px + Konva 内部 hit padding (~10-12px) で実効 ~44px tap target を確保。
 export const ANCHOR_SIZE_DESKTOP = 10;
-export const ANCHOR_SIZE_TOUCH = 24;
+export const ANCHOR_SIZE_TOUCH = 20;
 
 // Arrow / Highlight の細い stroke 用 hit zone 拡張幅 (Konva 公式 Issue #524 推奨)。
 // touch 環境のみ適用、desktop では `annotation.strokeWidth` 維持で誤タップを抑える。

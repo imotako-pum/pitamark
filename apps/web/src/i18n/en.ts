@@ -30,6 +30,13 @@ export const en: Record<I18nKey, string> = {
   'toolbar.action.clearAll': 'Clear all annotations',
   'toolbar.action.help': 'Keyboard shortcuts',
 
+  // Context menu — Phase 10.J-2 long-press context menu.
+  // Material-style ordering (destructive last) for misstap safety.
+  'contextMenu.duplicate': 'Duplicate',
+  'contextMenu.bringFront': 'Bring to front',
+  'contextMenu.sendBack': 'Send to back',
+  'contextMenu.delete': 'Delete',
+
   // Toolbar — URL コピーボタン。
   'toolbar.copyUrl.aria': 'Copy room URL',
   'toolbar.copyUrl.idle': 'Copy URL',

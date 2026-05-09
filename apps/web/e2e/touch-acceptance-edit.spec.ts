@@ -1,14 +1,16 @@
 import { expect, test } from '@playwright/test';
 import {
   type AcceptanceAnnotation,
+  commitTextAnnotation,
+  dblTapViewport,
   dragOnStage,
+  dragViewport,
   readAnnotations,
   readFirstAnnotation,
   selectTool,
+  setupEditor,
   tapStage,
-  waitForAnnotationsReady,
 } from './fixtures/touch-helpers';
-import { dropImage } from './fixtures/upload';
 
 // Phase 10.I post-review fix: 受入 spec (touch-acceptance.spec.ts) で網羅していなかった
 // **リサイズ + テキスト再編集** を mobile-chrome で実証する spec。Phase A 検証先行で
@@ -31,17 +33,10 @@ const skipNonMobileChrome = (testInfo: import('@playwright/test').TestInfo) =>
     'edit acceptance は mobile-chrome project のみ実行する',
   );
 
-const setupEditor = async (page: import('@playwright/test').Page) => {
-  await page.goto('/');
-  await dropImage(page);
-  await expect(page).toHaveURL(/\/r\/[A-Za-z0-9_-]{21}$/, { timeout: 20_000 });
-  await waitForAnnotationsReady(page);
-};
-
 /** logical 座標 → Stage 内ローカル screen 座標 (Stage の transform を反映、box offset
  *  は **加算しない**)。touch-acceptance.spec.ts (10.I-4) と同仕様。dragOnStage / tapStage
- *  は内部で box offset を加算するためそのまま渡せるが、`page.mouse.move` を直接呼ぶ
- *  経路 (endpoint の Circle drag) では別途 box offset を足す必要がある。 */
+ *  は内部で box offset を加算するためそのまま渡せるが、Transformer anchor / endpoint Circle
+ *  のように `dragViewport` / `dblTapViewport` を直接呼ぶ経路では別途 box offset を足す必要がある。 */
 const logicalToScreen = async (
   page: import('@playwright/test').Page,
   point: { x: number; y: number },
@@ -60,8 +55,8 @@ const logicalToScreen = async (
     };
   }, point);
 
-/** page.mouse.move 用の viewport 座標を返す (logical → screen + box offset)。
- *  endpoint Circle drag のように `page.mouse.move` を直接呼ぶ経路で使う。 */
+/** viewport 座標を返す (logical → screen + box offset)。
+ *  endpoint Circle drag / Transformer anchor drag のように `dragViewport` を直接呼ぶ経路で使う。 */
 const logicalToViewport = async (
   page: import('@playwright/test').Page,
   point: { x: number; y: number },
@@ -95,7 +90,7 @@ const shapeScreenCenter = async (
   throw new Error(`shapeScreenCenter: unsupported shape ${a.type}`);
 };
 
-/** rectangle/highlight の bottom-right 角 → viewport 座標 (page.mouse.move 用)。 */
+/** rectangle/highlight の bottom-right 角 → viewport 座標 (dragViewport 用)。 */
 const shapeBottomRightViewport = async (
   page: import('@playwright/test').Page,
   a: AcceptanceAnnotation,
@@ -112,7 +107,7 @@ const shapeBottomRightViewport = async (
   throw new Error(`shapeBottomRightViewport: unsupported shape ${a.type}`);
 };
 
-/** arrow の from / to を viewport 座標で取得 (page.mouse.move 用)。 */
+/** arrow の from / to を viewport 座標で取得 (dragViewport 用)。 */
 const arrowEndpointViewport = async (
   page: import('@playwright/test').Page,
   a: AcceptanceAnnotation,
@@ -143,10 +138,7 @@ test.describe('Phase 10.I post-review: touch resize + re-edit (Phase A verificat
     await tapStage(page, center);
     // bottom-right anchor (Transformer の右下) を screen 座標で計算 → +50,+50 方向に drag
     const br = await shapeBottomRightViewport(page, before);
-    await page.mouse.move(br.x, br.y);
-    await page.mouse.down();
-    await page.mouse.move(br.x + 60, br.y + 60, { steps: 5 });
-    await page.mouse.up();
+    await dragViewport(page, br, { x: br.x + 60, y: br.y + 60 });
     const after = await readFirstAnnotation(page);
     expect(after?.type).toBe('rectangle');
     // width または height のどちらかが増えていれば resize 成功
@@ -168,10 +160,7 @@ test.describe('Phase 10.I post-review: touch resize + re-edit (Phase A verificat
     const center = await shapeScreenCenter(page, before);
     await tapStage(page, center);
     const br = await shapeBottomRightViewport(page, before);
-    await page.mouse.move(br.x, br.y);
-    await page.mouse.down();
-    await page.mouse.move(br.x + 60, br.y + 60, { steps: 5 });
-    await page.mouse.up();
+    await dragViewport(page, br, { x: br.x + 60, y: br.y + 60 });
     const after = await readFirstAnnotation(page);
     expect(after?.type).toBe('highlight');
     const resized =
@@ -198,10 +187,7 @@ test.describe('Phase 10.I post-review: touch resize + re-edit (Phase A verificat
     await tapStage(page, center);
     // from-handle (始点 Circle) を drag
     const from = await arrowEndpointViewport(page, before, 'from');
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    await page.mouse.move(from.x + 80, from.y + 50, { steps: 5 });
-    await page.mouse.up();
+    await dragViewport(page, from, { x: from.x + 80, y: from.y + 50 });
     const after = await readFirstAnnotation(page);
     expect(after?.type).toBe('arrow');
     const fromMoved = after?.from?.x !== before.from.x || after?.from?.y !== before.from.y;
@@ -223,10 +209,7 @@ test.describe('Phase 10.I post-review: touch resize + re-edit (Phase A verificat
     const center = await shapeScreenCenter(page, before);
     await tapStage(page, center);
     const to = await arrowEndpointViewport(page, before, 'to');
-    await page.mouse.move(to.x, to.y);
-    await page.mouse.down();
-    await page.mouse.move(to.x + 80, to.y + 50, { steps: 5 });
-    await page.mouse.up();
+    await dragViewport(page, to, { x: to.x + 80, y: to.y + 50 });
     const after = await readFirstAnnotation(page);
     expect(after?.type).toBe('arrow');
     const toMoved = after?.to?.x !== before.to.x || after?.to?.y !== before.to.y;
@@ -242,22 +225,20 @@ test.describe('Phase 10.I post-review: touch resize + re-edit (Phase A verificat
     await setupEditor(page);
     await selectTool(page, 'テキスト');
     await tapStage(page, { x: 100, y: 100 });
-    // 初回配置で IME が出るので Esc で確定 (空文字 text annotation)
-    await page.keyboard.press('Escape');
+    // Phase 10.J-4: 本物 touch event で textarea が正しく focus されるため、空文字 Esc では
+    // handleTextCancel が annotation を remove する。non-empty content で commit して text を確定。
+    await commitTextAnnotation(page, 'src');
     const before = await readFirstAnnotation(page);
     if (!before || before.type !== 'text') throw new Error('text add 失敗');
     await selectTool(page, '選択');
-    // text shape を **ダブルタップ** で編集モードに。viewport 座標で page.mouse を
-    // 直接動かす (Konva の dbltap 判定: dblClickWindow=400ms 以内 + 同位置 2 連続 tap)。
+    // text shape を **ダブルタップ** で編集モードに。Phase 10.J-4: 本物の touchstart/end を
+    // 2 連続発火する `dblTapViewport` を使う。Konva の `dbltap` 判定 (300ms 以内 + 同位置 2 連続 tap、
+    // ADR-0007 D2 の DOUBLE_TAP_INTERVAL_MS) を踏み、TextShape の `onDblTap` 経路を CI で踏む。
     const center = await logicalToViewport(page, {
       x: (before.x ?? 0) + 8,
       y: (before.y ?? 0) + 8,
     });
-    await page.mouse.move(center.x, center.y);
-    await page.mouse.down();
-    await page.mouse.up();
-    await page.mouse.down();
-    await page.mouse.up();
+    await dblTapViewport(page, center);
     // 編集モードに入ったら TextEditorOverlay の textarea が DOM に visible
     const overlay = page.locator('textarea[aria-label="注釈テキストを編集"]');
     await expect(overlay).toBeVisible({ timeout: 3_000 });
@@ -288,19 +269,33 @@ test.describe('Phase 10.I post-review: touch resize + re-edit (Phase A verificat
     expect((annotations[0] as { text?: string })?.text).toBe('Hello');
   });
 
-  test('edit-text-cancel: 編集モード中に Esc で確定 → annotation 残存', async ({
+  test('edit-text-cancel: 既存 text 編集モード中に Esc → 元の text 残存', async ({
     page,
   }, testInfo) => {
     skipNonMobileChrome(testInfo);
     await setupEditor(page);
     await selectTool(page, 'テキスト');
     await tapStage(page, { x: 100, y: 100 });
+    // Phase 10.J-4: text を 'keep' で確定 → dbltap で再編集 → Esc で cancel →
+    // 既存 text 'keep' は (空文字でないため) handleTextCancel で削除されず残存する。
+    // 旧テストは「空文字 + Esc で残存」を assert していたが、handleTextCancel の実装
+    // (空文字なら remove) と矛盾していた既存バグ。本 plan で実装に合わせて assertion を修正。
+    await commitTextAnnotation(page, 'keep');
+    const before = await readFirstAnnotation(page);
+    if (!before || before.type !== 'text') throw new Error('text add 失敗');
+    await selectTool(page, '選択');
+    const center = await logicalToViewport(page, {
+      x: (before.x ?? 0) + 8,
+      y: (before.y ?? 0) + 8,
+    });
+    await dblTapViewport(page, center);
     const overlay = page.locator('textarea[aria-label="注釈テキストを編集"]');
     await expect(overlay).toBeVisible({ timeout: 3_000 });
+    // 編集中の text はそのまま (keep)、Esc で再編集を cancel
     await page.keyboard.press('Escape');
-    // Esc で確定 (空文字でも annotation は残る = TextShape の現状仕様)
     const arr = await readAnnotations(page);
-    expect(arr.length).toBeGreaterThanOrEqual(1);
+    expect(arr.length).toBe(1);
     expect(arr[0]?.type).toBe('text');
+    expect((arr[0] as { text?: string })?.text).toBe('keep');
   });
 });

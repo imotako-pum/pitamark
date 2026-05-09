@@ -8,6 +8,7 @@ import {
   LOCAL_ORIGIN,
   moveAnnotationY,
   removeAnnotationY,
+  reorderAnnotationY,
   resizeHighlightY,
   resizeRectangleY,
   setAnnotationColorY,
@@ -240,6 +241,77 @@ describe('clearAllY', () => {
     addAnnotationY(doc, ya, arr('a1'));
     clearAllY(doc, ya);
     expect(ya.size).toBe(0);
+  });
+});
+
+describe('reorderAnnotationY', () => {
+  // Phase 10.J-2: createdAt 経由の z-order 更新 (案 B、Open Question Q1)。
+  // schema 拡張なし、yjs-codec の sort が render order key として使う。
+
+  it('front: 中央 r2 を最前面 (createdAt = max + 1)', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1', 1));
+    addAnnotationY(doc, ya, rect('r2', 2));
+    addAnnotationY(doc, ya, rect('r3', 3));
+
+    reorderAnnotationY(doc, ya, 'r2', 'front');
+
+    const r2 = ya.get('r2');
+    expect(r2?.get('createdAt')).toBe(4);
+  });
+
+  it('back: 中央 r2 を最背面 (createdAt = min - 1)', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1', 1));
+    addAnnotationY(doc, ya, rect('r2', 2));
+    addAnnotationY(doc, ya, rect('r3', 3));
+
+    reorderAnnotationY(doc, ya, 'r2', 'back');
+
+    const r2 = ya.get('r2');
+    expect(r2?.get('createdAt')).toBe(0);
+  });
+
+  it('既に最前面 (max) の id で front は no-op (createdAt 不変)', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1', 1));
+    addAnnotationY(doc, ya, rect('r2', 2));
+    addAnnotationY(doc, ya, rect('r3', 3));
+
+    reorderAnnotationY(doc, ya, 'r3', 'front');
+
+    expect(ya.get('r3')?.get('createdAt')).toBe(3);
+  });
+
+  it('未知 id では何も起きない', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1', 1));
+
+    expect(() => reorderAnnotationY(doc, ya, 'zzz', 'front')).not.toThrow();
+    expect(ya.get('r1')?.get('createdAt')).toBe(1);
+  });
+
+  it('1 件のみでは no-op (前後無いため reorder 無意味)', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1', 5));
+
+    reorderAnnotationY(doc, ya, 'r1', 'front');
+
+    expect(ya.get('r1')?.get('createdAt')).toBe(5);
+  });
+
+  it('LOCAL_ORIGIN で wrap される (UndoManager が追跡可能)', () => {
+    const { doc, ya } = setupDoc();
+    addAnnotationY(doc, ya, rect('r1', 1));
+    addAnnotationY(doc, ya, rect('r2', 2));
+    const undo = new Y.UndoManager(ya, {
+      trackedOrigins: new Set([LOCAL_ORIGIN]),
+      captureTimeout: 0,
+    });
+
+    reorderAnnotationY(doc, ya, 'r1', 'front');
+
+    expect(undo.undoStack.length).toBeGreaterThan(0);
   });
 });
 
