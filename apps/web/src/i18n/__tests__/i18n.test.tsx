@@ -58,15 +58,19 @@ describe('i18n — dict integrity', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(ja).sort());
   });
 
-  it('ja has no empty values (every key is translated)', () => {
-    const empties = Object.entries(ja).filter(([, v]) => v.length === 0);
+  it('ja has no empty values (every key is translated) — except documented placeholders', () => {
+    // `dropzone.instructionSuffix` は JA/EN 共通で意図的に空。suffix slot を廃止し
+    // "drop / paste / click" の単一文字列に集約したため、空文字で潰している。
+    const intentionalEmpties = new Set(['dropzone.instructionSuffix']);
+    const empties = Object.entries(ja)
+      .filter(([k, v]) => v.length === 0 && !intentionalEmpties.has(k))
+      .map(([k]) => k);
     expect(empties).toEqual([]);
   });
 
   it('en has no empty values (every key is translated, even if draft) — except documented placeholders', () => {
-    // `dropzone.instructionSuffix` は EN で意図的に空。JA template に末尾助詞があり
-    // 英語に対応物が無いため、suffix slot を空文字で潰す形にしてある。ここで明示的に
-    // 例外登録し、それ以外の場所での誤った空文字は今後も検知できるようにする。
+    // `dropzone.instructionSuffix` は JA/EN 共通で意図的に空。suffix slot を廃止し
+    // "drop / paste / click" の単一文字列に集約したため、空文字で潰している。
     const intentionalEmpties = new Set(['dropzone.instructionSuffix']);
     const empties = Object.entries(en)
       .filter(([k, v]) => v.length === 0 && !intentionalEmpties.has(k))

@@ -73,22 +73,23 @@ export const DropZone = ({ onFile, error }: DropZoneProps) => {
           aria-describedby={error ? errorId : undefined}
           className={[
             'flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-12 py-16',
-            'transition-colors duration-(--duration-normal) ease-(--ease-out-expo)',
+            'transition-all duration-(--duration-normal) ease-(--ease-out-expo)',
             'focus-visible:ring-2 focus-visible:ring-(--color-accent) focus-visible:outline-none',
+            // -1.2° tilt は default / drag-over 共通。drag-over で軽く scale up。
             isOver
-              ? 'border-(--color-accent) bg-[oklch(96%_0.05_250)]'
-              : 'border-(--color-toolbar-border) bg-(--color-surface)',
+              ? 'border-(--color-accent) bg-[oklch(96%_0.05_250)] [transform:rotate(-1.2deg)_scale(1.02)]'
+              : 'border-[oklch(20%_0_0)] bg-(--color-surface) [transform:rotate(-1.2deg)]',
           ].join(' ')}
         >
-          <ImagePlus size={48} strokeWidth={1.25} className="text-(--color-accent)" />
+          <ImagePlus
+            size={48}
+            strokeWidth={1.25}
+            className={isOver ? 'text-[oklch(50%_0.18_250)]' : 'text-[oklch(20%_0_0)]'}
+          />
           <h2 id="dropzone-heading" className="text-lg font-medium">
             {t('dropzone.headline')}
           </h2>
-          <p className="text-sm opacity-75">
-            {t('dropzone.instructionPrefix')}{' '}
-            <kbd className="rounded border px-1.5 py-0.5 text-xs">⌘V</kbd>
-            {t('dropzone.instructionSuffix') ? ` ${t('dropzone.instructionSuffix')}` : ''}
-          </p>
+          <p className="text-sm opacity-75">{t('dropzone.instructionPrefix')}</p>
           <p className="text-xs opacity-60">{t('dropzone.formats')}</p>
         </button>
         {/* error を <button> の表示内に置かないことで、screen reader が button 名と

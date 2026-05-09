@@ -36,7 +36,7 @@ const dispatchHelpKey = (page: import('@playwright/test').Page) =>
 // mount + keyboard listener 配線が完了している。toolbar は landing
 // (source === null) では hidden なので、heading の方が安定した signal。
 const waitForEditorReady = (page: import('@playwright/test').Page) =>
-  page.getByRole('heading', { name: '画像をドロップしてください' }).waitFor({ state: 'visible' });
+  page.getByRole('heading', { name: '画像をドロップ' }).waitFor({ state: 'visible' });
 
 test.describe('HelpModal', () => {
   test('? キーで開いて Esc で閉じる (画像未投入でも動く)', async ({ page }, testInfo) => {

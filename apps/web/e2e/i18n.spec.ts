@@ -25,7 +25,7 @@ test.describe('i18n — LangToggle', () => {
   // visible + 消えにくい signal。
   test('default lang is JA on landing (matches Playwright locale=ja-JP)', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   });
 
@@ -35,7 +35,7 @@ test.describe('i18n — LangToggle', () => {
     await page.goto('/');
 
     // Sanity: starts in JA.
-    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible();
 
     // Click EN.
     await page
@@ -44,7 +44,7 @@ test.describe('i18n — LangToggle', () => {
       .click();
 
     // DropZone heading flips to the EN value.
-    await expect(page.getByRole('heading', { name: 'Drop an image here' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Drop an image' })).toBeVisible();
 
     // <html lang> reflects.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
@@ -61,13 +61,13 @@ test.describe('i18n — LangToggle', () => {
       .getByRole('group', { name: '言語' })
       .getByRole('button', { name: 'English' })
       .click();
-    await expect(page.getByRole('heading', { name: 'Drop an image here' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Drop an image' })).toBeVisible();
 
     await page
       .getByRole('group', { name: 'Language' })
       .getByRole('button', { name: '日本語' })
       .click();
-    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   });
 
@@ -81,6 +81,6 @@ test.describe('i18n — LangToggle', () => {
 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(page.getByRole('heading', { name: 'Drop an image here' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Drop an image' })).toBeVisible();
   });
 });

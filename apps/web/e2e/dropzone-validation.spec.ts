@@ -97,7 +97,7 @@ test.describe('DropZone validation', () => {
   test('hotfix #1: 初回マウント直後に loading hint がちらつかない', async ({ page }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible({
       timeout: 1_000,
     });
     await expect(page.getByText('画像を読み込んでいます…')).toBeHidden();
@@ -109,7 +109,7 @@ test.describe('DropZone validation', () => {
   test('hotfix #2: DropZone クリックでファイルピッカーが起動する', async ({ page }, testInfo) => {
     skipNonChromium(testInfo);
     await page.goto('/');
-    const button = page.getByRole('button', { name: '画像をドロップしてください' });
+    const button = page.getByRole('button', { name: '画像をドロップ' });
     await expect(button).toBeVisible();
 
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 5_000 });

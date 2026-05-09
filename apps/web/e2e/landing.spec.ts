@@ -19,7 +19,7 @@ test('editor toolbar is hidden on landing (no image loaded)', async ({ page }) =
 test('drop zone shows the empty-state hint when no image is loaded', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: '画像をドロップしてください' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '画像をドロップ' })).toBeVisible();
 });
 
 test('brand h1 stays reachable at tablet width (768px) — toolbar still hidden', async ({

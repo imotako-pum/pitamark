@@ -59,8 +59,8 @@ export const en: Record<I18nKey, string> = {
   'canvas.textEditor.aria': 'Edit annotation text',
 
   // DropZone (画像未読込時の placeholder UI)。
-  'dropzone.headline': 'Drop an image here',
-  'dropzone.instructionPrefix': 'Click to choose, or paste with',
+  'dropzone.headline': 'Drop an image',
+  'dropzone.instructionPrefix': 'drop / paste / click',
   'dropzone.instructionSuffix': '',
   'dropzone.formats': 'PNG / JPEG / WebP / SVG (up to 10MB)',
   'dropzone.loading': 'Loading image…',
